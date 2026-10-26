@@ -1,4 +1,4 @@
-# Contributing to Simple Voice Tool
+# Contributing to Simple Voice Tool for Trans
 
 Thanks for your interest in contributing! This document covers the basics. For architecture and deeper developer docs, see [documentation/DEVELOPMENT.md](documentation/DEVELOPMENT.md) (docs are written in Chinese).
 
@@ -26,7 +26,7 @@ No microphone needed to explore: append `?demo=1` to any page URL, or use the "l
 
 ### Reporting bugs
 
-Open a [GitHub Issue](https://github.com/theforeveriris/simple-voice-tools/issues) and include:
+Open a [GitHub Issue](https://github.com/theforeveriris/simple-voice-tools-for-trans/issues) and include:
 
 - Platform (PWA / Android / Windows) and browser or OS version
 - Steps to reproduce, expected vs. actual behavior

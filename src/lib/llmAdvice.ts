@@ -36,7 +36,7 @@ export interface LlmAdviceResult {
 /* ------------------------------ 分析标准（提示词） ------------------------------ */
 
 const SYSTEM_PROMPT = [
-  'You are the training advisor inside "Simple Voice Tool", a voice-tracking app built for',
+  'You are the training advisor inside "Simple Voice Tool for Trans", a voice-tracking app built for',
   'transgender voice training (feminization / masculinization) and general voice health.',
   'It measures pitch (YIN), formants (LPC), loudness (dBFS, uncalibrated), voice quality',
   '(Jitter / Shimmer / HNR estimate / CPPS) and sustained phonation (MPT / pitch CV / decay).',
@@ -379,7 +379,7 @@ function strArr(v: unknown): string[] {
 /* ------------------------------ AI 周报 ------------------------------ */
 
 const WEEKLY_PROMPT = [
-  'You are the weekly review writer inside "Simple Voice Tool", a voice-tracking app for',
+  'You are the weekly review writer inside "Simple Voice Tool for Trans", a voice-tracking app for',
   'transgender voice training (feminization / masculinization) and general voice health.',
   'The user message aggregates the LAST 7 DAYS of recordings, grouped per test mode — modes',
   'are never cross-compared. Write the weekly review strictly by this standard:',

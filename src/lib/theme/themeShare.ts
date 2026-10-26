@@ -8,9 +8,10 @@
  */
 
 import type { AppSettings } from '@/types';
+import { APP_ID } from '@/lib/appId';
 
 export interface ThemeExport {
-  app: 'simple-voice-tools';
+  app: typeof APP_ID;
   kind: 'theme';
   version: 1;
   name: string;
@@ -35,7 +36,7 @@ export function buildThemeExport(settings: AppSettings, name: string): ThemeExpo
   const theme: Record<string, unknown> = {};
   for (const k of THEME_KEYS) theme[k] = settings[k];
   return {
-    app: 'simple-voice-tools',
+    app: APP_ID,
     kind: 'theme',
     version: 1,
     name: (name.trim() || 'theme').slice(0, MAX_NAME),

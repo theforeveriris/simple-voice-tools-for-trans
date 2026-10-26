@@ -16,7 +16,7 @@ import { getLocale } from '@/i18n';
 
 declare const __APP_VERSION__: string;
 
-const ISSUES_URL = 'https://github.com/theforeveriris/simple-voice-tools/issues/new';
+const ISSUES_URL = 'https://github.com/theforeveriris/simple-voice-tools-for-trans/issues/new';
 
 /** 组装诊断摘要 + 反馈模板（纯函数，输出即预览所见） */
 function buildFeedbackBody(userText: string, recordCount: number, locale: string): string {
@@ -26,7 +26,7 @@ function buildFeedbackBody(userText: string, recordCount: number, locale: string
   const uaBrief = ua.split(') ').slice(0, 2).join('); ');
   const lines = [
     '**Environment**',
-    `- App: Simple Voice Tool v${__APP_VERSION__}`,
+    `- App: Simple Voice Tool for Trans v${__APP_VERSION__}`,
     `- Platform: ${platform}`,
     `- Locale: ${locale}`,
     `- Records: ${recordCount} (count only, no content attached)`,

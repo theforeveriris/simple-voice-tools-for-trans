@@ -305,7 +305,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // PWA Share Target：系统「分享到 Simple Voice Tool」的音频文件
+  // PWA Share Target：系统「分享到 Simple Voice Tool for Trans」的音频文件
   // 由 Service Worker 暂存并 303 重定向回来，这里取走并走离线分析管线
   useEffect(() => {
     if (isNative || !new URLSearchParams(window.location.search).has('share-target')) return;

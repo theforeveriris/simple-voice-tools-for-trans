@@ -324,7 +324,7 @@ export const es = {
   'settings.ageSeniorDesc': 'La F0 desciende con la edad',
 
   /* ---------- 首次打开引导（Onboarding） ---------- */
-  'onboard.welcome': 'Te damos la bienvenida a Simple Voice Tool',
+  'onboard.welcome': 'Te damos la bienvenida a Simple Voice Tool for Trans',
   'onboard.skip': 'Saltar',
   'onboard.prev': 'Atrás',
   'onboard.next': 'Siguiente',
@@ -634,7 +634,7 @@ export const es = {
   'settings.resetCacheConfirm': 'Borrar y restablecer',
   'settings.shareApp': 'Recomendar a un amigo',
   'settings.shareAppAction': 'Compartir',
-  'settings.shareAppText': 'Simple Voice Tool — herramienta de entrenamiento y seguimiento vocal',
+  'settings.shareAppText': 'Simple Voice Tool for Trans — herramienta de entrenamiento y seguimiento vocal',
   'toast.linkCopied': 'Enlace copiado al portapapeles',
   'toast.linkCopyFail': 'Error al copiar; copia manualmente el enlace de la barra de direcciones',
   'settings.updateSection': 'Versión y actualizaciones',
@@ -800,12 +800,12 @@ export const es = {
   'share.flowerTitle': 'Flor de voz',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': 'Compartir / Guardar',
-  'report.footer': 'Simple Voice Tool · analizado localmente, sin subir ningún dato',
+  'report.footer': 'Simple Voice Tool for Trans · analizado localmente, sin subir ningún dato',
   'report.clinicalTitle': 'Informe de análisis de voz',
   'report.sectionStats': 'Mediciones',
   'report.sectionCurves': 'Curvas (cronología completa)',
-  'report.disclaimer': 'Generado por Simple Voice Tool. Todos los valores son referencias de automedición, sin validación clínica, y no constituyen un diagnóstico médico; la sonoridad es un valor relativo sin calibrar (dBFS). Interprétalos con criterio profesional junto con los hallazgos clínicos.',
-  'share.shareTitle': 'Simple Voice Tool · Informe de análisis',
+  'report.disclaimer': 'Generado por Simple Voice Tool for Trans. Todos los valores son referencias de automedición, sin validación clínica, y no constituyen un diagnóstico médico; la sonoridad es un valor relativo sin calibrar (dBFS). Interprétalos con criterio profesional junto con los hallazgos clínicos.',
+  'share.shareTitle': 'Simple Voice Tool for Trans · Informe de análisis',
   'share.compareTitle': 'Informe comparativo',
 
   /* ---------- 提示（toast） ---------- */
@@ -1173,7 +1173,7 @@ export const es = {
   /* ---------- v0.7：API key 收纳 / LLM 点击触发 / 趋势指标 / 共振峰目标区 / 快捷键 ---------- */
   'error.title': 'Algo ha ido mal',
   'error.retry': 'Reintentar',
-  'gh.repoDesc': 'Copia de seguridad de Simple Voice Tool',
+  'gh.repoDesc': 'Copia de seguridad de Simple Voice Tool for Trans',
   'gh.progressReadAudio': 'Leyendo el audio',
   'gh.progressUpload': 'Subiendo',
   'gh.progressFetchRecords': 'Descargando la lista de registros',

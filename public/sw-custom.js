@@ -1,6 +1,6 @@
 /**
  * PWA Share Target 拦截（与 vite.config.ts 的 manifest.share_target 配套）
- * 系统「分享到 Simple Voice Tool」的音频文件以 POST 到达这里：
+ * 系统「分享到 Simple Voice Tool for Trans」的音频文件以 POST 到达这里：
  * 把文件暂存进 Cache API，再 303 重定向到应用；应用启动时检测
  * ?share-target=1 并从 Cache 取走文件走离线分析管线（src/lib/audio/importAudio.ts）。
  * 本脚本经 workbox generateSW 的 importScripts 注入主 SW，注册顺序先于

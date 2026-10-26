@@ -99,7 +99,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "android/app/build/outputs/apk/${{ steps.sign.outputs.suffix }}/app-${{ steps.sign.outputs.suffix }}.apk" \
-             "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-${{ steps.sign.outputs.suffix }}.apk"
+             "dist/SimpleVoiceToolForTrans-v${{ steps.ver.outputs.version }}-${{ steps.sign.outputs.suffix }}.apk"
 
       # 正式 Release（v* 标签）用 git log 生成变更说明——直推 main 不走 PR，
       # GitHub 自带的 generate_release_notes 拿不到条目；main 滚动发布保持原 body
@@ -110,7 +110,7 @@ jobs:
             prev=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
             {
               echo "body<<EOF"
-              echo "Simple Voice Tool v${{ steps.ver.outputs.version }}"
+              echo "Simple Voice Tool for Trans v${{ steps.ver.outputs.version }}"
               echo
               if [ -n "$prev" ]; then
                 git log --no-merges --pretty=format:'- %s (%h)' "$prev..$GITHUB_REF_NAME"
@@ -125,7 +125,7 @@ jobs:
           else
             {
               echo "body<<EOF"
-              echo "Android build of Simple Voice Tool v${{ steps.ver.outputs.version }}（${{ steps.sign.outputs.signed }}-signed）"
+              echo "Android build of Simple Voice Tool for Trans v${{ steps.ver.outputs.version }}（${{ steps.sign.outputs.signed }}-signed）"
               echo "- commit: ${{ github.sha }}"
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
@@ -139,7 +139,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          current="SimpleVoiceTool-v${{ steps.ver.outputs.version }}-release.apk"
+          current="SimpleVoiceToolForTrans-v${{ steps.ver.outputs.version }}-release.apk"
           # 注意：gh release view --json 的 assets[].id 是 GraphQL 节点 ID（RA_…），
           # 不能用于 REST DELETE——改用 REST 端点拿数字 id
           listing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest" \

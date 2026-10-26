@@ -71,7 +71,7 @@ define: {
 
 ## Share Target（系统分享 → 应用内分析）
 
-移动端把音频文件「分享到 Simple Voice Tool」：
+移动端把音频文件「分享到 Simple Voice Tool for Trans」：
 
 ```
 系统分享 POST ./index.html?share-target=1（multipart file 字段）

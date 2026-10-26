@@ -1,6 +1,6 @@
 # 开发者文档
 
-Simple Voice Tool 的开发指南：架构、数据流、主题系统、动效模型与性能设计。
+Simple Voice Tool for Trans 的开发指南：架构、数据流、主题系统、动效模型与性能设计。
 专题详解见文末文档索引（i18n / 主题 / 状态与持久化 / 设置子页 / PWA / Capacitor 安卓壳 /
 Tauri 桌面版均有独立文档）。
 

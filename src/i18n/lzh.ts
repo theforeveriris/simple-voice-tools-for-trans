@@ -325,7 +325,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.ageSeniorDesc': '基頻整體下移',
 
   /* ---------- 首次啟之引（Onboarding） ---------- */
-  'onboard.welcome': '歡入 Simple Voice Tool',
+  'onboard.welcome': '歡入 Simple Voice Tool for Trans',
   'onboard.skip': '越之',
   'onboard.prev': '退一步',
   'onboard.next': '進一步',
@@ -634,7 +634,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.resetCacheConfirm': '除而重置',
   'settings.shareApp': '薦於友人',
   'settings.shareAppAction': '相授',
-  'settings.shareAppText': 'Simple Voice Tool — 練聲與察聲之器',
+  'settings.shareAppText': 'Simple Voice Tool for Trans — 練聲與察聲之器',
   'toast.linkCopied': '連結既入剪板',
   'toast.linkCopyFail': '抄之不成，請自抄欄中之連結',
   'settings.updateSection': '版本與新',
@@ -799,12 +799,12 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'share.flowerTitle': '聲之花',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '分享 / 存之',
-  'report.footer': 'Simple Voice Tool · 析於本機，數不上傳',
+  'report.footer': 'Simple Voice Tool for Trans · 析於本機，數不上傳',
   'report.clinicalTitle': '聲之析報',
   'report.sectionStats': '所測',
   'report.sectionCurves': '曲線（全程）',
-  'report.disclaimer': '此報出 Simple Voice Tool，諸值自測之參，未經醫驗，非為診斷；聲之強弱乃相對之數。宜就醫者並諸診而讀之。',
-  'share.shareTitle': 'Simple Voice Tool · 析之報',
+  'report.disclaimer': '此報出 Simple Voice Tool for Trans，諸值自測之參，未經醫驗，非為診斷；聲之強弱乃相對之數。宜就醫者並諸診而讀之。',
+  'share.shareTitle': 'Simple Voice Tool for Trans · 析之報',
   'share.compareTitle': '比之報',
 
   /* ---------- 提示（toast） ---------- */
@@ -1171,7 +1171,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   /* ---------- v0.7：密鑰所藏 / 大模型之議待請而後行 / 趨勢諸指 / 共振峰之的 / 鍵捷 ---------- */
   'error.title': '頁有謬誤',
   'error.retry': '復為之',
-  'gh.repoDesc': 'Simple Voice Tool 之備',
+  'gh.repoDesc': 'Simple Voice Tool for Trans 之備',
   'gh.progressReadAudio': '取錄音之聲',
   'gh.progressUpload': '進獻（上傳）',
   'gh.progressFetchRecords': '取記錄之目',

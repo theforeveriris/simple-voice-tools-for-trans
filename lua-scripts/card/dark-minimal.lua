@@ -18,7 +18,7 @@ function template(record)
 
   -- 页眉：应用名 + 日期
   table.insert(ops, { op = "circle", cx = 81, cy = 86, r = 9, color = ACCENT })
-  table.insert(ops, { op = "text", x = 102, y = 100, text = "Simple Voice Tool",
+  table.insert(ops, { op = "text", x = 102, y = 100, text = "Simple Voice Tool for Trans",
     size = 30, weight = 500, color = INK2 })
   local d = os and "" or "" -- os 已被沙箱移除；日期由宿主绘在 qr 区，模板用 createdAt 时间戳自行换算亦可
   -- 简化：直接显示时间戳日期（epoch ms → 无 os 库，改由宿主注入的 record.dateStr 使用）

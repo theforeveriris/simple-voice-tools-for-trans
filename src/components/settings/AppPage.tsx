@@ -141,7 +141,7 @@ export function AppPage({
   /** 复制诊断信息（版本 / 运行方式 / SW / 存储 / UA），便于反馈问题 */
   const onCopyDiagnostics = async () => {
     const lines = [
-      `Simple Voice Tool v${__APP_VERSION__} (${__BUILD_DATE__})`,
+      `Simple Voice Tool for Trans v${__APP_VERSION__} (${__BUILD_DATE__})`,
       `mode: ${isStandalone() ? 'standalone' : 'browser'}`,
       `sw: ${sw}`,
       `persisted: ${persisted}`,

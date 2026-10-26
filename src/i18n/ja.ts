@@ -325,7 +325,7 @@ export const ja = {
   'settings.ageSeniorDesc': 'F0 は全体的に低め',
 
   /* ---------- 初回起動のオンボーディング ---------- */
-  'onboard.welcome': 'Simple Voice Tool へようこそ',
+  'onboard.welcome': 'Simple Voice Tool for Trans へようこそ',
   'onboard.skip': 'スキップ',
   'onboard.prev': '戻る',
   'onboard.next': '次へ',
@@ -634,7 +634,7 @@ export const ja = {
   'settings.resetCacheConfirm': '消去してリセット',
   'settings.shareApp': '友人にすすめる',
   'settings.shareAppAction': '共有',
-  'settings.shareAppText': 'Simple Voice Tool — 音声トレーニングと声の記録',
+  'settings.shareAppText': 'Simple Voice Tool for Trans — 音声トレーニングと声の記録',
   'toast.linkCopied': 'リンクをクリップボードにコピーしました',
   'toast.linkCopyFail': 'コピーに失敗 — アドレスバーのリンクを手動でコピーしてください',
   'settings.updateSection': 'バージョンと更新',
@@ -799,12 +799,12 @@ export const ja = {
   'share.flowerTitle': 'ボイスフラワー',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '共有 / 保存',
-  'report.footer': 'Simple Voice Tool · ローカル分析、データは一切アップロードされません',
+  'report.footer': 'Simple Voice Tool for Trans · ローカル分析、データは一切アップロードされません',
   'report.clinicalTitle': '音声分析レポート',
   'report.sectionStats': '測定結果',
   'report.sectionCurves': '曲線（全時間軸）',
-  'report.disclaimer': 'Simple Voice Tool による生成。すべての数値はセルフ測定の参考値で、臨床検証はなく医学的診断を構成しません。音量は較正されていない相対値（dBFS）です。専門家が臨床所見と併せて解釈してください。',
-  'share.shareTitle': 'Simple Voice Tool · 分析レポート',
+  'report.disclaimer': 'Simple Voice Tool for Trans による生成。すべての数値はセルフ測定の参考値で、臨床検証はなく医学的診断を構成しません。音量は較正されていない相対値（dBFS）です。専門家が臨床所見と併せて解釈してください。',
+  'share.shareTitle': 'Simple Voice Tool for Trans · 分析レポート',
   'share.compareTitle': '比較レポート',
 
   /* ---------- 提示（toast） ---------- */
@@ -1171,7 +1171,7 @@ export const ja = {
   /* ---------- v0.7：キー保存 / LLM クリック実行 / トレンド指標 / 共鳴峰ターゲット / ショートカット ---------- */
   'error.title': 'エラーが発生しました',
   'error.retry': '再試行',
-  'gh.repoDesc': 'Simple Voice Tool バックアップ',
+  'gh.repoDesc': 'Simple Voice Tool for Trans バックアップ',
   'gh.progressReadAudio': '録音音声の読み込み',
   'gh.progressUpload': 'アップロード',
   'gh.progressFetchRecords': '記録リストの取得',

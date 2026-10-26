@@ -346,7 +346,7 @@ export const zhTW = {
   'settings.ageSeniorDesc': '基頻整體下移',
 
   /* ---------- 首次開啟引導（Onboarding） ---------- */
-  'onboard.welcome': '歡迎使用 Simple Voice Tool',
+  'onboard.welcome': '歡迎使用 Simple Voice Tool for Trans',
   'onboard.skip': '跳過',
   'onboard.prev': '上一步',
   'onboard.next': '下一步',
@@ -633,7 +633,7 @@ export const zhTW = {
   'settings.resetCacheConfirm': '清除並重置',
   'settings.shareApp': '推薦給朋友',
   'settings.shareAppAction': '分享',
-  'settings.shareAppText': 'Simple Voice Tool — 語音訓練與嗓音追蹤工具',
+  'settings.shareAppText': 'Simple Voice Tool for Trans — 語音訓練與嗓音追蹤工具',
   'toast.linkCopied': '連結已複製到剪貼簿',
   'toast.linkCopyFail': '複製失敗，請手動複製網址列連結',
   'settings.updateSection': '版本與更新',
@@ -798,12 +798,12 @@ export const zhTW = {
   'share.flowerTitle': '聲之花',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '分享 / 儲存',
-  'report.footer': 'Simple Voice Tool · 本機分析，不上傳任何資料',
+  'report.footer': 'Simple Voice Tool for Trans · 本機分析，不上傳任何資料',
   'report.clinicalTitle': '嗓音分析報告',
   'report.sectionStats': '測量結果',
   'report.sectionCurves': '曲線（完整時間軸）',
-  'report.disclaimer': '本報告由 Simple Voice Tool 產生，所有數值為自助測量參考，未經臨床驗證，不構成醫學診斷；響度為未校準的相對值（dBFS）。請結合臨床表現與其他檢查由專業人士解讀。',
-  'share.shareTitle': 'Simple Voice Tool · 分析報告',
+  'report.disclaimer': '本報告由 Simple Voice Tool for Trans 產生，所有數值為自助測量參考，未經臨床驗證，不構成醫學診斷；響度為未校準的相對值（dBFS）。請結合臨床表現與其他檢查由專業人士解讀。',
+  'share.shareTitle': 'Simple Voice Tool for Trans · 分析報告',
   'share.compareTitle': '對比報告',
 
   /* ---------- 提示（toast） ---------- */
@@ -1170,7 +1170,7 @@ export const zhTW = {
   /* ---------- v0.7：API key 收納 / LLM 點擊觸發 / 趨勢指標 / 共振峰目標區 / 快捷鍵 ---------- */
   'error.title': '頁面發生錯誤',
   'error.retry': '重試',
-  'gh.repoDesc': 'Simple Voice Tool 備份',
+  'gh.repoDesc': 'Simple Voice Tool for Trans 備份',
   'gh.progressReadAudio': '讀取錄音音訊',
   'gh.progressUpload': '上傳',
   'gh.progressFetchRecords': '下載記錄清單',

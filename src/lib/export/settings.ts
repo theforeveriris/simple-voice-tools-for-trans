@@ -7,6 +7,7 @@
 
 import { t } from '@/i18n';
 import { DEFAULT_SETTINGS } from '@/constants';
+import { APP_ID } from '@/lib/appId';
 import type { AppSettings } from '@/types';
 
 /** 设置文件的当前格式版本（独立于记录备份的版本号演进） */
@@ -31,7 +32,7 @@ export function buildSettingsPayload(settings: AppSettings): SettingsPayload {
     out[k] = v;
   }
   return {
-    app: 'simple-voice-tools',
+    app: APP_ID,
     kind: 'settings',
     version: SETTINGS_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),

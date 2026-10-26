@@ -49,9 +49,9 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 `.github/workflows/android-release.yml`：
 
 - **推送到 main**：跑 vitest → vite build → cap sync → gradle 构建——三个签名
-  secrets 齐全时 `assembleRelease`（产出 `SimpleVoiceTool-v{版本}-release.apk`），
+  secrets 齐全时 `assembleRelease`（产出 `SimpleVoiceToolForTrans-v{版本}-release.apk`），
   否则回退 debug 签名；APK 传到 **`latest` 预发布**（滚动替换并清理旧版本 .apk，
-  固定下载入口：`github.com/theforeveriris/simple-voice-tools/releases/latest`）。
+  固定下载入口：`github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest`）。
 - **推送 `v*` 标签**（如 `git tag v0.8.0 && git push origin v0.8.0`）：同样流程，
   但创建**正式 Release**。
 - 手动触发：Actions 页 `workflow_dispatch`。
@@ -66,7 +66,7 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 - **配置 secrets 后**：CI 解码出 `android/app/upload-keystore.jks` +
   `android/key.properties`（二者均在 android/.gitignore），`build.gradle` 挂上
   signingConfig，改跑 `assembleRelease`，产出 **release 正式签名** APK
-  （`SimpleVoiceTool-v{版本}-release.apk`）。
+  （`SimpleVoiceToolForTrans-v{版本}-release.apk`）。
 
   正式签名升级步骤：本地 `keytool -genkeypair -v -keystore svt-release.jks
   -storetype PKCS12 -alias svt-release -keyalg RSA -keysize 4096 -validity 10950`
@@ -146,9 +146,9 @@ Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
 侧载渠道没有应用商店推送，`lib/appUpdate.ts` 在原生壳内实现更新提示：
 
 - 设置 → 应用 → 检查更新：拉取
-  `api.github.com/repos/theforeveriris/simple-voice-tools/releases`，
+  `api.github.com/repos/theforeveriris/simple-voice-tools-for-trans/releases`，
   从 APK 资产名解析最高 semver 与 `__APP_VERSION__` 比对；
-- 发现新版本 → 提供 APK 下载入口（系统浏览器下载 `SimpleVoiceTool-v*-release.apk`
+- 发现新版本 → 提供 APK 下载入口（系统浏览器下载 `SimpleVoiceToolForTrans-v*-release.apk`
   后覆盖安装；正式签名一致，数据保留）；
 - 仅原生壳可用（`isNative` 门控）；PWA 走 `version.json` 更新流，桌面端无此机制。
 

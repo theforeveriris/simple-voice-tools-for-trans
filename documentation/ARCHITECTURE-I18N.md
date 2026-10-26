@@ -120,7 +120,7 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字
 
 ### 词典分享
 
-- 导出：`buildAiLocalePayload(cache)` → `{ app: 'simple-voice-tools', kind: 'ai-locale', version: 1, exportedAt, label, model, generatedAt, dict }`。
+- 导出：`buildAiLocalePayload(cache)` → `{ app: 'simple-voice-tools-for-trans', kind: 'ai-locale', version: 1, exportedAt, label, model, generatedAt, dict }`。
 - 导入：`parseAiLocalePayload(json)` 校验 app/kind/version（版本过新拒绝），
   **dict 仅保留基准中存在的键**（防脏文件），然后 `importAiCache`（写缓存 + 注册）。
 

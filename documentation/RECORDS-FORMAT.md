@@ -1,6 +1,6 @@
 # 记录导出格式开放标准（records v2）
 
-Simple Voice Tool 的所有记录数据（手动导出 JSON、完整备份 ZIP 内的 `records.json`、
+Simple Voice Tool for Trans 的所有记录数据（手动导出 JSON、完整备份 ZIP 内的 `records.json`、
 GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 [records-v2.schema.json](records-v2.schema.json)（JSON Schema 2020-12）直接读写。
 
@@ -14,7 +14,7 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 
 ```json
 {
-  "app": "simple-voice-tools",
+  "app": "simple-voice-tools-for-trans",
   "version": 2,
   "exportedAt": "2026-01-31T00:00:00.000Z",
   "records": [ /* AnalysisRecord 数组，见 Schema */ ]

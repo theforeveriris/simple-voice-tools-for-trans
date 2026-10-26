@@ -1,6 +1,6 @@
 # 隐私政策 / Privacy Policy
 
-**Simple Voice Tool**（下称"本应用"）以本地优先为设计原则。本政策说明各类数据
+**Simple Voice Tool for Trans**（下称"本应用"）以本地优先为设计原则。本政策说明各类数据
 的去向，最后更新：2026-10-18。功能变更导致数据流变化时，本页会同步更新。
 
 - English summary at the bottom / 英文摘要见文末。
@@ -70,13 +70,13 @@
 
 ## 七、联系方式
 
-对本政策有疑问，请在仓库提交 Issue：https://github.com/theforeveriris/simple-voice-tools/issues
+对本政策有疑问，请在仓库提交 Issue：https://github.com/theforeveriris/simple-voice-tools-for-trans/issues
 
 ---
 
 ## English Summary
 
-Simple Voice Tool is local-first: recordings and analysis data never leave your
+Simple Voice Tool for Trans is local-first: recordings and analysis data never leave your
 device by default. Data leaves the device only when **you** explicitly (a) send
 aggregate statistics (never audio) to an LLM endpoint **you** configure, (b) back
 up to **your own** GitHub repo or WebDAV server (optional passphrase encryption

@@ -1,6 +1,6 @@
-# Lua 脚本（Simple Voice Tool）
+# Lua 脚本（Simple Voice Tool for Trans）
 
-用 Lua 脚本自定义 Simple Voice Tool 的行为。脚本在应用内完全本地执行：
+用 Lua 脚本自定义 Simple Voice Tool for Trans 的行为。脚本在应用内完全本地执行：
 无网络、无文件访问、单次运行限时 500ms，只暴露白名单标准库（`string` / `table` / `math`）。
 
 把 `.lua` 文件放进本目录的子目录（如 `advice/`）即可成为内置脚本；

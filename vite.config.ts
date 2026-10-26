@@ -60,8 +60,8 @@ export default defineConfig(({ command }) => ({
       injectRegister: null,
       includeAssets: ['favicon.svg', 'og-image.png', 'privacy-policy.md'],
       manifest: {
-        name: 'Simple Voice Tool',
-        short_name: 'Simple Voice Tool',
+        name: 'Simple Voice Tool for Trans',
+        short_name: 'Simple Voice Tool for Trans',
         description: '基于 Web Audio API 的语音测试与分析工具：YIN 音高检测、LPC 共振峰提取、能量分析。',
         lang: 'zh-CN',
         start_url: './',

@@ -13,6 +13,7 @@
  */
 
 import { t } from '@/i18n';
+import { APP_ID } from '@/lib/appId';
 import type { AnalysisRecord, RecordSeries } from '@/types';
 
 export interface ExportTemplate {
@@ -22,7 +23,7 @@ export interface ExportTemplate {
 
 /** 模板分享文件（.svt-template） */
 export interface TemplateExport {
-  app: 'simple-voice-tools';
+  app: typeof APP_ID;
   kind: 'template';
   version: 1;
   name: string;
@@ -132,7 +133,7 @@ export function renderTemplate(tpl: ExportTemplate, record: AnalysisRecord, targ
 /** 模板文件序列化（分享用） */
 export function exportTemplateFile(tpl: ExportTemplate): string {
   const payload: TemplateExport = {
-    app: 'simple-voice-tools',
+    app: APP_ID,
     kind: 'template',
     version: 1,
     name: tpl.name,

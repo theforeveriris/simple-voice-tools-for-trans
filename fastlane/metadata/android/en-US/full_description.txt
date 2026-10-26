@@ -1,4 +1,4 @@
-<p>Simple Voice Tool is a serious voice measurement, analysis and training tracker built on the Web Audio API. Speak into your microphone and get pitch, formant and energy analysis in real time — fully offline, nothing leaves your device.</p>
+<p>Simple Voice Tool for Trans is a serious voice measurement, analysis and training tracker built on the Web Audio API. Speak into your microphone and get pitch, formant and energy analysis in real time — fully offline, nothing leaves your device.</p>
 <p><b>Measure</b></p>
 <ul>
 <li>Real-time pitch curve with male / female / transition band coloring and live note readout</li>
@@ -36,4 +36,4 @@
 <li>Installable as a PWA; shipped as an Android APK and a Windows installer</li>
 <li>Keyboard shortcuts; 5 languages (English, 简体中文, 繁體中文, 日本語, Literary Chinese)</li>
 </ul>
-<p>License: MIT — https://github.com/theforeveriris/simple-voice-tools</p>
+<p>License: MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

@@ -68,5 +68,5 @@ export async function loadPublicDoc(file: string): Promise<string> {
 
 /** 文档在 GitHub 仓库中的地址（应用内查看之外的「看源文件」入口） */
 export function docGithubUrl(file: string): string {
-  return `https://github.com/theforeveriris/simple-voice-tools/blob/main/documentation/${file}`;
+  return `https://github.com/theforeveriris/simple-voice-tools-for-trans/blob/main/documentation/${file}`;
 }

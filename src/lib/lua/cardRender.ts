@@ -191,7 +191,7 @@ function drawFooterQr(ctx: CanvasRenderingContext2D): void {
   const encode = qrEncode;
   const modulePx = 4;
   const inset = 14;
-  const { size, data } = encode('https://github.com/theforeveriris/simple-voice-tools', { ecc: 'M' });
+  const { size, data } = encode('https://github.com/theforeveriris/simple-voice-tools-for-trans', { ecc: 'M' });
   const backing = size * modulePx + inset * 2;
   const x = CARD_W - PAD - backing;
   const y = CARD_H - 60 - backing;
@@ -206,7 +206,7 @@ function drawFooterQr(ctx: CanvasRenderingContext2D): void {
   ctx.font = '400 22px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('github.com/theforeveriris/simple-voice-tools', PAD, y + backing / 2);
+  ctx.fillText('github.com/theforeveriris/simple-voice-tools-for-trans', PAD, y + backing / 2);
 }
 
 /**

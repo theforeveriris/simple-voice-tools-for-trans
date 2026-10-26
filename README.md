@@ -1,19 +1,19 @@
 <div align="center">
 
-<img src="fastlane/metadata/android/images/icon.png" width="96" alt="Simple Voice Tool app icon">
+<img src="fastlane/metadata/android/images/icon.png" width="96" alt="Simple Voice Tool for Trans app icon">
 
-# Simple Voice Tool
+# Simple Voice Tool for Trans
 
 English · [简体中文](README.zh-CN.md)
 
-<img src="fastlane/metadata/android/images/featureGraphic.png" width="620" alt="Simple Voice Tool — Measure · Analyze · Track your voice">
+<img src="fastlane/metadata/android/images/featureGraphic.png" width="620" alt="Simple Voice Tool for Trans — Measure · Analyze · Track your voice">
 
-[![Release](https://img.shields.io/github/v/release/theforeveriris/simple-voice-tools)](https://github.com/theforeveriris/simple-voice-tools/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/theforeveriris/simple-voice-tools/deploy.yml?branch=main&label=CI)](https://github.com/theforeveriris/simple-voice-tools/actions/workflows/deploy.yml)
-[![License](https://img.shields.io/github/license/theforeveriris/simple-voice-tools)](LICENSE)
-[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
-[![Windows](https://img.shields.io/badge/Windows-Setup.exe-0078D6?logo=windows&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
-[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](https://theforeveriris.github.io/simple-voice-tools/)
+[![Release](https://img.shields.io/github/v/release/theforeveriris/simple-voice-tools-for-trans)](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/theforeveriris/simple-voice-tools-for-trans/deploy.yml?branch=main&label=CI)](https://github.com/theforeveriris/simple-voice-tools-for-trans/actions/workflows/deploy.yml)
+[![License](https://img.shields.io/github/license/theforeveriris/simple-voice-tools-for-trans)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows-Setup.exe-0078D6?logo=windows&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](https://theforeveriris.github.io/simple-voice-tools-for-trans/)
 
 </div>
 
@@ -24,15 +24,15 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 ## Get the app
 
 > **Try it first — no install, no microphone needed**: open the
-> [web demo](https://theforeveriris.github.io/simple-voice-tools/?demo=1)
+> [web demo](https://theforeveriris.github.io/simple-voice-tools-for-trans/?demo=1)
 > (loads sample data; "Add to home screen" any time you like it).
 
-[<img src=".github/assets/obtainium-badge.png" alt="Get it on Obtainium" height="56">](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522github.com.theforeveriris.simple-voice-tools%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Ftheforeveriris%252Fsimple-voice-tools%2522%252C%2522author%2522%253A%2522theforeveriris%2522%252C%2522name%2522%253A%2522simple-voice-tools%2522%257D)
+[<img src=".github/assets/obtainium-badge.png" alt="Get it on Obtainium" height="56">](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522github.com.theforeveriris.simple-voice-tools-for-trans%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Ftheforeveriris%252Fsimple-voice-tools-for-trans%2522%252C%2522author%2522%253A%2522theforeveriris%2522%252C%2522name%2522%253A%2522simple-voice-tools-for-trans%2522%257D)
 
-- **Android APK**: grab the latest `SimpleVoiceTool-v*-release.apk` from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest) and install it directly (release-signed, with in-app update notices)
+- **Android APK**: grab the latest `SimpleVoiceToolForTrans-v*-release.apk` from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest) and install it directly (release-signed, with in-app update notices)
 - **Obtainium**: if you use [Obtainium](https://github.com/ImranR98/Obtainium), tap the badge above to add this repo and pick up new versions automatically
-- **PWA**: open the [web version](https://theforeveriris.github.io/simple-voice-tools/) and use "Add to home screen" (offline caching; storage is independent of the APK install)
-- **Windows**: grab the latest `SimpleVoiceTool-v*-setup.exe` installer from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest) (Tauri build; the in-app "check for updates" is not available on desktop)
+- **PWA**: open the [web version](https://theforeveriris.github.io/simple-voice-tools-for-trans/) and use "Add to home screen" (offline caching; storage is independent of the APK install)
+- **Windows**: grab the latest `SimpleVoiceToolForTrans-v*-setup.exe` installer from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest) (Tauri build; the in-app "check for updates" is not available on desktop)
 
 ## Screenshots
 
@@ -95,7 +95,7 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 | [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | Guide: Tauri Windows desktop (build / CI / platform differences) |
 | [documentation/PARAMETERS-GUIDE.md](documentation/PARAMETERS-GUIDE.md) | Metrics & parameters guide: what every number means, defaults, and the experimental algorithm parameters |
 | [documentation/REFERENCES.md](documentation/REFERENCES.md) | References: the literature behind every reference range and algorithm choice |
-| [Privacy Policy](https://theforeveriris.github.io/simple-voice-tools/privacy-policy.md) | What data goes where (source: `public/privacy-policy.md`) |
+| [Privacy Policy](https://theforeveriris.github.io/simple-voice-tools-for-trans/privacy-policy.md) | What data goes where (source: `public/privacy-policy.md`) |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | Pitch detection: YIN difference function, CMND, parabolic interpolation |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | Formant extraction: pre-emphasis, decimation, LPC, polynomial root finding |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | Energy analysis: RMS, decibel conversion, VAD threshold system |
@@ -179,7 +179,7 @@ or use the "load demo data" buttons in the history / analysis / settings pages.
 - Microphone access requires explicit user permission
 - All data (analysis records + audio) is stored locally in the browser's IndexedDB by
   default; data only leaves the device when you run a full backup or connect cloud
-  backup to a destination you choose — see the [Privacy Policy](https://theforeveriris.github.io/simple-voice-tools/privacy-policy.md)
+  backup to a destination you choose — see the [Privacy Policy](https://theforeveriris.github.io/simple-voice-tools-for-trans/privacy-policy.md)
 - Voice-quality metrics (Jitter/Shimmer/HNR/CPPS) require "save recordings" to be on;
   older records or audio-free records show "—"
 - Detection accuracy depends on the environment — test in a quiet space

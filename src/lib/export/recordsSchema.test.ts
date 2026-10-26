@@ -25,7 +25,7 @@ const goodRecord = {
 };
 
 const payload = (records: unknown[], extra: Record<string, unknown> = {}) => ({
-  app: 'simple-voice-tools', version: 2, exportedAt: '2026-01-01T00:00:00Z', records, ...extra,
+  app: 'simple-voice-tools-for-trans', version: 2, exportedAt: '2026-01-01T00:00:00Z', records, ...extra,
 });
 
 describe('validateRecordsJson', () => {
@@ -43,7 +43,7 @@ describe('validateRecordsJson', () => {
   });
 
   it('缺 records 数组 → ok=false', () => {
-    const res = validateRecordsPayload({ app: 'simple-voice-tools' });
+    const res = validateRecordsPayload({ app: 'simple-voice-tools-for-trans' });
     expect(res.ok).toBe(false);
     expect(res.issues[0].path).toBe('records');
   });
@@ -51,6 +51,11 @@ describe('validateRecordsJson', () => {
   it('app 标识不对 → 报告', () => {
     const res = validateRecordsPayload(payload([goodRecord], { app: 'other-app' }));
     expect(res.issues.some((x) => x.path === 'app')).toBe(true);
+  });
+
+  it('历史 app 标识（旧名）→ 仍接受', () => {
+    const res = validateRecordsPayload(payload([goodRecord], { app: 'simple-voice-tools' }));
+    expect(res.issues.some((x) => x.path === 'app')).toBe(false);
   });
 
   it('记录缺必备字段 → 报告路径', () => {

@@ -1,4 +1,4 @@
-<p>Simple Voice Tool は、Web Audio API ベースの本格的な声の測定・分析・トレーニング記録ツールです。マイクに向かって話すだけで、ピッチ・フォルマント・エネルギーをリアルタイムで分析します。完全オフライン、データは端末の外に出ません。</p>
+<p>Simple Voice Tool for Trans は、Web Audio API ベースの本格的な声の測定・分析・トレーニング記録ツールです。マイクに向かって話すだけで、ピッチ・フォルマント・エネルギーをリアルタイムで分析します。完全オフライン、データは端末の外に出ません。</p>
 <p><b>測定</b></p>
 <ul>
 <li>リアルタイム音高カーブ：男性声 / 女性声 / 過渡域の色分けと音名表示</li>
@@ -36,4 +36,4 @@
 <li>PWA としてインストール可能。Android APK と Windows インストーラーを提供</li>
 <li>キーボードショートカット、5 言語対応（English、简体中文、繁體中文、日本語、文言）</li>
 </ul>
-<p>ライセンス：MIT — https://github.com/theforeveriris/simple-voice-tools</p>
+<p>ライセンス：MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

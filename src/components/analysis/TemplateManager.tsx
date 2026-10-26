@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { renderTemplate, type ExportTemplate } from '@/lib/export/template';
+import { APP_ID } from '@/lib/appId';
 import {
   deleteTemplate, importTemplate, listTemplates, putTemplate,
 } from '@/lib/export/templateStore';
@@ -90,7 +91,7 @@ export function TemplateManager({ record, onDone }: { record: AnalysisRecord | n
 
   const doExportFile = (tpl: ExportTemplate) => {
     downloadText(`${tpl.name}.svt-template.json`, JSON.stringify({
-      app: 'simple-voice-tools', kind: 'template', version: 1, name: tpl.name, template: tpl.template,
+      app: APP_ID, kind: 'template', version: 1, name: tpl.name, template: tpl.template,
     }, null, 2));
     toast.success(t('template.exported'));
   };

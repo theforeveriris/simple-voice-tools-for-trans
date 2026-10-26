@@ -13,6 +13,7 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { audioMimeOf, downloadBlob } from '@/lib/file';
 import { isEncryptedBackup } from '@/lib/backup/crypto';
 import { t } from '@/i18n';
+import { APP_ID } from '@/lib/appId';
 import type { AnalysisRecord } from '@/types';
 
 const JSON_NAME = 'records.json';
@@ -32,7 +33,7 @@ export interface RecordsPayload {
 /** 组装备份/导出 JSON（手动导出、ZIP 备份、GitHub 备份共用，版本号单一来源） */
 export function buildRecordsPayload(records: AnalysisRecord[]): RecordsPayload {
   return {
-    app: 'simple-voice-tools',
+    app: APP_ID,
     version: BACKUP_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
     records,

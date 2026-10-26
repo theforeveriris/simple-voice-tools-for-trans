@@ -25,7 +25,7 @@ const ROLLING: ReleaseLike = {
   html_url: 'https://github.com/o/r/releases/tag/latest',
   prerelease: true,
   assets: [
-    { name: 'SimpleVoiceTool-v0.7.0-debug.apk', browser_download_url: 'https://…/SimpleVoiceTool-v0.7.0-debug.apk' },
+    { name: 'SimpleVoiceToolForTrans-v0.7.0-debug.apk', browser_download_url: 'https://…/SimpleVoiceToolForTrans-v0.7.0-debug.apk' },
   ],
 };
 
@@ -34,7 +34,7 @@ const FORMAL: ReleaseLike = {
   html_url: 'https://github.com/o/r/releases/tag/v0.8.0',
   prerelease: false,
   assets: [
-    { name: 'SimpleVoiceTool-v0.8.0-debug.apk', browser_download_url: 'https://…/SimpleVoiceTool-v0.8.0-debug.apk' },
+    { name: 'SimpleVoiceToolForTrans-v0.8.0-debug.apk', browser_download_url: 'https://…/SimpleVoiceToolForTrans-v0.8.0-debug.apk' },
   ],
 };
 
@@ -57,8 +57,8 @@ describe('releaseToUpdate', () => {
       tag_name: 'latest',
       prerelease: true,
       assets: [
-        { name: 'SimpleVoiceTool-v0.7.0-debug.apk', browser_download_url: 'https://…/v0.7.0' },
-        { name: 'SimpleVoiceTool-v0.8.0-debug.apk', browser_download_url: 'https://…/v0.8.0' },
+        { name: 'SimpleVoiceToolForTrans-v0.7.0-debug.apk', browser_download_url: 'https://…/v0.7.0' },
+        { name: 'SimpleVoiceToolForTrans-v0.8.0-debug.apk', browser_download_url: 'https://…/v0.8.0' },
       ],
     });
     expect(info?.version).toBe('0.8.0');
@@ -73,7 +73,7 @@ describe('pickLatestRelease', () => {
     const sameVersionFormal: ReleaseLike = {
       ...FORMAL,
       tag_name: 'v0.7.0',
-      assets: [{ name: 'SimpleVoiceTool-v0.7.0-debug.apk', browser_download_url: 'https://…/v0.7.0-formal' }],
+      assets: [{ name: 'SimpleVoiceToolForTrans-v0.7.0-debug.apk', browser_download_url: 'https://…/v0.7.0-formal' }],
     };
     const info = pickLatestRelease([ROLLING, sameVersionFormal]);
     expect(info?.version).toBe('0.7.0');

@@ -136,7 +136,7 @@ export function buildClinicalReportHtml(record: AnalysisRecord): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simple Voice Tool — ${t('report.clinicalTitle')} — ${dateStr}</title>
+<title>Simple Voice Tool for Trans — ${t('report.clinicalTitle')} — ${dateStr}</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -166,7 +166,7 @@ export function buildClinicalReportHtml(record: AnalysisRecord): string {
 </head>
 <body>
 <header>
-  <span class="brand">Simple Voice Tool</span>
+  <span class="brand">Simple Voice Tool for Trans</span>
   <span class="date">${t('report.clinicalTitle')} · ${dateStr}</span>
 </header>
 <h1>${t('report.clinicalTitle')}</h1>

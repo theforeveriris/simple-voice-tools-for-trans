@@ -30,7 +30,7 @@ describe('buildRecordsPayload', () => {
   it('app 标识、版本 2、exportedAt 存在、records 原样透传', () => {
     const records = [makeRecord('a'), makeRecord('b')];
     const payload = buildRecordsPayload(records);
-    expect(payload.app).toBe('simple-voice-tools');
+    expect(payload.app).toBe('simple-voice-tools-for-trans');
     expect(payload.version).toBe(2);
     expect(payload.version).toBe(BACKUP_FORMAT_VERSION);
     expect(typeof payload.exportedAt).toBe('string');

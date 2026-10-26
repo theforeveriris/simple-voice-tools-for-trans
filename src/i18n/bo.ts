@@ -324,7 +324,7 @@ export const bo = {
   'settings.ageSeniorDesc': 'གཞི་ལྡིར་སྤྱི་ཡོངས་ནས་དམའ་རུ་འགྲོ་བ',
 
   /* ---------- 首次打开引导（Onboarding） ---------- */
-  'onboard.welcome': 'Simple Voice Tool ལ་དགའ་བསུ་ཞུ',
+  'onboard.welcome': 'Simple Voice Tool for Trans ལ་དགའ་བསུ་ཞུ',
   'onboard.skip': 'མཆོངས་པ',
   'onboard.prev': 'གོམ་སྔོན་མ',
   'onboard.next': 'གོམ་རྗེས་མ',
@@ -634,7 +634,7 @@ export const bo = {
   'settings.resetCacheConfirm': 'སུབ་ནས་སླར་སྒྲིག',
   'settings.shareApp': 'གྲོགས་པོར་ངོ་སྤྲོད',
   'settings.shareAppAction': 'མཉམ་སྤྱོད',
-  'settings.shareAppText': 'Simple Voice Tool — སྐད་སྒྲ་སྦྱོང་བརྡར་དང་སྐད་སྒྲ་རྗེས་འདེད་ཀྱི་ཡོ་བྱད',
+  'settings.shareAppText': 'Simple Voice Tool for Trans — སྐད་སྒྲ་སྦྱོང་བརྡར་དང་སྐད་སྒྲ་རྗེས་འདེད་ཀྱི་ཡོ་བྱད',
   'toast.linkCopied': 'མཐུད་སྦྲེལ་འདྲ་བཤུས་སྒྲོམ་དུ་འདྲ་བཤུས་བྱས་ཟིན',
   'toast.linkCopyFail': 'འདྲ་བཤུས་ཕམ་སོང་། ལག་བསྟར་གྱིས་ཁ་བྱང་ཕྲེང་གི་མཐུད་སྦྲེལ་འདྲ་བཤུས་གནང་རོགས',
   'settings.updateSection': 'པར་གཞི་དང་གསར་བརྗེ',
@@ -800,12 +800,12 @@ export const bo = {
   'share.flowerTitle': 'དབྱངས་ཀྱི་མེ་ཏོག',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': 'མཉམ་སྤྱོད / ཉར་ཚགས།',
-  'report.footer': 'Simple Voice Tool · ས་གནས་ནས་དབྱེ་ཞིབ། གཞི་གྲངས་གང་ཡང་ཡར་མི་སྤྲོད།',
+  'report.footer': 'Simple Voice Tool for Trans · ས་གནས་ནས་དབྱེ་ཞིབ། གཞི་གྲངས་གང་ཡང་ཡར་མི་སྤྲོད།',
   'report.clinicalTitle': 'དབྱངས་སྒྲའི་དབྱེ་ཞིབ་སྙན་ཐོ།',
   'report.sectionStats': 'ཚད་ལེན་གྱི་གྲུབ་འབྲས།',
   'report.sectionCurves': 'སྐུད་རིས (དུས་ཚོད་ཀྱི་ཕྲེང་སྟར་ཧྲིལ་བོ)།',
-  'report.disclaimer': 'སྙན་ཐོ་འདི་ Simple Voice Tool ནས་བཟོས་པ་ཡིན། གྲངས་ཐང་ཚང་མ་རང་ཉིད་ཀྱིས་ཚད་ལེན་བྱས་པའི་དཔྱད་གཞི་ཡིན་པ་དང་། ལས་གཞིའི་ཞིབ་བཤེར་མ་བྱས་པས་སྨན་བཅོས་ཀྱི་ཐག་གཅོད་དུ་མི་རུང་། སྒྲ་ཆེ་ཆུང་ནི་ཚད་མ་སྒྲིག་པའི་ཆ་སྙོམས་གྲངས་ཐང་ (dBFS) ཡིན། ཚད་ལེན་འདི་དག་ཆེད་ལས་པས་སྨན་བཅོས་ཀྱི་རྟགས་རྟོགས་དང་ཞིབ་བཤེར་གཞན་དང་མཉམ་དུ་དཔྱད་ནས་གོ་བརྡ་གཏོང་དགོས།',
-  'share.shareTitle': 'Simple Voice Tool · དབྱེ་ཞིབ་སྙན་ཐོ།',
+  'report.disclaimer': 'སྙན་ཐོ་འདི་ Simple Voice Tool for Trans ནས་བཟོས་པ་ཡིན། གྲངས་ཐང་ཚང་མ་རང་ཉིད་ཀྱིས་ཚད་ལེན་བྱས་པའི་དཔྱད་གཞི་ཡིན་པ་དང་། ལས་གཞིའི་ཞིབ་བཤེར་མ་བྱས་པས་སྨན་བཅོས་ཀྱི་ཐག་གཅོད་དུ་མི་རུང་། སྒྲ་ཆེ་ཆུང་ནི་ཚད་མ་སྒྲིག་པའི་ཆ་སྙོམས་གྲངས་ཐང་ (dBFS) ཡིན། ཚད་ལེན་འདི་དག་ཆེད་ལས་པས་སྨན་བཅོས་ཀྱི་རྟགས་རྟོགས་དང་ཞིབ་བཤེར་གཞན་དང་མཉམ་དུ་དཔྱད་ནས་གོ་བརྡ་གཏོང་དགོས།',
+  'share.shareTitle': 'Simple Voice Tool for Trans · དབྱེ་ཞིབ་སྙན་ཐོ།',
   'share.compareTitle': 'སྡུར་བའི་སྙན་ཐོ།',
 
   /* ---------- 提示（toast） ---------- */
@@ -1173,7 +1173,7 @@ export const bo = {
   /* ---------- v0.7：API key 收纳 / LLM 点击触发 / 趋势指标 / 共振峰目标区 / 快捷键 ---------- */
   'error.title': 'ཤོག་ངོས་ལ་ནོར་འཁྲུལ་བྱུང་།',
   'error.retry': 'བསྐྱར་དུ་ཚོད་ལྟ',
-  'gh.repoDesc': 'Simple Voice Tool གསོག་ཉར',
+  'gh.repoDesc': 'Simple Voice Tool for Trans གསོག་ཉར',
   'gh.progressReadAudio': 'སྒྲ་ཡིག་ཀློག་བཞིན་པ',
   'gh.progressUpload': 'ཡར་སྤྲོད',
   'gh.progressFetchRecords': 'ཟིན་ཐོའི་ཐོ་ཡིག་མར་ལེན',

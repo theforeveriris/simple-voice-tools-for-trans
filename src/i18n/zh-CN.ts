@@ -325,7 +325,7 @@ export const zhCN = {
   'settings.ageSeniorDesc': '基频整体下移',
 
   /* ---------- 首次打开引导（Onboarding） ---------- */
-  'onboard.welcome': '欢迎使用 Simple Voice Tool',
+  'onboard.welcome': '欢迎使用 Simple Voice Tool for Trans',
   'onboard.skip': '跳过',
   'onboard.prev': '上一步',
   'onboard.next': '下一步',
@@ -635,7 +635,7 @@ export const zhCN = {
   'settings.resetCacheConfirm': '清除并重置',
   'settings.shareApp': '推荐给朋友',
   'settings.shareAppAction': '分享',
-  'settings.shareAppText': 'Simple Voice Tool — 语音训练与嗓音追踪工具',
+  'settings.shareAppText': 'Simple Voice Tool for Trans — 语音训练与嗓音追踪工具',
   'toast.linkCopied': '链接已复制到剪贴板',
   'toast.linkCopyFail': '复制失败，请手动复制地址栏链接',
   'settings.updateSection': '版本与更新',
@@ -801,12 +801,12 @@ export const zhCN = {
   'share.flowerTitle': '声之花',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '分享 / 保存',
-  'report.footer': 'Simple Voice Tool · 本地分析，不上传任何数据',
+  'report.footer': 'Simple Voice Tool for Trans · 本地分析，不上传任何数据',
   'report.clinicalTitle': '嗓音分析报告',
   'report.sectionStats': '测量结果',
   'report.sectionCurves': '曲线（时间轴全程）',
-  'report.disclaimer': '本报告由 Simple Voice Tool 生成，所有数值为自助测量参考，未经临床验证，不构成医学诊断；响度为未校准的相对值（dBFS）。请结合临床表现与其他检查由专业人士解读。',
-  'share.shareTitle': 'Simple Voice Tool · 分析报告',
+  'report.disclaimer': '本报告由 Simple Voice Tool for Trans 生成，所有数值为自助测量参考，未经临床验证，不构成医学诊断；响度为未校准的相对值（dBFS）。请结合临床表现与其他检查由专业人士解读。',
+  'share.shareTitle': 'Simple Voice Tool for Trans · 分析报告',
   'share.compareTitle': '对比报告',
 
   /* ---------- 提示（toast） ---------- */
@@ -1173,7 +1173,7 @@ export const zhCN = {
   /* ---------- v0.7：API key 收纳 / LLM 点击触发 / 趋势指标 / 共振峰目标区 / 快捷键 ---------- */
   'error.title': '页面出错了',
   'error.retry': '重试',
-  'gh.repoDesc': 'Simple Voice Tool 备份',
+  'gh.repoDesc': 'Simple Voice Tool for Trans 备份',
   'gh.progressReadAudio': '读取录音音频',
   'gh.progressUpload': '上传',
   'gh.progressFetchRecords': '下载记录清单',

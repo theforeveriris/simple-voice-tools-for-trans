@@ -19,7 +19,7 @@ npm run tauri build   # 本地出包：src-tauri/target/release/bundle/nsis/*-se
 `.github/workflows/desktop-release.yml`：windows-latest runner，
 vitest → vite build → 版本号从 package.json 同步进 tauri.conf.json →
 `npx tauri build`（Rust 缓存加速）→ 安装包
-`SimpleVoiceTool-v{版本}-setup.exe` 上传到 `latest` 预发布（与安卓共用
+`SimpleVoiceToolForTrans-v{版本}-setup.exe` 上传到 `latest` 预发布（与安卓共用
 同一个滚动 release；非 tag 推送时自动清理其中旧版本的 setup.exe；
 打 `v*` 标签时进正式 Release）。
 

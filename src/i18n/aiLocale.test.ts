@@ -115,6 +115,11 @@ describe('词典分享 payload', () => {
     expect(() => parseAiLocalePayload(JSON.stringify({ ...good, label: '  ' }))).toThrow();
     expect(() => parseAiLocalePayload('not json')).toThrow();
   });
+
+  it('历史 app 标识（旧名）→ 仍接受', () => {
+    const good = buildAiLocalePayload({ label: 'X', dict: {}, model: 'm', at: 1 });
+    expect(() => parseAiLocalePayload(JSON.stringify({ ...good, app: 'simple-voice-tools' }))).not.toThrow();
+  });
 });
 
 describe('分批翻译的中途取消', () => {

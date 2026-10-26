@@ -30,7 +30,7 @@ const SAMPLE: AppSettings = {
 describe('buildSettingsPayload', () => {
   it('生成 app/kind/version/exportedAt/settings 结构', () => {
     const p = buildSettingsPayload(SAMPLE);
-    expect(p.app).toBe('simple-voice-tools');
+    expect(p.app).toBe('simple-voice-tools-for-trans');
     expect(p.kind).toBe('settings');
     expect(p.version).toBe(SETTINGS_FORMAT_VERSION);
     expect(typeof p.exportedAt).toBe('string');
@@ -64,7 +64,7 @@ describe('parseSettingsPayload', () => {
 
   it('非法 userGoal / ageGroup 在导入时被忽略，保持当前设置', () => {
     const json = JSON.stringify({
-      app: 'simple-voice-tools', kind: 'settings', version: 1, exportedAt: 'x',
+      app: 'simple-voice-tools-for-trans', kind: 'settings', version: 1, exportedAt: 'x',
       settings: { userGoal: 'mtf-or-ftm', ageGroup: 'teen' },
     });
     const parsed = parseSettingsPayload(json);

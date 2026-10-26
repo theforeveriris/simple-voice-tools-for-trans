@@ -141,7 +141,7 @@ export function AboutTab() {
       {/* 应用简介 */}
       <SettingsSection icon={Info} title={t('settings.intro')}>
         <div className="pt-1 text-xs leading-relaxed text-ink-2">
-          <p className="text-sm font-semibold text-ink">Simple Voice Tool</p>
+          <p className="text-sm font-semibold text-ink">Simple Voice Tool for Trans</p>
           <p className="mt-1">{t('settings.aboutVersion')}</p>
           <p className="mt-1">{t('settings.aboutPrivacy')}</p>
           {/* 隐私政策全文：应用内可读（public/privacy-policy.md） */}

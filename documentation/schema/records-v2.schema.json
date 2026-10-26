@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://theforeveriris.github.io/simple-voice-tools/schema/records-v2.schema.json",
-  "title": "Simple Voice Tool records export (v2)",
-  "description": "Simple Voice Tool 的记录导出/备份 JSON 开放格式。app 内「导出 JSON」「完整备份 ZIP 内的 records.json」「GitHub 云备份」共用此格式。外部工具（Praat 脚本、语音学工具链、数据管道）可按此 Schema 读取或生成。",
+  "$id": "https://theforeveriris.github.io/simple-voice-tools-for-trans/schema/records-v2.schema.json",
+  "title": "Simple Voice Tool for Trans records export (v2)",
+  "description": "Simple Voice Tool for Trans 的记录导出/备份 JSON 开放格式。app 内「导出 JSON」「完整备份 ZIP 内的 records.json」「GitHub 云备份」共用此格式。外部工具（Praat 脚本、语音学工具链、数据管道）可按此 Schema 读取或生成。",
   "type": "object",
   "required": ["records"],
   "properties": {
-    "app": { "const": "simple-voice-tools", "description": "格式标识（读方可据此路由）" },
+    "app": { "enum": ["simple-voice-tools-for-trans", "simple-voice-tools"], "description": "格式标识（读方可据此路由）" },
     "version": { "const": 2, "description": "格式版本；缺失视为历史版本 1（字段同 v2 但无 env/f2f1GapHz 等新增可选字段）" },
     "exportedAt": { "type": "string", "format": "date-time" },
     "records": { "type": "array", "items": { "$ref": "#/$defs/record" } }

@@ -4,7 +4,7 @@
  * 当前版本：构建注入的 __APP_VERSION__（package.json 单一来源，与 gradle
  * versionName 同源同值，见 android/app/build.gradle）。
  * 远端版本：GitHub Releases——滚动「latest」预发布（每次 push 覆盖）与 v*
- * 正式发布统一处理，从 APK 资产名（SimpleVoiceTool-v{semver}-debug.apk）
+ * 正式发布统一处理，从 APK 资产名（SimpleVoiceToolForTrans-v{semver}-debug.apk）
  * 解析版本，同 release 内多资产取最高，多 release 间也取最高（正式发布
  * 与滚动发布并列时优先非预发布）。
  *
@@ -15,7 +15,7 @@
 
 import { isNative } from './platform';
 
-const RELEASES_API = 'https://api.github.com/repos/theforeveriris/simple-voice-tools/releases';
+const RELEASES_API = 'https://api.github.com/repos/theforeveriris/simple-voice-tools-for-trans/releases';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 /** 单个可更新的 APK 入口 */

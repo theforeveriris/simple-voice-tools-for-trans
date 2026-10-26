@@ -9,6 +9,7 @@
 import { zhCN } from './zh-CN';
 import { registerAiDict } from './index';
 import { llmChat, type LlmConfig } from '@/lib/llm';
+import { APP_ID, isKnownAppId } from '@/lib/appId';
 
 const LS_PREFIX = 'svt:i18n-ai:';
 /** 每批翻译的词条数：全量约 660 键 → 8 批左右，兼顾单次请求体积与调用次数 */
@@ -149,7 +150,7 @@ export function parseGlossary(raw: string | undefined | null): [string, string][
 /** 翻译提示词：术语保护 + 用户术语表 + 纯 JSON 输出 */
 function systemPrompt(lang: string, glossary: [string, string][]): string {
   const lines = [
-    'You are the UI translator for "Simple Voice Tool", a self-tracking voice-training app',
+    'You are the UI translator for "Simple Voice Tool for Trans", a self-tracking voice-training app',
     '(transgender voice training and voice health).',
     `Translate the Simplified Chinese UI strings in the user message into ${lang}.`,
     'Rules:',
@@ -306,7 +307,7 @@ export interface AiLocalePayload {
 /** 组装词典分享 JSON（与设置 / 记录导出同风格：app + kind + version） */
 export function buildAiLocalePayload(cache: AiLocaleCache): AiLocalePayload {
   return {
-    app: 'simple-voice-tools',
+    app: APP_ID,
     kind: 'ai-locale',
     version: AI_LOCALE_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
@@ -331,7 +332,7 @@ export function parseAiLocalePayload(json: string): AiLocaleCache {
   const obj = parsed as Partial<AiLocalePayload> | null;
   if (
     !obj || typeof obj !== 'object'
-    || obj.app !== 'simple-voice-tools' || obj.kind !== 'ai-locale'
+    || !isKnownAppId(obj.app) || obj.kind !== 'ai-locale'
     || typeof obj.version !== 'number' || obj.version > AI_LOCALE_FORMAT_VERSION
     || typeof obj.label !== 'string' || !obj.label.trim()
     || typeof obj.dict !== 'object' || obj.dict == null

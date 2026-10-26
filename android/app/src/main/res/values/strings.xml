@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Simple Voice Tool</string>
-    <string name="title_activity_main">Simple Voice Tool</string>
+    <string name="app_name">Simple Voice Tool for Trans</string>
+    <string name="title_activity_main">Simple Voice Tool for Trans</string>
     <string name="package_name">com.theforeveriris.simplevoicetool</string>
     <string name="custom_url_scheme">com.theforeveriris.simplevoicetool</string>
 

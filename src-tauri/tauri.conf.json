@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Simple Voice Tool",
+  "productName": "Simple Voice Tool for Trans",
   "version": "0.9.3",
   "identifier": "com.theforeveriris.simplevoicetool",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Simple Voice Tool",
+        "title": "Simple Voice Tool for Trans",
         "width": 440,
         "height": 920,
         "minWidth": 360,

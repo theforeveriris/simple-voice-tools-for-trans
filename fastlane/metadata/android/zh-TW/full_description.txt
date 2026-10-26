@@ -1,4 +1,4 @@
-<p>Simple Voice Tool 是一個嚴肅的嗓音測量、分析與訓練追蹤工具，基於 Web Audio API。對著麥克風說話，即可獲得基頻、共振峰與能量的即時分析——完全離線，資料不出裝置。</p>
+<p>Simple Voice Tool for Trans 是一個嚴肅的嗓音測量、分析與訓練追蹤工具，基於 Web Audio API。對著麥克風說話，即可獲得基頻、共振峰與能量的即時分析——完全離線，資料不出裝置。</p>
 <p><b>測量</b></p>
 <ul>
 <li>即時音高曲線：男聲 / 女聲 / 過渡區間著色，即時顯示 Hz 與鋼琴音名</li>
@@ -36,4 +36,4 @@
 <li>可安裝為 PWA；提供 Android APK 與 Windows 安裝包</li>
 <li>鍵盤快捷鍵；五種語言（English、简体中文、繁體中文、日本語、文言）</li>
 </ul>
-<p>授權條款：MIT — https://github.com/theforeveriris/simple-voice-tools</p>
+<p>授權條款：MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

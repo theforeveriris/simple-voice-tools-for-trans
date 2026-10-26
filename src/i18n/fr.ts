@@ -324,7 +324,7 @@ export const fr = {
   'settings.ageSeniorDesc': 'F0 globalement plus bas',
 
   /* ---------- 首次打开引导（Onboarding） ---------- */
-  'onboard.welcome': 'Bienvenue dans Simple Voice Tool',
+  'onboard.welcome': 'Bienvenue dans Simple Voice Tool for Trans',
   'onboard.skip': 'Passer',
   'onboard.prev': 'Retour',
   'onboard.next': 'Suivant',
@@ -634,7 +634,7 @@ export const fr = {
   'settings.resetCacheConfirm': 'Vider et réinitialiser',
   'settings.shareApp': 'Recommander à un ami',
   'settings.shareAppAction': 'Partager',
-  'settings.shareAppText': 'Simple Voice Tool — entraînement et suivi de la voix',
+  'settings.shareAppText': 'Simple Voice Tool for Trans — entraînement et suivi de la voix',
   'toast.linkCopied': 'Lien copié dans le presse-papiers',
   'toast.linkCopyFail': 'Échec de la copie — copie le lien de la barre d\'adresse manuellement',
   'settings.updateSection': 'Version et mises à jour',
@@ -800,12 +800,12 @@ export const fr = {
   'share.flowerTitle': 'Fleur vocale',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': 'Partager / Enregistrer',
-  'report.footer': 'Simple Voice Tool · analyse locale, aucune donnée envoyée',
+  'report.footer': 'Simple Voice Tool for Trans · analyse locale, aucune donnée envoyée',
   'report.clinicalTitle': 'Rapport d\'analyse vocale',
   'report.sectionStats': 'Mesures',
   'report.sectionCurves': 'Courbes (chronologie complète)',
-  'report.disclaimer': 'Ce rapport est généré par Simple Voice Tool. Toutes les valeurs sont des repères d\'auto-mesure, non validés cliniquement, et ne constituent pas un diagnostic médical ; la sonie est une valeur relative non calibrée (dBFS). À interpréter par un professionnel, en lien avec les observations cliniques et d\'autres examens.',
-  'share.shareTitle': 'Simple Voice Tool · Rapport d\'analyse',
+  'report.disclaimer': 'Ce rapport est généré par Simple Voice Tool for Trans. Toutes les valeurs sont des repères d\'auto-mesure, non validés cliniquement, et ne constituent pas un diagnostic médical ; la sonie est une valeur relative non calibrée (dBFS). À interpréter par un professionnel, en lien avec les observations cliniques et d\'autres examens.',
+  'share.shareTitle': 'Simple Voice Tool for Trans · Rapport d\'analyse',
   'share.compareTitle': 'Rapport comparatif',
 
   /* ---------- 提示（toast） ---------- */
@@ -1173,7 +1173,7 @@ export const fr = {
   /* ---------- v0.7：API key 收纳 / LLM 点击触发 / 趋势指标 / 共振峰目标区 / 快捷键 ---------- */
   'error.title': 'Une erreur est survenue',
   'error.retry': 'Réessayer',
-  'gh.repoDesc': 'Sauvegarde Simple Voice Tool',
+  'gh.repoDesc': 'Sauvegarde Simple Voice Tool for Trans',
   'gh.progressReadAudio': 'Lecture de l\'audio',
   'gh.progressUpload': 'Envoi',
   'gh.progressFetchRecords': 'Téléchargement de la liste des enregistrements',

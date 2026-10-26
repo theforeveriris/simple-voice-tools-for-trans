@@ -43,7 +43,7 @@ async function ensureChannel(): Promise<void> {
   try {
     await LocalNotifications.createChannel({
       id: NATIVE_CHANNEL_ID,
-      name: 'Simple Voice Tool',
+      name: 'Simple Voice Tool for Trans',
       importance: 3, // IMPORTANCE_DEFAULT
     });
     channelReady = true;
@@ -107,7 +107,7 @@ export function showPracticeReminder(): void {
     void ensureChannel().then(() => LocalNotifications.schedule({
       notifications: [{
         id: NATIVE_NOTIF_ID,
-        title: 'Simple Voice Tool',
+        title: 'Simple Voice Tool for Trans',
         body: t('reminder.body'),
         channelId: NATIVE_CHANNEL_ID,
       }],
@@ -123,7 +123,7 @@ export function showPracticeReminder(): void {
  * 只有在拿不到 Service Worker 注册时才回退到构造函数。
  */
 async function webNotify(body: string): Promise<void> {
-  const title = 'Simple Voice Tool';
+  const title = 'Simple Voice Tool for Trans';
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
     if (reg) {

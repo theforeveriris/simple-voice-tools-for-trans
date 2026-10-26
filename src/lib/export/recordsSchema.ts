@@ -7,6 +7,7 @@
  */
 
 import type { AnalysisRecord } from '@/types';
+import { APP_ID, isKnownAppId } from '@/lib/appId';
 
 export interface ValidationIssue {
   /** JSON 路径（如 records[3].series.f0） */
@@ -104,8 +105,8 @@ export function validateRecordsPayload(parsed: unknown): ValidationResult {
     return { ok: false, issues: [{ path: '', message: 'payload is not an object' }], recordCount: 0 };
   }
   const obj = parsed as Record<string, unknown>;
-  if (obj.app !== undefined && obj.app !== 'simple-voice-tools') {
-    issues.push({ path: 'app', message: `expected "simple-voice-tools", got "${String(obj.app)}"` });
+  if (obj.app !== undefined && !isKnownAppId(obj.app)) {
+    issues.push({ path: 'app', message: `expected "${APP_ID}", got "${String(obj.app)}"` });
   }
   if (obj.version !== undefined && obj.version !== 2 && obj.version !== 1) {
     issues.push({ path: 'version', message: `unsupported version ${String(obj.version)} (validator supports 1-2)` });

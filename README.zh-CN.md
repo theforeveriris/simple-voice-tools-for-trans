@@ -1,19 +1,19 @@
 <div align="center">
 
-<img src="fastlane/metadata/android/images/icon.png" width="96" alt="Simple Voice Tool 应用图标">
+<img src="fastlane/metadata/android/images/icon.png" width="96" alt="Simple Voice Tool for Trans 应用图标">
 
-# Simple Voice Tool
+# Simple Voice Tool for Trans
 
 [English](README.md) · 简体中文
 
-<img src="fastlane/metadata/android/images/featureGraphic.png" width="620" alt="Simple Voice Tool — Measure · Analyze · Track your voice">
+<img src="fastlane/metadata/android/images/featureGraphic.png" width="620" alt="Simple Voice Tool for Trans — Measure · Analyze · Track your voice">
 
-[![Release](https://img.shields.io/github/v/release/theforeveriris/simple-voice-tools)](https://github.com/theforeveriris/simple-voice-tools/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/theforeveriris/simple-voice-tools/deploy.yml?branch=main&label=CI)](https://github.com/theforeveriris/simple-voice-tools/actions/workflows/deploy.yml)
-[![License](https://img.shields.io/github/license/theforeveriris/simple-voice-tools)](LICENSE)
-[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
-[![Windows](https://img.shields.io/badge/Windows-Setup.exe-0078D6?logo=windows&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
-[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](https://theforeveriris.github.io/simple-voice-tools/)
+[![Release](https://img.shields.io/github/v/release/theforeveriris/simple-voice-tools-for-trans)](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/theforeveriris/simple-voice-tools-for-trans/deploy.yml?branch=main&label=CI)](https://github.com/theforeveriris/simple-voice-tools-for-trans/actions/workflows/deploy.yml)
+[![License](https://img.shields.io/github/license/theforeveriris/simple-voice-tools-for-trans)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows-Setup.exe-0078D6?logo=windows&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](https://theforeveriris.github.io/simple-voice-tools-for-trans/)
 
 </div>
 
@@ -26,20 +26,20 @@
 ## 获取应用
 
 > **先体验再安装——无需安装、无需麦克风**：打开
-> [网页演示](https://theforeveriris.github.io/simple-voice-tools/?demo=1)
+> [网页演示](https://theforeveriris.github.io/simple-voice-tools-for-trans/?demo=1)
 > （自动载入示例数据；喜欢再随时「安装到主屏幕」）。
 
-[<img src=".github/assets/obtainium-badge.png" alt="Get it on Obtainium" height="56">](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522github.com.theforeveriris.simple-voice-tools%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Ftheforeveriris%252Fsimple-voice-tools%2522%252C%2522author%2522%253A%2522theforeveriris%2522%252C%2522name%2522%253A%2522simple-voice-tools%2522%257D)
+[<img src=".github/assets/obtainium-badge.png" alt="Get it on Obtainium" height="56">](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522github.com.theforeveriris.simple-voice-tools-for-trans%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Ftheforeveriris%252Fsimple-voice-tools-for-trans%2522%252C%2522author%2522%253A%2522theforeveriris%2522%252C%2522name%2522%253A%2522simple-voice-tools-for-trans%2522%257D)
 
-- **安卓 APK**：从 [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
-  下载最新的 `SimpleVoiceTool-v*-release.apk` 直接安装（正式签名，含应用内更新提示）
+- **安卓 APK**：从 [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest)
+  下载最新的 `SimpleVoiceToolForTrans-v*-release.apk` 直接安装（正式签名，含应用内更新提示）
 - **Obtainium**：已安装 [Obtainium](https://github.com/ImranR98/Obtainium) 的话，
   点上方徽章即可添加本仓库，新版本自动跟进
 - **PWA**：浏览器访问
-  [在线版本](https://theforeveriris.github.io/simple-voice-tools/)，
+  [在线版本](https://theforeveriris.github.io/simple-voice-tools-for-trans/)，
   通过「安装到主屏幕」使用（支持离线缓存，与 APK 版数据互相独立）
-- **Windows**：从 [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
-  下载最新的 `SimpleVoiceTool-v*-setup.exe` 安装包（Tauri 构建；桌面端不提供应用内检查更新）
+- **Windows**：从 [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest)
+  下载最新的 `SimpleVoiceToolForTrans-v*-setup.exe` 安装包（Tauri 构建；桌面端不提供应用内检查更新）
 
 ## 功能特点
 
@@ -227,7 +227,7 @@ npm run preview
 - 麦克风权限需要用户手动授权
 - 所有数据（分析记录 + 录音音频）默认仅保存在本机浏览器的 IndexedDB 中；
   只有你主动「完整备份」或连接云备份时数据才会导出/上传到你自己选择的目标
-  ——详见[隐私政策](https://theforeveriris.github.io/simple-voice-tools/privacy-policy.md)
+  ——详见[隐私政策](https://theforeveriris.github.io/simple-voice-tools-for-trans/privacy-policy.md)
 - 嗓音质量指标（Jitter/Shimmer/HNR/CPPS）需要开启「保存录音音频」，旧记录或关闭
   音频保存时显示为「—」
 - 检测准确性可能受环境噪音影响，建议在安静环境中测试

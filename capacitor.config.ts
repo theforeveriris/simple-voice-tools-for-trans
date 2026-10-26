@@ -6,7 +6,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  */
 const config: CapacitorConfig = {
   appId: 'com.theforeveriris.simplevoicetool',
-  appName: 'Simple Voice Tool',
+  appName: 'Simple Voice Tool for Trans',
   webDir: 'docs',
   android: {
     // Android 15 强制 edge-to-edge：内容自动避开状态栏/手势条，Web 端 CSS 无需改动

@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
-const APP_NAME = 'simple-voice-tools';
+const APP_NAME = 'simple-voice-tools-for-trans';
 const CHANGELOG_DIR = 'fastlane/metadata/android';
 
 function sh(cmd) {

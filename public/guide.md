@@ -1,4 +1,4 @@
-# Simple Voice Tool 使用说明
+# Simple Voice Tool for Trans 使用说明
 
 一款基于 Web Audio API 的语音测试与追踪应用，为跨性别声音训练（女性化 / 男性化）与日常嗓音健康设计。
 

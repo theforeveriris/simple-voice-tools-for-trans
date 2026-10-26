@@ -17,7 +17,7 @@ import type { AnalysisRecord, PitchBand } from '@/types';
 export type ShareCardStyle = 'themed' | 'dark' | 'light' | 'aurora' | 'flower' | 'lua';
 
 /** 二维码指向的仓库地址 */
-const REPO_URL = 'https://github.com/theforeveriris/simple-voice-tools';
+const REPO_URL = 'https://github.com/theforeveriris/simple-voice-tools-for-trans';
 
 /** 从文档根读取当前主题色（CSS 变量） */
 function readTheme(): {
@@ -140,7 +140,7 @@ function drawFooterQr(ctx: CanvasRenderingContext2D, p: Palette): void {
   ctx.font = '400 22px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('github.com/theforeveriris/simple-voice-tools', PAD, y + backing / 2);
+  ctx.fillText('github.com/theforeveriris/simple-voice-tools-for-trans', PAD, y + backing / 2);
 }
 
 /** 绘制完整报告卡 */
@@ -164,7 +164,7 @@ function drawCard(record: AnalysisRecord, t: Palette): HTMLCanvasElement {
   ctx.font = '500 30px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Simple Voice Tool', PAD + 30, PAD + 15);
+  ctx.fillText('Simple Voice Tool for Trans', PAD + 30, PAD + 15);
   const d = new Date(record.createdAt);
   const dateStr = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   ctx.textAlign = 'right';
@@ -431,7 +431,7 @@ function drawFlowerCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.font = '500 30px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Simple Voice Tool', PAD + 30, PAD + 15);
+  ctx.fillText('Simple Voice Tool for Trans', PAD + 30, PAD + 15);
   const d = new Date(record.createdAt);
   ctx.textAlign = 'right';
   ctx.fillText(ti('share.flowerTitle'), W - PAD, PAD + 15);
@@ -584,7 +584,7 @@ function drawCompareCard(a: AnalysisRecord, b: AnalysisRecord, t: Palette): HTML
   ctx.font = '500 30px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Simple Voice Tool', PAD + 30, PAD + 15);
+  ctx.fillText('Simple Voice Tool for Trans', PAD + 30, PAD + 15);
   ctx.textAlign = 'right';
   ctx.fillText(ti('share.compareTitle'), W - PAD, PAD + 15);
   ctx.strokeStyle = t.line;
