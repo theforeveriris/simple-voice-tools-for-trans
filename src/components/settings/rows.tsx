@@ -113,7 +113,7 @@ export function SettingRow({
  * 与开关的右缘对齐；长内容（麦克风名）可用 withTruncateMaxWidth 追加限宽。
  */
 export const SELECT_TRIGGER_CLASS =
-  'h-6 w-fit justify-end gap-1 border-0 bg-transparent px-0 text-sm font-medium text-ink shadow-none '
+  'h-6 w-fit justify-end gap-1.5 border-0 bg-transparent pl-2 pr-0 text-sm font-medium text-ink shadow-none '
   + '[&_[data-slot=select-value]]:flex-none data-[placeholder]:text-ink-2';
 
 /** 长文本选项（设备名等）：限宽 + 省略号，仍保持右对齐 */
