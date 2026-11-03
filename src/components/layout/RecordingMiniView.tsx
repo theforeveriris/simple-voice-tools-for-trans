@@ -17,6 +17,7 @@ import { getLiveWindowSec } from '@/constants';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
+import { cn } from '@/lib/utils';
 import { useLiveSheetLoop } from '@/hooks/useLiveSheetLoop';
 
 function MiniPitchCanvas() {
@@ -59,6 +60,7 @@ export function RecordingMiniView() {
   useI18n();
   const isRecording = useStore((s) => s.isRecording);
   const currentTab = useStore((s) => s.currentTab);
+  const navStyle = useStore((s) => s.settings.navStyle);
   const setTab = useStore((s) => s.setTab);
   const stopRecording = useStore((s) => s.stopRecording);
   const [dismissed, setDismissed] = useState(false);
@@ -76,7 +78,12 @@ export function RecordingMiniView() {
       initial={false}
       animate={visible ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 8, scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-      className="pointer-events-none fixed inset-x-0 bottom-[5.6rem] z-30 flex justify-center px-4"
+      className={cn(
+        'pointer-events-none fixed inset-x-0 z-30 flex justify-center px-4',
+        navStyle === 'classic'
+          ? 'bottom-[calc(4.75rem+env(safe-area-inset-bottom))]'
+          : 'bottom-[5.6rem]',
+      )}
     >
       {visible && (
         <div className="pointer-events-auto card-surface flex w-full max-w-sm items-center gap-3 px-3 py-2.5">

@@ -1330,4 +1330,11 @@ export const fr = {
   'lanSync.done': 'Synchronisation terminée',
   'lanSync.error': 'Connexion perdue',
   'lanSync.reset': 'Fermer et réinitialiser',
+  'nav.assistant': 'AI',
+  'test.startRecording': 'Démarrer l’enregistrement',
+  'test.stopRecording': 'Arrêter',
+  'settings.navStyle': 'Navigation',
+  'settings.navStyleDesc': 'Choisissez le style de la barre inférieure ; la barre classique utilise le bouton d’enregistrement en éventail sur la page Test, la pilule flottante conserve la pastille d’enregistrement.',
+  'settings.navStyleFloating': 'Pilule flottante',
+  'settings.navStyleClassic': 'Barre classique',
 } as const;

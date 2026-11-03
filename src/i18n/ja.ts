@@ -1322,4 +1322,11 @@ export const ja = {
   'lanSync.done': '同期完了',
   'lanSync.error': '接続が切断されました',
   'lanSync.reset': '閉じてリセット',
+  'nav.assistant': 'AI',
+  'test.startRecording': '録音開始',
+  'test.stopRecording': '停止',
+  'settings.navStyle': 'ナビゲーション',
+  'settings.navStyleDesc': '下部ナビのスタイルを選択します。クラシックバーはテストページの扇形録音ボタン、フローティングピルは録音オーブを使います。',
+  'settings.navStyleFloating': 'フローティングピル',
+  'settings.navStyleClassic': 'クラシックバー',
 } as const;

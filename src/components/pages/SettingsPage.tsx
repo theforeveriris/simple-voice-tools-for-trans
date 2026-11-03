@@ -40,6 +40,8 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.volumeBreath' },
   { page: 'appearance', sectionKey: 'settings.bgImage', labelKey: 'settings.bgImage' },
   { page: 'appearance', sectionKey: 'settings.bgImage', labelKey: 'settings.bgImageBlur' },
+  { page: 'appearance', sectionKey: 'settings.navStyle', labelKey: 'settings.navStyleFloating' },
+  { page: 'appearance', sectionKey: 'settings.navStyle', labelKey: 'settings.navStyleClassic' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.showGrid' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.syncRange' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.mobileSpark' },

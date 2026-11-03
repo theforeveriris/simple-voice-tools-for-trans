@@ -57,11 +57,12 @@ const OPTIONAL_NUMBER_KEYS: Partial<Record<keyof AppSettings, [number, number]>>
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   theme: ['light', 'dark', 'system'],
+  navStyle: ['floating', 'classic'],
   huePreset: ['monet', 'pride', 'image'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'es', 'fr', 'ai'],
   specColormap: ['magma', 'gray', 'accent'],
-  startTab: ['test', 'analysis', 'history', 'settings'],
+  startTab: ['test', 'analysis', 'history', 'assistant', 'settings'],
   bgImageFocus: ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'],
   userGoal: ['mtf', 'ftm', 'other'],
   ageGroup: ['child', 'adolescent', 'adult', 'senior'],

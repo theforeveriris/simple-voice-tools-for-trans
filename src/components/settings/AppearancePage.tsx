@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, Image as ImageIcon, Palette, Share2, SlidersHorizontal, Upload } from 'lucide-react';
+import { ArrowLeft, Download, Image as ImageIcon, Palette, PanelBottom, Share2, SlidersHorizontal, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
 import { buildThemeExport, parseThemeFile, themeFileName } from '@/lib/theme/themeShare';
@@ -26,7 +26,7 @@ import { PRIDE_FLAGS } from '@/constants';
 import { t } from '@/i18n';
 import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import type { AppSettings, BgImageFocus, HuePreset, PrideFlag, SpecColormap, ThemeMode } from '@/types';
+import type { AppSettings, BgImageFocus, HuePreset, NavStyle, PrideFlag, SpecColormap, ThemeMode } from '@/types';
 import {
   Select,
   SelectContent,
@@ -41,6 +41,31 @@ import { InfoTip } from './InfoTip';
 import { FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
 
 /** 九宫焦点：展示顺序（左上 → 右下）与各方向词条 */
+/** 导航栏样式预览：悬浮胶囊 / 全宽经典底栏 */
+function NavStylePreview({ style }: { style: NavStyle }) {
+  if (style === 'classic') {
+    return (
+      <div className="flex h-9 items-end justify-center gap-1 rounded-t-xl border-t border-black/10 bg-surface-hi px-1.5 pb-1">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className="flex flex-1 flex-col items-center gap-0.5">
+            <span className={cn('size-1.5 rounded-full', i === 1 ? 'bg-accent' : 'bg-ink-2/45')} />
+            <span className={cn('h-[2px] w-3 rounded-full', i === 1 ? 'bg-accent' : 'bg-ink-2/35')} />
+          </span>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-9 items-center justify-center">
+      <div className="flex items-center gap-1 rounded-full bg-surface-hi px-2 py-1.5 shadow-sm">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className={cn('size-1.5 rounded-full', i === 1 ? 'bg-accent' : 'bg-ink-2/40')} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const BG_FOCUS_KEYS: BgImageFocus[] = [
   'top-left', 'top', 'top-right',
   'left', 'center', 'right',
@@ -430,6 +455,32 @@ export function AppearancePage({
               onCheckedChange={(v) => update({ voiceTint: v })}
             />
           </SettingRow>
+        </SettingsSection>
+
+        {/* 导航栏样式：悬浮胶囊 / 贯穿底部的经典底栏 */}
+        <SettingsSection icon={PanelBottom} title={t('settings.navStyle')}>
+          <p className="px-0.5 pb-2 text-[11px] leading-relaxed text-ink-2">{t('settings.navStyleDesc')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(['floating', 'classic'] as const).map((style) => {
+              const active = settings.navStyle === style;
+              return (
+                <button
+                  key={style}
+                  onClick={() => update({ navStyle: style })}
+                  aria-pressed={active}
+                  className={cn(
+                    'rounded-2xl border p-2 text-left transition-colors',
+                    active ? 'border-accent bg-accent/5' : 'border-black/10 bg-surface-hi/40 hover:border-black/20',
+                  )}
+                >
+                  <NavStylePreview style={style} />
+                  <span className={cn('mt-1.5 block px-0.5 text-[11px] font-medium', active ? 'text-accent' : 'text-ink-2')}>
+                    {t(style === 'floating' ? 'settings.navStyleFloating' : 'settings.navStyleClassic')}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </SettingsSection>
 
         {/* 图表与显示：外观类显示选项 + 图表与回放（原「配置 · 图表与回放」并入此处，

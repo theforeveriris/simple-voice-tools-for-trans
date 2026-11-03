@@ -136,6 +136,18 @@ export const useStore = create<AppState>()(
       merge: (persisted, current) => {
         const p = (persisted as { settings?: Partial<AppSettings> } | undefined)?.settings ?? {};
         const settings = { ...DEFAULT_SETTINGS, ...p } as AppSettings;
+        // 导航栏默认样式改为「经典底栏」：这是新增字段，旧安装里可能没有任何
+        // navStyle；用一次性标记把此前由旧默认值写入的 floating 也迁到 classic。
+        // 用户之后在外观里手动切回悬浮时，标记已存在，不会被重置。
+        try {
+          const navMigrated = 'svt:nav-style-classic-default';
+          if (!localStorage.getItem(navMigrated)) {
+            settings.navStyle = 'classic';
+            localStorage.setItem(navMigrated, '1');
+          }
+        } catch {
+          /* 隐私模式 / localStorage 不可用时交给默认值 */
+        }
         // 旧版「训练建议」布尔开关迁移为三态模式（开启 → 规则判断，关闭 → 无）
         const legacy = (p as { adviceEnabled?: unknown }).adviceEnabled;
         if (typeof legacy === 'boolean' && p.adviceMode === undefined) {

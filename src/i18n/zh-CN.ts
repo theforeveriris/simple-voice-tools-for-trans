@@ -1330,6 +1330,13 @@ export const zhCN = {
   'lanSync.done': '同步完成',
   'lanSync.error': '连接中断',
   'lanSync.reset': '关闭并重置',
+  'nav.assistant': 'AI',
+  'test.startRecording': '开始录音',
+  'test.stopRecording': '停止',
+  'settings.navStyle': '导航栏',
+  'settings.navStyleDesc': '选择底部导航样式；经典底栏在测试页用扇形录音键，悬浮胶囊保留录音球。',
+  'settings.navStyleFloating': '悬浮胶囊',
+  'settings.navStyleClassic': '经典底栏',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

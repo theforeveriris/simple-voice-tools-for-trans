@@ -1321,4 +1321,11 @@ export const zhTW = {
   'lanSync.done': '同步完成',
   'lanSync.error': '連線中斷',
   'lanSync.reset': '關閉並重設',
+  'nav.assistant': 'AI',
+  'test.startRecording': '開始錄音',
+  'test.stopRecording': '停止',
+  'settings.navStyle': '導覽列',
+  'settings.navStyleDesc': '選擇底部導覽樣式；經典底欄在測試頁用扇形錄音鍵，懸浮膠囊保留錄音球。',
+  'settings.navStyleFloating': '懸浮膠囊',
+  'settings.navStyleClassic': '經典底欄',
 } as const;

@@ -1322,4 +1322,11 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'lanSync.done': '同步已成',
   'lanSync.error': '連線遂絕',
   'lanSync.reset': '闔而復初',
+  'nav.assistant': 'AI',
+  'test.startRecording': '始錄',
+  'test.stopRecording': '止',
+  'settings.navStyle': '導航之欄',
+  'settings.navStyleDesc': '擇底欄之式；經典之欄於測試之頁用扇形錄音之鍵，懸浮之囊仍存錄音之球。',
+  'settings.navStyleFloating': '懸浮之囊',
+  'settings.navStyleClassic': '經典之欄',
 };

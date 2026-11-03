@@ -9,6 +9,8 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Play, Square } from 'lucide-react';
+import { toast } from 'sonner';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { LiveSpectrum } from '@/components/charts/LiveSpectrum';
 import { recorder } from '@/lib/audio/recorder';
@@ -20,6 +22,7 @@ import { VowelLiveSheet } from './VowelLiveSheet';
 import type { TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 import { LocateFixed } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 /** 图表卡片容器：白底、微圆角、无边框、微阴影 */
 function ChartCard({
@@ -159,7 +162,7 @@ function FormantLegend() {
   );
 }
 
-/** 各模式的一句提示（极简文字，无卡片） */
+/** 悬浮胶囊模式下的极简模式提示 */
 const MODE_HINT_KEY: Record<TestMode, 'test.hintReading' | 'test.hintSustained' | 'test.hintGlide'> = {
   reading: 'test.hintReading',
   sustained: 'test.hintSustained',
@@ -172,10 +175,9 @@ function ModeHint({ mode }: { mode: TestMode }) {
   );
 }
 
-/** 录音中的灵动岛指示条：深色胶囊 + 呼吸灯 + 计时，替换顶部模式提示文字 */
+/** 悬浮胶囊模式下的录音灵动岛（经典底栏用顶部状态条替代） */
 function RecordingIsland() {
   const [elapsed, setElapsed] = useState(0);
-  // 约 5Hz 刷新计时（rAF 节流，避免每帧重渲染）
   useEffect(() => {
     let raf = 0;
     let last = 0;
@@ -211,8 +213,109 @@ function RecordingIsland() {
   );
 }
 
+/** 模式显示名 */
+const MODE_LABEL_KEY: Record<TestMode, 'mode.reading' | 'mode.sustained' | 'mode.glide'> = {
+  reading: 'mode.reading',
+  sustained: 'mode.sustained',
+  glide: 'mode.glide',
+};
+
+/** 录音计时（仅录音时挂载，重新开始会归零） */
+function RecordingElapsed() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setElapsed(recorder.getLive().elapsedSec), 250);
+    return () => window.clearInterval(id);
+  }, []);
+  const mm = Math.floor(elapsed / 60);
+  const ss = Math.floor(elapsed % 60);
+  return <span className="tabular-nums">{mm}:{String(ss).padStart(2, '0')}</span>;
+}
+
+/**
+ * 测试页录音头：模式 / 目标 / 开始停止。
+ * 测试页本身不滚动，这一行始终可见；导航栏只负责切页。
+ */
+function TestRecordHeader() {
+  useI18n();
+  const mode = useStore((s) => s.settings.testMode);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const isRecording = useStore((s) => s.isRecording);
+  const targetEnabled = useStore((s) => s.settings.targetEnabled);
+  const targetMin = useStore((s) => s.settings.targetF0Min);
+  const targetMax = useStore((s) => s.settings.targetF0Max);
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select value={mode} onValueChange={(v) => updateSettings({ testMode: v as TestMode })}>
+        <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border border-black/10 bg-card px-3 text-xs font-medium text-ink shadow-none">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+          {(['reading', 'sustained', 'glide'] as const).map((m) => (
+            <SelectItem key={m} value={m}>{t(MODE_LABEL_KEY[m])}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {targetEnabled && (
+        <span className="hidden rounded-full bg-surface-hi px-2.5 py-1 text-[10px] font-medium tabular-nums text-ink-2 sm:inline-flex">
+          {targetMin}–{targetMax} Hz
+        </span>
+      )}
+
+      {isRecording && (
+        <span className="ml-auto flex items-center gap-1.5 rounded-full bg-ink px-2.5 py-1 text-[10px] font-medium text-surface">
+          <span className="size-1.5 animate-pulse rounded-full bg-accent" />
+          <RecordingElapsed />
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 音高曲线卡片右下角的扇形录音键。
+ * 直角贴住卡片右下角，左上角做成四分之一圆；图标靠近圆心（右下），
+ * 录音中换成结束方块，计时放在顶部状态条。
+ */
+function FanRecordButton() {
+  const isRecording = useStore((s) => s.isRecording);
+  const startRecording = useStore((s) => s.startRecording);
+  const stopRecording = useStore((s) => s.stopRecording);
+
+  const toggle = () => {
+    if (isRecording) {
+      void stopRecording();
+    } else {
+      void startRecording().catch(() => toast.error(t('toast.micError')));
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={isRecording ? t('test.stopRecording') : t('test.startRecording')}
+      title={isRecording ? t('test.stopRecording') : t('test.startRecording')}
+      className={cn(
+        'absolute -bottom-2 -right-2 z-10 grid size-[3.375rem] place-items-end justify-items-end overflow-hidden rounded-br-[20px] text-on-accent shadow-[0_6px_18px_-6px_rgb(var(--c-accent-rgb)/0.5)] transition-transform active:scale-95',
+        isRecording ? 'bg-ink text-surface' : 'bg-accent',
+      )}
+      style={{ borderTopLeftRadius: '100%' }}
+    >
+      <span className="mb-2.5 mr-2.5 grid place-items-center">
+        {isRecording
+          ? <Square size={15} fill="currentColor" strokeWidth={0} />
+          : <Play size={16} fill="currentColor" strokeWidth={0} className="translate-x-[1px]" />}
+      </span>
+    </button>
+  );
+}
+
 export function TestPage() {
   useI18n();
+  const navStyle = useStore((s) => s.settings.navStyle);
   const mode = useStore((s) => s.settings.testMode);
   const isRecording = useStore((s) => s.isRecording);
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
@@ -228,14 +331,43 @@ export function TestPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // 经典底栏：测试页 Space = 开始 / 停止录音（悬浮胶囊仍由 BottomBar 处理 Space）
+  useEffect(() => {
+    if (navStyle !== 'classic') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target
+        && (target.tagName === 'INPUT'
+          || target.tagName === 'TEXTAREA'
+          || target.tagName === 'SELECT'
+          || target.tagName === 'BUTTON'
+          || target.isContentEditable)
+      ) return;
+      e.preventDefault();
+      const st = useStore.getState();
+      if (st.isRecording) void st.stopRecording();
+      else void st.startRecording().catch(() => toast.error(t('toast.micError')));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navStyle]);
+
   return (
-    // 高度下探到距底栏约 12px（页头 pt-7 + 底栏顶 4.75rem + 间距 0.75rem = 7.25rem），
-    // -mb-14 抵消 main 的 pb-36 中多余部分，页面不产生滚动；
-    // 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响，min-h 防塌缩）；
-    // 开启实时频谱（实验性）时追加第四张，压缩其余图的比例
-    <div className="-mb-14 flex h-[calc(100dvh-7.25rem)] min-h-[360px] flex-col gap-3 sm:gap-3.5">
-      {/* 顶部：录音时为灵动岛指示条，否则显示模式提示文字 */}
-      {isRecording ? <RecordingIsland /> : <ModeHint mode={mode} />}
+    // 高度下探到距底栏约 12px；经典底栏更矮，单独减掉安全区；
+    // -mb-14 抵消 main 的底部留白，页面不产生滚动；三张图按比例分配剩余高度。
+    <div
+      className={cn(
+        '-mb-14 flex min-h-[360px] flex-col gap-3 sm:gap-3.5',
+        navStyle === 'classic'
+          ? 'h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))]'
+          : 'h-[calc(100dvh-7.25rem)]',
+      )}
+    >
+      {navStyle === 'classic'
+        ? <TestRecordHeader />
+        : (isRecording ? <RecordingIsland /> : <ModeHint mode={mode} />)}
 
       {/* F1 / F2 共振峰 */}
       <ChartCard
@@ -276,9 +408,13 @@ export function TestPage() {
             <LivePitchReadout />
           </div>
         }
-        className="min-h-[130px] shrink basis-0 grow-[12]"
+        className={cn(
+          'min-h-[130px] shrink basis-0 grow-[12]',
+          navStyle === 'classic' && 'overflow-hidden',
+        )}
       >
         {chartsReady && <SeriesChart kind="pitch" live />}
+        {navStyle === 'classic' && <FanRecordButton />}
       </ChartCard>
 
       {/* 实时频谱（实验性）：窄带幅度谱，可见谐波列与共振峰峰包 */}

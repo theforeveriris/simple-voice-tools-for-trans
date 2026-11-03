@@ -1321,4 +1321,11 @@ export const en = {
   'lanSync.done': 'Sync complete',
   'lanSync.error': 'Connection lost',
   'lanSync.reset': 'Close and reset',
+  'nav.assistant': 'AI',
+  'test.startRecording': 'Start recording',
+  'test.stopRecording': 'Stop',
+  'settings.navStyle': 'Navigation',
+  'settings.navStyleDesc': 'Choose the bottom navigation style; the classic bar uses the fan record button on the Test page, while the floating pill keeps the record orb.',
+  'settings.navStyleFloating': 'Floating pill',
+  'settings.navStyleClassic': 'Classic bar',
 } as const;

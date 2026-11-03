@@ -5,11 +5,12 @@
 
 import type { ViewType } from '@/types';
 
-export const NAV: ViewType[] = ['test', 'analysis', 'history', 'settings'];
+export const NAV: ViewType[] = ['test', 'analysis', 'history', 'assistant', 'settings'];
 
-export const navLabelKey: Record<ViewType, 'nav.test' | 'nav.analysis' | 'nav.history' | 'nav.settings'> = {
+export const navLabelKey: Record<ViewType, 'nav.test' | 'nav.analysis' | 'nav.history' | 'nav.assistant' | 'nav.settings'> = {
   test: 'nav.test',
   analysis: 'nav.analysis',
   history: 'nav.history',
+  assistant: 'nav.assistant',
   settings: 'nav.settings',
 };

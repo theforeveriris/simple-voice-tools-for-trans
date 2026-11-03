@@ -17,6 +17,7 @@ import { TestPage } from '@/components/pages/TestPage';
 import { AnalysisPage } from '@/components/pages/AnalysisPage';
 import { HistoryPage } from '@/components/pages/HistoryPage';
 import { SettingsPage } from '@/components/pages/SettingsPage';
+import { AssistantPage } from '@/components/ai/AssistantPage';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme, presetSpec } from '@/lib/theme/monet';
@@ -69,6 +70,7 @@ function App() {
   const huePreset = useStore((s) => s.settings.huePreset);
   const prideFlag = useStore((s) => s.settings.prideFlag);
   const theme = useStore((s) => s.settings.theme);
+  const navStyle = useStore((s) => s.settings.navStyle);
   const addRecord = useHistoryStore((s) => s.addRecord);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
@@ -188,10 +190,10 @@ function App() {
       }
       if (shortcutsOpen) {
         // 帮助面板打开时只允许 Esc（面板自身处理）与 ?（上方已切换），屏蔽页签跳转
-        if (/^[1-4]$/.test(e.key)) e.preventDefault();
+        if (/^[1-5]$/.test(e.key)) e.preventDefault();
         return;
       }
-      if (/^[1-4]$/.test(e.key)) {
+      if (/^[1-5]$/.test(e.key)) {
         e.preventDefault();
         useStore.getState().setTab(TABS[Number(e.key) - 1]);
         return;
@@ -202,9 +204,14 @@ function App() {
       // 输入控件聚焦的豁免已在函数头部统一处理）
       if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
-        const { isRecording, startRecording, stopRecording } = useStore.getState();
-        if (isRecording) void stopRecording();
-        else void startRecording().catch(() => toast.error(t('toast.micError')));
+        const { isRecording, startRecording, stopRecording, setTab } = useStore.getState();
+        if (isRecording) {
+          void stopRecording();
+        } else {
+          // 录音入口固定在测试页：从别的页签按 S 先切回测试页再开始
+          setTab('test');
+          void startRecording().catch(() => toast.error(t('toast.micError')));
+        }
       }
     };
     window.addEventListener('keydown', onKey);
@@ -361,25 +368,32 @@ function App() {
           z 高于启动页 / 底部导航，避免与启动动画叠加闪动 */}
       <OnboardingSheet />
 
-      <main ref={mainRef} className="mx-auto w-full max-w-5xl px-5 pt-7 pb-36">
-        {/*
-          页面切换策略：两阶段切换（见上方注释）。旧页保留至新页就绪，
-          新页仅入场动画（不做退场动画），displayedTab 为 key 触发重挂载。
-        */}
-        <motion.div
-          key={displayedTab}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+      {displayedTab === 'assistant' ? (
+        <AssistantPage />
+      ) : (
+        <main
+          ref={mainRef}
+          className={`mx-auto w-full max-w-5xl px-5 pt-7 ${navStyle === 'classic' ? 'pb-28' : 'pb-36'}`}
         >
-          <PageErrorBoundary pageKey={displayedTab}>
-            {displayedTab === 'test' && <TestPage />}
-            {displayedTab === 'analysis' && <AnalysisPage />}
-            {displayedTab === 'history' && <HistoryPage />}
-            {displayedTab === 'settings' && <SettingsPage />}
-          </PageErrorBoundary>
-        </motion.div>
-      </main>
+          {/*
+            页面切换策略：两阶段切换（见上方注释）。旧页保留至新页就绪，
+            新页仅入场动画（不做退场动画），displayedTab 为 key 触发重挂载。
+          */}
+          <motion.div
+            key={displayedTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+          >
+            <PageErrorBoundary pageKey={displayedTab}>
+              {displayedTab === 'test' && <TestPage />}
+              {displayedTab === 'analysis' && <AnalysisPage />}
+              {displayedTab === 'history' && <HistoryPage />}
+              {displayedTab === 'settings' && <SettingsPage />}
+            </PageErrorBoundary>
+          </motion.div>
+        </main>
+      )}
 
       <BottomBar />
 

@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2,
+  ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -250,8 +250,9 @@ function Bubble({
   );
 }
 
-export function AssistantPage({ onClose }: { onClose: () => void }) {
+export function AssistantPage() {
   useI18n();
+  const navStyle = useStore((s) => s.settings.navStyle);
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
   const cfg = useActiveLlmConfig(activeProfileId);
   const chats = useChats();
@@ -438,11 +439,14 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
     'grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90';
 
   const topBar = (
-    <div className="flex items-center gap-2 px-3 pt-3">
-      <button onClick={onClose} aria-label={t('common.back')} className={iconBtn}>
-        <ArrowLeft size={18} />
-      </button>
+    <div className="flex items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
+      <span className="grid size-9 place-items-center rounded-full bg-accent/15 text-accent">
+        <Sparkles size={17} />
+      </span>
       <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
+      <button onClick={newChat} aria-label={t('assistant.newChat')} className={iconBtn}>
+        <Plus size={17} />
+      </button>
       <button
         onClick={() => { setSidebarOpen(true); setDelId(null); }}
         aria-label={t('assistant.history')}
@@ -453,9 +457,16 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
     </div>
   );
 
+  const shellClass = cn(
+    'fixed inset-x-0 top-0 z-40 flex flex-col bg-surface',
+    navStyle === 'classic'
+      ? 'bottom-[calc(4.25rem+env(safe-area-inset-bottom))]'
+      : 'bottom-[5.6rem]',
+  );
+
   if (!cfg) {
     return (
-      <div className="fixed inset-0 z-[150] flex flex-col bg-surface">
+      <div className={shellClass}>
         {topBar}
         <div className="flex flex-1 items-center justify-center p-6">
           <p className="max-w-xs text-center text-sm leading-relaxed text-ink-2">{t('assistant.needConfig')}</p>
@@ -465,7 +476,7 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[150] flex flex-col bg-surface">
+    <div className={shellClass}>
       {topBar}
 
       {/* 消息流 */}

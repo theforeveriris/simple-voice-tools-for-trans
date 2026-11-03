@@ -89,7 +89,7 @@ npx tsc -b --force
 src/
 ├── components/
 │   ├── ai/
-│   │   └── AssistantPage.tsx     # AI 助手：独立全屏聊天页（多轮/分支/历史抽屉）
+│   │   └── AssistantPage.tsx     # AI 页签：多轮/分支/历史抽屉（导航栏直接进入）
 │   ├── charts/
 │   │   ├── chartPainters.ts      # 图表共用 Canvas 画笔（音高/能量/共振峰/元音/VRP/十字线/目标区）
 │   │   ├── SeriesChart.tsx       # 画布组件：live(实时滚动)/static(区间+十字线，支持键盘) 双模式
@@ -108,13 +108,13 @@ src/
 │   │   ├── FlowerSvg.tsx         # 单朵声音花的 SVG 渲染
 │   │   └── TimeMachine.tsx       # 花园时间机器（A→B 对比动画）
 │   ├── layout/
-│   │   ├── BottomBar.tsx         # 悬浮底栏 + 录音圆球（纯 transform 运动模型 + 全局快捷键）
+│   │   ├── BottomBar.tsx         # 纯导航底栏：悬浮胶囊 / 经典全宽（5 页签，无录音键）
 │   │   ├── SplashScreen.tsx      # 原生壳启动页（isNative 时渲染，设置可关）
 │   │   ├── EmptyHero.tsx         # 空状态引导
 │   │   ├── ErrorBoundary.tsx     # 页面级错误边界
 │   │   └── ShortcutsHelpSheet.tsx# 快捷键帮助浮层（? 呼出）
 │   ├── pages/
-│   │   ├── TestPage.tsx          # 测试页（实时图表 + 录音圆球）
+│   │   ├── TestPage.tsx          # 测试页（实时图表 + 顶部模式胶囊 + 音高卡扇形录音键）
 │   │   ├── AnalysisPage.tsx      # 分析页（概览/统计/图表/回放/音高算法对比/重算/表达参考）
 │   │   ├── HistoryPage.tsx       # 历史页（列表/趋势/日记热力图/多选/对比）
 │   │   ├── SettingsPage.tsx      # 设置页（外壳 + 搜索索引 + 子页面分发）
@@ -291,16 +291,17 @@ App 内监听设置变化（hue / accentHue / darkHue / huePreset / prideFlag / 
 新增主题相关颜色时：先在 `buildTokens` 加令牌，再到 `tailwind.config.js` 映射。
 主题全貌见 ARCHITECTURE-THEME.md。
 
-## 动效模型（底栏为何这样写）
+## 导航栏与测试页录音
 
-底栏 + 录音圆球采用**纯 transform 运动模型**（详见 BottomBar.tsx 注释）：
-
-- 小球 `position: absolute`（非分体时 `left: calc(100% + 12px)` 锚在底栏右缘，分体时
-  锚在底栏中缝 `left: 50%`），从不占文档流，缩放进出零重排；
-- 容器在测试页用 `animate={{ x: -32.5 }}` 左移（32.5 = 小球 53 + 间距 12 的一半），
-  使"底栏+小球"组合视觉居中（`BALL_SIZE = 53`）；
-- 页签标签宽度**瞬变**（只做 0.14s 透明度淡入）——若做 width 动画，底栏真实布局会
-  每帧重排，与 `layout` FLIP 叠加产生"二次移动"；
+- 底部导航是**纯导航**：测试 / 分析 / 历史 / AI / 设置，5 个页签；录音键不在导航栏。
+- `settings.navStyle` 两种皮肤：
+  - `floating`：悬浮胶囊，选中项 `layoutId` 胶囊滑移 + 标签；
+  - `classic`：贯穿底部的全宽底栏，5 等分，选中项 accent + 短下划线（默认）。
+- 经典底栏下，测试页顶部是模式胶囊 + 目标 + 录音计时；**音高卡片右下角**是
+  四分之一圆扇形录音键，录音中换成结束方块。悬浮胶囊（floating）仍沿用原来的
+  录音球 + 长按扇形模式选择；两种样式不要同时渲染录音控件。
+- 测试页本身是固定高度 flex 列，图表按比例分剩余高度；经典底栏更矮，
+  页面高度额外减掉安全区。
 - 页面切换：旧页即时卸载（不做退场动画）+ 新页仅入场动画；测试页图表延迟 300ms
   启动 rAF，避开底栏弹簧动画的主线程占用（Canvas 2D 绘制在主线程）。
 
@@ -344,8 +345,9 @@ npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-
 
 ## 常见开发任务
 
-- **加一个新页面**：`types.ViewType` 加 id → `BottomBar.TABS` 加项（lucide 图标）→
-  `App.tsx` 分支渲染 → 新建 `components/pages/XxxPage.tsx`；
+- **加一个新页面**：`types.ViewType` 加 id → `components/settings/navItems.ts` 的 `NAV`
+  与 `navLabelKey` 加项 → `BottomBar.TAB_ICONS` 加 lucide 图标 → `App.tsx` 分支渲染 →
+  新建 `components/pages/XxxPage.tsx`；
 - **加一种图表**：`chartPainters.ts` 加画笔函数 + `paintChart` 分支 → `SeriesChart`
   的 `ChartKind` 联合类型加值 → 页面直接用 `<SeriesChart kind="xxx" />`；
 - **调主题预设**：`lib/theme/monet.ts` 的 `THEME_PRESETS` 与各预设 spec

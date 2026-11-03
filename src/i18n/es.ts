@@ -1330,4 +1330,11 @@ export const es = {
   'lanSync.done': 'Sincronización completada',
   'lanSync.error': 'Conexión interrumpida',
   'lanSync.reset': 'Cerrar y restablecer',
+  'nav.assistant': 'AI',
+  'test.startRecording': 'Iniciar grabación',
+  'test.stopRecording': 'Detener',
+  'settings.navStyle': 'Navegación',
+  'settings.navStyleDesc': 'Elige el estilo de la barra inferior; la barra clásica usa el botón de grabación en abanico en la página de prueba y la píldora flotante mantiene la bolita de grabación.',
+  'settings.navStyleFloating': 'Píldora flotante',
+  'settings.navStyleClassic': 'Barra clásica',
 } as const;

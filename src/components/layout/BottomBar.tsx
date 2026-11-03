@@ -20,6 +20,7 @@ import {
   SquareTerminal,
   ChartNoAxesColumn,
   History,
+  Sparkles,
   Settings2,
   Play,
   Square,
@@ -42,11 +43,19 @@ const TAB_ICONS: Record<ViewType, ElementType> = {
   test: SquareTerminal,
   analysis: ChartNoAxesColumn,
   history: History,
+  assistant: Sparkles,
   settings: Settings2,
 };
 
-/** 页签文案走 i18n；label 取词典，组件内以 t(nav.xxx) 读取 */
-const TABS = NAV.map((id) => ({ id, labelKey: navLabelKey[id], icon: TAB_ICONS[id] }));
+/**
+ * 悬浮胶囊保留原样：4 个页签 + 录音球，不显示 AI 页签。
+ * AI 只出现在经典底栏（5 个纯导航页签）。
+ */
+const TABS = NAV.filter((id) => id !== 'assistant').map((id) => ({
+  id,
+  labelKey: navLabelKey[id],
+  icon: TAB_ICONS[id],
+}));
 
 /** 模式选项（扇形排列，自左向右） */
 const MODE_OPTIONS: { id: TestMode; labelKey: 'mode.reading' | 'mode.sustained' | 'mode.glide'; icon: ElementType }[] = [
@@ -462,9 +471,53 @@ const Dock = memo(function Dock({
 });
 
 /**
+ * 经典底栏：贯穿屏幕底部的纯导航（5 个页签），无录音球。
+ */
+function ClassicNav() {
+  useI18n();
+  const currentTab = useStore((s) => s.currentTab);
+  const setTab = useStore((s) => s.setTab);
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-black/[0.06] bg-card/92 pb-[max(env(safe-area-inset-bottom),0.375rem)] shadow-[0_-8px_30px_-12px_rgba(28,25,45,0.18)] backdrop-blur-xl">
+      <nav className="mx-auto grid h-16 w-full max-w-[560px] grid-cols-5 px-2">
+        {NAV.map((id) => {
+          const active = currentTab === id;
+          const Icon = TAB_ICONS[id];
+          const label = t(navLabelKey[id]);
+          return (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              aria-current={active ? 'page' : undefined}
+              className="relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-ink-2"
+            >
+              <Icon
+                size={21}
+                strokeWidth={active ? 2.4 : 2}
+                className={cn('transition-colors duration-200', active ? 'text-accent' : 'text-ink-2')}
+              />
+              <span className={cn('max-w-full truncate text-[10px] font-medium transition-colors duration-200', active ? 'text-accent' : 'text-ink-2')}>
+                {label}
+              </span>
+              {active && (
+                <motion.span
+                  layoutId="classic-nav-underline"
+                  transition={SPRING}
+                  className="absolute bottom-[5px] h-[3px] w-5 rounded-full bg-accent"
+                />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+/**
  * 底部悬浮导航栏：状态编排（分体 = 长按选择中 或 录音中）
  */
-export function BottomBar() {
+function FloatingBottomBar() {
   useI18n(); // 语言切换时重渲染底栏文案
   const currentTab = useStore((s) => s.currentTab);
   const updateSettings = useStore((s) => s.updateSettings);
@@ -608,4 +661,10 @@ export function BottomBar() {
       {fanCenter && <ModeFanSelector center={fanCenter} onClose={closeMenu} onChoose={chooseMode} />}
     </div>
   );
+}
+
+/** 底栏样式切换：悬浮胶囊保留原录音球；经典底栏是纯导航 + 测试页录音头 */
+export function BottomBar() {
+  const navStyle = useStore((s) => s.settings.navStyle);
+  return navStyle === 'classic' ? <ClassicNav /> : <FloatingBottomBar />;
 }

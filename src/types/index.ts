@@ -6,7 +6,13 @@
  * 页面类型
  * 底部导航栏的四个页面
  */
-export type ViewType = 'test' | 'analysis' | 'history' | 'settings';
+export type ViewType = 'test' | 'analysis' | 'history' | 'assistant' | 'settings';
+
+/**
+ * 底部导航样式
+ * floating 悬浮胶囊（默认）；classic 贯穿底部的经典导航栏
+ */
+export type NavStyle = 'floating' | 'classic';
 
 /**
  * 界面语言
@@ -330,6 +336,8 @@ export interface AppSettings {
   bgImageDrift: boolean;
   /** 是否显示图表网格辅助线 */
   showGrid: boolean;
+  /** 底部导航样式：悬浮胶囊 / 贯穿底部的经典导航栏 */
+  navStyle: NavStyle;
   /** 单次录音最长时长（秒），0 = 不限制 */
   maxDurationSec: number;
   /** 录音结束后是否自动进入分析页 */

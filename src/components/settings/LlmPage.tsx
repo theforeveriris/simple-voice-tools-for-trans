@@ -1,6 +1,6 @@
 /**
  * 大模型（设置子页面，v0.9.0 从实验性功能迁出）
- * - AI 助手：独立全屏聊天页（components/ai/AssistantPage）入口
+ * - AI 助手：切到顶部 AI 页（底部导航的独立页签）
  * - 模型配置：当前使用中档案概览 + 连接测试
  * - 配置档案：档案即数据源（llm:profiles），点按切换 / 编辑 / 复制 / 删除
  * - 提示词调节：进入 PromptPage（补充规则 + 覆写，仍为独立二级页）
@@ -19,7 +19,7 @@ import { SettingsSection, SettingRow } from './rows';
 import { LlmProfilesSection } from './LlmProfilesSection';
 import { LlmUsageSection } from './LlmUsageSection';
 import { PromptPage } from './PromptPage';
-import { AssistantPage } from '@/components/ai/AssistantPage';
+import { useStore } from '@/store/useStore';
 import { useActiveLlmConfig, useLlmProfiles } from '@/lib/llmProfiles';
 import { testLlmConnection } from '@/lib/llm';
 
@@ -34,7 +34,7 @@ export function LlmPage({
   onBack: () => void;
 }) {
   useI18n();
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  const setTab = useStore((s) => s.setTab);
   const [promptOpen, setPromptOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const activeProfileId = settings.llmActiveProfileId;
@@ -85,7 +85,7 @@ export function LlmPage({
 
         {/* AI 助手入口 */}
         <button
-          onClick={() => setAssistantOpen(true)}
+          onClick={() => setTab('assistant')}
           className="flex items-center gap-3 card-surface p-4 text-left transition-transform active:scale-[0.99]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
@@ -155,7 +155,7 @@ export function LlmPage({
         <LlmUsageSection settings={settings} update={update} />
       </motion.div>
 
-      {assistantOpen && <AssistantPage onClose={() => setAssistantOpen(false)} />}
+
     </div>
   );
 }
