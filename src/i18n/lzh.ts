@@ -686,7 +686,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.themeLight': '淺色',
   'settings.themeDark': '深色',
   'settings.language': '言語',
-  'settings.languageDesc': '界面之語。「機器之譯」「雪豹」者，皆 AI 所譯；他語可於下方以 AI 譯生之',
+  'settings.languageDesc': '界面之語。「機器之譯」者，皆 AI 所譯；他語可於下方以 AI 譯生之',
   'settings.languageMachine': '（機器所譯）',
   'settings.hue': '主題之色',
   'settings.showGrid': '圖表網格輔線',

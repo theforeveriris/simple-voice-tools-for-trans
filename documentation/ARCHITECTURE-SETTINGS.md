@@ -85,7 +85,7 @@ props 约定：`{ settings, update, onBack }`——`update` 即 `updateSettings`
    提前 return 分支、主视图 `entry(t('settings.xxx'), Icon, ...)`、
    `registerBackClose` 压返回栈；
 3. `SEARCH_INDEX` 登记子页的设置项（否则搜索不到）；
-4. `i18n` 八语言加子页标题键（搜索索引用的 sectionKey / labelKey 也要有词条）；
+4. `i18n` 七语言加子页标题键（搜索索引用的 sectionKey / labelKey 也要有词条）；
 5. 若子页含持久化设置项：`types.AppSettings` + `DEFAULT_SETTINGS` +
    `lib/export/settings.ts` 白名单（可选字符串进 `OPTIONAL_STRING_KEYS`，
    枚举进 `STRING_ENUMS`，数值范围进 `NUMBER_RANGE`）。

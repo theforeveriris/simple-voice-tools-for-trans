@@ -155,7 +155,7 @@ src/
 │   ├── hook.ts                   # useI18n：订阅 settings.language 与词典版本
 │   ├── aiLocale.ts               # AI 翻译管线（生成/增量补全/术语表/词典分享）
 │   ├── aiTranslateTask.ts        # AI 翻译后台任务（模块级单例状态机，切页不中断）
-│   ├── zh-CN.ts 等 ×8            # 八语言词典（zh-CN 为基准，漂移测试强制一致）
+│   ├── zh-CN.ts 等 ×7            # 七语言词典（zh-CN 为基准，漂移测试强制一致）
 │   ├── aiLocale.test.ts          # 术语表与分享格式单测
 │   └── i18n.test.ts              # 词典漂移防护 + 覆盖层行为
 ├── lib/

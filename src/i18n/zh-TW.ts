@@ -685,7 +685,7 @@ export const zhTW = {
   'settings.themeLight': '淺色',
   'settings.themeDark': '深色',
   'settings.language': '語言',
-  'settings.languageDesc': '介面顯示語言；標記「機器翻譯」「雪豹」的條目由 AI 翻譯。更多語言可在下方用 AI 翻譯產生',
+  'settings.languageDesc': '介面顯示語言；標記「機器翻譯」的條目由 AI 翻譯。更多語言可在下方用 AI 翻譯產生',
   'settings.languageMachine': '（機器翻譯）',
   'settings.hue': '主題色',
   'settings.showGrid': '圖表網格輔助線',

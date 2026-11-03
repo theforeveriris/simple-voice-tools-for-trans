@@ -686,7 +686,7 @@ export const es = {
   'settings.themeLight': 'Claro',
   'settings.themeDark': 'Oscuro',
   'settings.language': 'Idioma',
-  'settings.languageDesc': 'Idioma de la interfaz; los elementos marcados «traducción automática» o «leopardo de las nieves» están traducidos por AI. Puedes generar más idiomas con la traducción AI de abajo',
+  'settings.languageDesc': 'Idioma de la interfaz; los elementos marcados «traducción automática» están traducidos por AI. Puedes generar más idiomas con la traducción AI de abajo',
   'settings.languageMachine': '(traducción automática)',
   'settings.hue': 'Color de acento',
   'settings.showGrid': 'Líneas de cuadrícula del gráfico',

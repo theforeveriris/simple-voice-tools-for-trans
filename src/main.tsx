@@ -10,7 +10,7 @@ import { AppShortcuts, isNative, isTauri, syncNativeSystemBars } from '@/lib/pla
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { runStartupSideEffects } from '@/store/startup'
-import { setLocale, DEFAULT_LOCALE } from '@/i18n'
+import { setLocale, DEFAULT_LOCALE, LOCALES } from '@/i18n'
 import { hydrateAiLocale } from '@/i18n/aiLocale'
 import { getWallpaperHues } from '@/lib/theme/dynamic'
 import type { Locale, ThemeMode, ViewType } from '@/types'
@@ -19,7 +19,7 @@ import type { Locale, ThemeMode, ViewType } from '@/types'
 const saved = (() => {
   try {
     const raw = localStorage.getItem('svt:settings:v1');
-    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; accentHue?: number; darkHue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string; prideFlag?: string; aiLanguage?: string } } }) : null;
+    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; accentHue?: number; darkHue?: number; theme?: ThemeMode; language?: string; huePreset?: string; prideFlag?: string; aiLanguage?: string } } }) : null;
     return parsed?.state?.settings ?? {};
   } catch {
     return {};
@@ -71,7 +71,6 @@ function detectBrowserLocale(): Locale {
     if (tag.startsWith('ja')) return 'ja';
     if (tag.startsWith('es')) return 'es';
     if (tag.startsWith('fr')) return 'fr';
-    if (tag.startsWith('bo')) return 'bo';
   }
   if (langs.some((l) => l.toLowerCase().startsWith('zh'))) return 'zh-CN';
   return DEFAULT_LOCALE;
@@ -87,11 +86,12 @@ if (!localStorage.getItem('svt:settings:v1')) {
 } else if (saved.language === 'ai' && saved.aiLanguage && hydrateAiLocale(saved.aiLanguage)) {
   setLocale('ai')
 } else {
-  // 语言为 ai 但词典缺失 / 损坏（清空存储、配额回收、从别的设备导入设置）：
-  // 直接 setLocale('ai') 会让界面整体回退简体中文，而语言选择器里又没有对应的
-  // ai 项，用户看起来就是「语言设置失效」。回退默认语言并写回设置保持一致。
-  const fallback = saved.language === 'ai' ? DEFAULT_LOCALE : saved.language ?? DEFAULT_LOCALE;
-  if (saved.language === 'ai') useStore.getState().updateSettings({ language: DEFAULT_LOCALE });
+  // 语言为 ai 但词典缺失 / 损坏（清空存储、配额回收、从别的设备导入设置），
+  // 或保存的是已下线的语言（如旧版藏语 bo）：回退默认语言并写回设置，
+  // 避免界面回退到基准文案但选择器里找不到对应项。
+  const known = LOCALES.some((l) => l.id === saved.language);
+  const fallback = known ? (saved.language as Locale) : DEFAULT_LOCALE;
+  if (saved.language && !known) useStore.getState().updateSettings({ language: fallback });
   setLocale(fallback);
 }
 

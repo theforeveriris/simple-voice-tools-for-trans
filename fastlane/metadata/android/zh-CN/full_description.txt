@@ -37,6 +37,6 @@
 <p><b>多端</b></p>
 <ul>
 <li>可安装为 PWA；提供安卓 APK 与 Windows 安装包</li>
-<li>键盘快捷键；八种语言（English、简体中文、繁體中文、日本語、Español、Français、བོད་ཡིག、文言）</li>
+<li>键盘快捷键；七种语言（English、简体中文、繁體中文、日本語、Español、Français、文言）</li>
 </ul>
 <p>许可证：MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

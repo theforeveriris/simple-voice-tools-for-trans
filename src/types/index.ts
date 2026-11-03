@@ -10,11 +10,11 @@ export type ViewType = 'test' | 'analysis' | 'history' | 'settings';
 
 /**
  * 界面语言
- * zh-CN 为原始文案；zh-TW/en/ja/es/fr/bo/lzh 为内置翻译
- * （en/ja/es/fr 为机器翻译，bo 为藏语，标「雪豹」）；
+ * zh-CN 为原始文案；zh-TW/en/ja/es/fr/lzh 为内置翻译
+ * （en/ja/es/fr 为机器翻译）；
  * ai 为 AI 翻译语言（由大模型生成的词典，见 i18n/aiLocale.ts，默认语言为 en）
  */
-export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'es' | 'fr' | 'bo' | 'ai';
+export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'es' | 'fr' | 'ai';
 
 /**
  * 主题预设配色

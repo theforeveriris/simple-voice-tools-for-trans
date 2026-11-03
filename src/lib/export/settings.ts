@@ -59,7 +59,7 @@ const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   theme: ['light', 'dark', 'system'],
   huePreset: ['monet', 'pride', 'image'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
-  language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'es', 'fr', 'bo', 'ai'],
+  language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'es', 'fr', 'ai'],
   specColormap: ['magma', 'gray', 'accent'],
   startTab: ['test', 'analysis', 'history', 'settings'],
   bgImageFocus: ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'],

@@ -686,7 +686,7 @@ export const ja = {
   'settings.themeLight': 'ライト',
   'settings.themeDark': 'ダーク',
   'settings.language': '言語',
-  'settings.languageDesc': 'UI の表示言語。「機械翻訳」「雪豹」の印がある項目は AI 翻訳です。その他の言語は下の AI 翻訳で生成できます',
+  'settings.languageDesc': 'UI の表示言語。「機械翻訳」の印がある項目は AI 翻訳です。その他の言語は下の AI 翻訳で生成できます',
   'settings.languageMachine': '（機械翻訳）',
   'settings.hue': 'アクセントカラー',
   'settings.showGrid': 'グラフのグリッド補助線',

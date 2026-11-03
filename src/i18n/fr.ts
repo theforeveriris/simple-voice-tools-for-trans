@@ -686,7 +686,7 @@ export const fr = {
   'settings.themeLight': 'Clair',
   'settings.themeDark': 'Sombre',
   'settings.language': 'Langue',
-  'settings.languageDesc': 'Langue de l\'interface ; les éléments marqués « traduction automatique » ou « léopard des neiges » sont traduits par AI. D\'autres langues peuvent être générées plus bas avec la traduction AI',
+  'settings.languageDesc': 'Langue de l\'interface ; les éléments marqués « traduction automatique » sont traduits par AI. D\'autres langues peuvent être générées plus bas avec la traduction AI',
   'settings.languageMachine': '(traduction automatique)',
   'settings.hue': 'Couleur d\'accent',
   'settings.showGrid': 'Grille des graphiques',

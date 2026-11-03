@@ -37,6 +37,6 @@
 <p><b>マルチプラットフォーム</b></p>
 <ul>
 <li>PWA としてインストール可能。Android APK と Windows インストーラーを提供</li>
-<li>キーボードショートカット、8 言語対応（English、简体中文、繁體中文、日本語、Español、Français、བོད་ཡིག、文言）</li>
+<li>キーボードショートカット、7 言語対応（English、简体中文、繁體中文、日本語、Español、Français、文言）</li>
 </ul>
 <p>ライセンス：MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

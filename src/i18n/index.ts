@@ -12,7 +12,6 @@ import { ja } from './ja';
 import { lzh } from './lzh';
 import { es } from './es';
 import { fr } from './fr';
-import { bo } from './bo';
 
 export type DictKey = keyof typeof zhCN;
 type Dict = Partial<Record<DictKey, string>>;
@@ -25,13 +24,12 @@ const DICTS: Record<Locale, Dict> = {
   lzh,
   es,
   fr,
-  bo,
   ai: {},
 };
 
 /**
  * 语言选择项：机器翻译的条目标注（AI 语言项由语言子页面追加）。
- * machine 显示「机器翻译」，note 显示自定义备注（藏语「雪豹」）。
+ * machine 显示「机器翻译」，note 显示可选的自定义备注。
  */
 export const LOCALES: { id: Locale; label: string; machine?: boolean; note?: string }[] = [
   { id: 'zh-CN', label: '简体中文' },
@@ -40,7 +38,6 @@ export const LOCALES: { id: Locale; label: string; machine?: boolean; note?: str
   { id: 'ja', label: '日本語', machine: true },
   { id: 'es', label: 'Español', machine: true },
   { id: 'fr', label: 'Français', machine: true },
-  { id: 'bo', label: 'བོད་ཡིག', note: '雪豹' },
   { id: 'lzh', label: '文言（華夏）' },
 ];
 

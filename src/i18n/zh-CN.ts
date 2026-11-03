@@ -687,7 +687,7 @@ export const zhCN = {
   'settings.themeLight': '浅色',
   'settings.themeDark': '深色',
   'settings.language': '语言',
-  'settings.languageDesc': '界面显示语言；标记「机器翻译」「雪豹」的条目由 AI 翻译。更多语言可在下方用 AI 翻译生成',
+  'settings.languageDesc': '界面显示语言；标记「机器翻译」的条目由 AI 翻译。更多语言可在下方用 AI 翻译生成',
   'settings.languageMachine': '（机器翻译）',
   'settings.hue': '主题色',
   'settings.showGrid': '图表网格辅助线',

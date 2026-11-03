@@ -37,6 +37,6 @@
 <p><b>Everywhere</b></p>
 <ul>
 <li>Installable as a PWA; shipped as an Android APK and a Windows installer</li>
-<li>Keyboard shortcuts; 8 languages (English, 简体中文, 繁體中文, 日本語, Español, Français, Tibetan, Literary Chinese)</li>
+<li>Keyboard shortcuts; 7 languages (English, 简体中文, 繁體中文, 日本語, Español, Français, Literary Chinese)</li>
 </ul>
 <p>License: MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

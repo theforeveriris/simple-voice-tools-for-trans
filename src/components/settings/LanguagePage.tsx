@@ -156,7 +156,7 @@ export function LanguagePage({
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
                 {LOCALES.map((l) => {
                   const remark = localeRemark(l, t('settings.languageMachine'));
-                  // 机器翻译文案自带括号；自定义备注（雪豹）在此补齐同款括号
+                  // 机器翻译文案自带括号；自定义备注在此补齐同款括号
                   const text = remark && l.note ? `（${remark}）` : remark;
                   return (
                     <SelectItem key={l.id} value={l.id}>

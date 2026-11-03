@@ -37,6 +37,6 @@
 <p><b>多端</b></p>
 <ul>
 <li>可安裝為 PWA；提供 Android APK 與 Windows 安裝包</li>
-<li>鍵盤快捷鍵；八種語言（English、简体中文、繁體中文、日本語、Español、Français、བོད་ཡིག、文言）</li>
+<li>鍵盤快捷鍵；七種語言（English、简体中文、繁體中文、日本語、Español、Français、文言）</li>
 </ul>
 <p>授權條款：MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>
