@@ -83,6 +83,32 @@ async function historySection(budgetTokens: number): Promise<string> {
   return `\n\n## 用户历史测试记录（共 ${lines.length} 条${omitted > 0 ? `，以下为最近 ${kept.length} 条` : ''}，时间从旧到新）\n${kept.join('\n')}`;
 }
 
+/**
+ * 助手视觉规范：record:// 原生图表与 genui 组件的选择、语法与设计约束。
+ * 这段会进入每次请求的系统提示词，保持结构化、可执行，避免模型输出
+ * 数据编造、与主题冲突的配色或需要横向滚动的固定宽度组件。
+ */
+const ASSISTANT_VISUAL_GUIDE = [
+  '【引用记录图表】',
+  '- 语法严格为 ![一句说明](record://<记录id>/<kind>)；kind 只能是 pitch（音高）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）。',
+  '- 记录 id 必须来自下方历史清单的「id」字段；没有可用记录时如实说明并请用户提供 id，绝不编造。',
+  '- 图表是证据，不是装饰：放在相关结论之后；每条回复最多 2 张，同一记录最多 2 种图；不要每段都配图，也不要用文字重复图里已能看出的所有数字。',
+  '- 说明文字要写「看什么」（如「句中段稳定在 150–170 Hz」），不要只写「图表」「F0 图」。',
+  '- 不要用 genui 重画已有原生图表；不要把 record:// 放进 genui 或代码块。',
+  '【genui 交互组件】',
+  '- 只在原生图表 + Markdown 不够时使用：滑块、开关、对比切换、计算器、可点选面板；普通解释不要用 genui。',
+  '- 用 ```genui 围栏包一个 HTML 片段；不要 doctype/html/head/body；不要外链资源、网络请求或表单提交；每条回复最多 2 个，单个 ≤ 48KB；可写内联 <style>/<script>（沙箱运行，不能访问应用数据）。',
+  '- 外层卡片、背景、圆角、阴影由站点提供：根节点直接写内容，不要再包卡片/背景/阴影。',
+  '- 颜色只用 CSS 变量：文字 --c-ink / --c-ink-2，主色 --c-accent，浅底 --c-accent-soft，卡片 --c-card，次级底 --c-surface-hi，分隔线 --c-line；透明度用 rgb(var(--c-xxx-rgb) / 0.1)。不要写死黑白/亮色，不要渐变或多套强调色，不要外链图片/字体/图标。',
+  '- 版式：宽度 100%，不要固定宽度或横向滚动；内边距 12–14px，元素间距 8–12px，圆角 12–16px；正文 13px/1.6，标题 14px/600，辅助 11px，数字 tabular-nums；标题最多两级。',
+  '- 优先用站点类：.svt-title / .svt-muted / .svt-grid / .svt-metric / .svt-badge / .svt-row / .svt-row-between / .svt-bar；需要内部分区时才用 .svt-card。',
+  '- 典型结构：.svt-row-between（标题 + 徽标）→ .svt-grid > .svt-metric（2–4 个指标）→ 控件 → .svt-muted（当前值/说明）；不要堆满整屏，信息密度留白。',
+  '- 交互：按钮/输入继承主题色；触控区 ≥ 40px；状态不能只靠颜色，配文字或图标；动画 120–180ms，遵循 prefers-reduced-motion，不做无限动画。',
+  '- 可访问性：语义标签、aria-label、可见 focus；布局适配 320–640px，高度自适应，通常 120–320px，不要 100vh。',
+  '- 数据必须来自历史记录，或明确标注「示例」；不要编造用户数据。',
+  '【选择】单条记录的音高/共振峰/能量/元音优先用 record://；多记录对比、趋势、可调参数用 genui；纯文字能讲清就不用图表。',
+].join('\n');
+
 /** 助手系统提示词：定位与边界 + 历史记录使用规则 + 内置文档摘录，按界面语言回答 */
 function systemPrompt(history: string, docs = ''): string {
   return [
@@ -91,8 +117,7 @@ function systemPrompt(history: string, docs = ''): string {
     '回答简洁、务实、有依据；涉及嗓音训练时给出可操作的练习建议；',
     '不做医学诊断，遇到疑似嗓音疾病（持续嘶哑、疼痛等）时建议就医或咨询言语治疗师。',
     '回复支持 Markdown：可用 **粗体**、*斜体*、`行内代码`、有序/无序列表、表格（| 列 | 列 |）、> 引用与 ## 小标题，让长回答结构清晰；除 genui 组件外不要输出代码块。',
-    '你可以嵌入用户某次记录的图表，语法：![图表说明](record://<记录id>/<kind>)，kind 取 pitch（音高曲线）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）之一；记录 id 见下方历史清单的「id」字段。仅在有助于说明时插图（如同一条记录不超过 2 张、答趋势时对比不同记录），不要每句都配图；不存在的 id 不要编造。',
-    '如果站点原生图表不够（需要滑块、切换、对比面板等交互），用 ```genui 围栏输出一个 HTML 片段（每条回复最多 2 个）。规则：只写片段，不要 doctype/html/head/body；不要外链资源、网络请求或表单；外层卡片由站点提供，根节点不要再包一层卡片；内部使用 CSS 变量 --c-ink / --c-ink-2 / --c-accent / --c-card / --c-surface-hi / --c-line，以及类 .svt-title / .svt-muted / .svt-grid / .svt-metric / .svt-badge / .svt-row / .svt-row-between / .svt-bar；可写内联 <style> 和 <script>（沙箱运行，不能访问应用数据）；适配 320–640px 宽度，高度自适应，不要写死 100vh。',
+    ASSISTANT_VISUAL_GUIDE,
     history
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
@@ -536,7 +561,7 @@ export function AssistantPage() {
 
       {/* 输入栏 */}
       <div className="px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
-        <div className="mx-auto flex max-w-2xl items-end gap-2">
+        <div className="mx-auto flex max-w-2xl items-center gap-2">
           <div className="min-w-0 flex-1 rounded-2xl bg-card px-3.5 py-2.5 shadow-[0_2px_10px_rgba(28,25,45,0.06)]">
             <textarea
               ref={taRef}

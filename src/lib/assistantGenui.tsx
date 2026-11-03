@@ -57,7 +57,6 @@ const FALLBACK_VARS: Record<string, string> = {
 };
 
 const BASE_CSS = `
-:root { color-scheme: light; }
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0; background: transparent; color: var(--c-ink);
@@ -75,8 +74,12 @@ button {
   background: var(--c-card); border-radius: 10px; padding: 6px 10px; cursor: pointer;
 }
 button:hover { border-color: var(--c-accent); }
-input, select { font: inherit; color: var(--c-ink); }
-input[type="range"] { accent-color: var(--c-accent); }
+input, select, textarea {
+  font: inherit; color: var(--c-ink); background: var(--c-card);
+  border: 1px solid var(--c-line); border-radius: 8px; padding: 6px 8px;
+}
+input[type="range"] { border: 0; padding: 0; background: transparent; accent-color: var(--c-accent); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--c-accent); }
 .svt-card { background: var(--c-surface-hi); border-radius: 14px; padding: 12px; }
 .svt-title { font-size: 13px; font-weight: 600; }
 .svt-muted { color: var(--c-ink-2); font-size: 11px; }
@@ -122,6 +125,9 @@ function themeVars(): string {
 }
 
 function buildGenUiDocument(html: string): string {
+  // 让 iframe 内的原生控件（range / checkbox / select / 滚动条）跟随应用深浅模式
+  const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const colorScheme = dark ? 'dark' : 'light';
   const csp = [
     "default-src 'none'",
     "style-src 'unsafe-inline'",
@@ -137,7 +143,7 @@ function buildGenUiDocument(html: string): string {
   ].join('; ');
   return `<!doctype html><html><head><meta charset="utf-8">`
     + `<meta http-equiv="Content-Security-Policy" content="${csp}">`
-    + `<style>:root{${themeVars()}}${BASE_CSS}</style></head>`
+    + `<style>:root{color-scheme:${colorScheme};${themeVars()}}${BASE_CSS}</style></head>`
     + `<body>${html}<script>${HEIGHT_SCRIPT}</script></body></html>`;
 }
 
@@ -180,7 +186,7 @@ export function GenUiBlock({ html }: { html: string }) {
 
   return (
     <div
-      className="my-3 overflow-hidden rounded-2xl bg-card p-2 shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
+      className="my-3 overflow-hidden rounded-2xl bg-card p-3 shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
       onClick={(e) => e.stopPropagation()}
     >
       <iframe

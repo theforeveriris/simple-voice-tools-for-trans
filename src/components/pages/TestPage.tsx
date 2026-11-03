@@ -299,7 +299,7 @@ function FanRecordButton() {
       aria-label={isRecording ? t('test.stopRecording') : t('test.startRecording')}
       title={isRecording ? t('test.stopRecording') : t('test.startRecording')}
       className={cn(
-        'absolute -bottom-2 -right-2 z-10 grid size-[3.375rem] place-items-end justify-items-end overflow-hidden rounded-br-[20px] text-on-accent shadow-[0_6px_18px_-6px_rgb(var(--c-accent-rgb)/0.5)] transition-transform active:scale-95',
+        'absolute -bottom-1 -right-1 z-10 grid size-[3.375rem] place-items-end justify-items-end overflow-hidden rounded-br-[20px] text-on-accent shadow-[0_6px_18px_-6px_rgb(var(--c-accent-rgb)/0.5)] transition-transform active:scale-95',
         isRecording ? 'bg-ink text-surface' : 'bg-accent',
       )}
       style={{ borderTopLeftRadius: '100%' }}
