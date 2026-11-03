@@ -65,9 +65,9 @@ const FAN_SPREAD_DEG = 52;
 const FAN_SPREAD_COMPACT_DEG = 38;
 /** 逆时针旋转上限（度），防止左侧选项低到与圆球同排 */
 const FAN_MAX_ROTATE_DEG = 55;
-/** 圆球直径 = 底栏高度（实测 nav 53px：p-1.5 × 2 + 页签按钮 41px），两者保持等高 */
-const BALL_SIZE = 53;
-/** 圆球落座后底栏中缝的宽度（圆球 53 + 两侧呼吸 8） */
+/** 圆球直径：比页签按钮（41px）略高一点，但低于底栏整体高度（53px），视觉上只冒一点头 */
+const BALL_SIZE = 46;
+/** 圆球落座后底栏中缝的宽度（圆球直径 + 两侧呼吸 8） */
 const BALL_SLOT_W = BALL_SIZE + 8;
 
 /**
