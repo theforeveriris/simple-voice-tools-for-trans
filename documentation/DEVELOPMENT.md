@@ -79,7 +79,7 @@ npx tsc -b --force
 | 动效 | Framer Motion（layout / springs） |
 | 音频 | Web Audio API：AnalyserNode + 自研 DSP（纯 TS，无音频依赖） |
 | 可视化 | 原生 Canvas 2D（自绘，不依赖图表库） |
-| 测试 | Vitest 3（DSP 黄金样本回归 + 导出/备份/LLM/i18n 完整性，25 个测试文件） |
+| 测试 | Vitest 3（DSP 黄金样本回归 + 导出/备份/LLM/i18n 完整性，51 个测试文件） |
 | 原生壳 | Capacitor 7（Android APK）+ Tauri 2（Windows NSIS 安装包） |
 | 图标/提示 | lucide-react / sonner；uqr（分享图二维码） |
 
@@ -103,6 +103,10 @@ src/
 │   │   └── specPainter.ts        # 语谱绘制（offscreen 位图 + 伪彩色）
 │   ├── history/
 │   │   └── WeeklyReportCard.tsx  # AI 周报卡（历史趋势页底部）
+│   ├── flowers/
+│   │   ├── GardenView.tsx        # 声音花花园（历史页第三视图，按月分节）
+│   │   ├── FlowerSvg.tsx         # 单朵声音花的 SVG 渲染
+│   │   └── TimeMachine.tsx       # 花园时间机器（A→B 对比动画）
 │   ├── layout/
 │   │   ├── BottomBar.tsx         # 悬浮底栏 + 录音圆球（纯 transform 运动模型 + 全局快捷键）
 │   │   ├── SplashScreen.tsx      # 原生壳启动页（isNative 时渲染，设置可关）
@@ -111,7 +115,7 @@ src/
 │   │   └── ShortcutsHelpSheet.tsx# 快捷键帮助浮层（? 呼出）
 │   ├── pages/
 │   │   ├── TestPage.tsx          # 测试页（实时图表 + 录音圆球）
-│   │   ├── AnalysisPage.tsx      # 分析页（概览/统计/图表/回放/音高算法对比/重算）
+│   │   ├── AnalysisPage.tsx      # 分析页（概览/统计/图表/回放/音高算法对比/重算/表达参考）
 │   │   ├── HistoryPage.tsx       # 历史页（列表/趋势/日记热力图/多选/对比）
 │   │   ├── SettingsPage.tsx      # 设置页（外壳 + 搜索索引 + 子页面分发）
 │   │   ├── CompareSheet.tsx      # 两记录对比浮层（Δ 指标 + 曲线叠加）
@@ -122,22 +126,23 @@ src/
 │   │   └── VrpLiveSheet.tsx
 │   ├── analysis/                 # 分析页卡片（HeroCard/StatsTables/SustainedCard/AdviceCard/
 │   │                             #   PlaybackCard/BaselineStrip/ReanalyzeDialog/PitchAlgorithmCard/
-│   │                             #   LlmResultView/NoteDialog/…）
+│   │                             #   VoiceExpressionCard/SibilanceCard/LlmResultView/NoteDialog/…）
 │   ├── share/
 │   │   └── ShareCardSheet.tsx    # 分享卡样式选择浮层（跟随主题/深色/浅色/极光 + 实时预览）
 │   ├── settings/                 # 设置子页面与区块（见 ARCHITECTURE-SETTINGS.md）
 │   │   ├── AppearancePage.tsx    # 外观（深浅/预设/骄傲旗参数/自定义背景图）
 │   │   ├── LanguagePage.tsx      # 语言（内置 + AI 翻译 + 编辑词条 + 词典分享）
 │   │   ├── AppPage.tsx           # 应用（安装/分享/版本/检查更新/运行状态/诊断）
-│   │   ├── ConfigPage.tsx        # 配置（录音/训练/提醒/图表与回放/通用）
+│   │   ├── RecordingPage.tsx     # 录音（采集行为/音质/设备）
+│   │   ├── TrainingPage.tsx      # 训练（画像/靶标/建议/音区边界/实时视图/提醒）
 │   │   ├── LlmPage.tsx           # 大模型（AI 助手入口/模型配置/档案/提示词/用量）
-│   │   ├── DataPage.tsx          # 数据管理（数据去向面板/存储用量/备份与恢复/WebDAV/导入导出）
+│   │   ├── DataPage.tsx          # 数据管理（数据去向/存储用量/备份恢复/WebDAV/局域网同步/导入导出）
 │   │   ├── AdvancedPage.tsx      # 高级（功能开关/算法参数/脚本中心）
 │   │   ├── PromptPage.tsx        # 提示词调节（LlmPage 的二级页）
 │   │   ├── PrivacyPanel.tsx      # 数据去向面板（含 AI 请求日志）
 │   │   ├── BackupEncryptionSection.tsx / BackupPassphraseDialog.tsx  # 云备份口令加密
 │   │   ├── GithubBackupSection.tsx / ConnectGithubDialog.tsx         # GitHub 云备份
-│   │   ├── GuideSheet.tsx / AboutTab.tsx  # 应用内使用说明（guide.md）与关于页
+│   │   ├── DocSheet.tsx / AboutTab.tsx    # 应用内文档浮层（guide.md 等）与关于页
 │   │   ├── EditStringsSheet.tsx  # 编辑词条浮层（用户自定义译文）
 │   │   └── TrainingSection.tsx / RecordingSection.tsx / ReminderSection.tsx / StorageUsage.tsx 等
 │   └── ui/                       # shadcn/radix 基础组件（按需使用）
@@ -164,6 +169,7 @@ src/
 │   │                             # LLM 档案 / 助手对话 / 请求日志 / 结果缓存 / 用量统计
 │   ├── seriesTable.ts            # 图表数据表取数与 TSV 导出
 │   ├── advice.ts                 # 训练建议（本地规则引擎，纯函数）
+│   ├── voiceExpression.ts        # VFP 风格声音性别表达参考分（纯函数）
 │   ├── trendMetric.ts            # 趋势图纵轴指标（f0/mpt/cpps 取值规则）
 │   ├── file.ts                   # 下载触发、音频扩展名→MIME
 │   ├── reminder.ts               # 每日练习提醒（本地通知）
@@ -172,6 +178,8 @@ src/
 │   │   ├── pitch.ts / pitchAlt.ts# YIN / pYIN / MPM（模块级复用缓冲，零稳态分配）
 │   │   ├── formants.ts           # LPC 共振峰（同为复用缓冲）
 │   │   ├── voiceQuality.ts / cpp.ts # J/S/HNR / CPPS
+│   │   ├── spectralVoice.ts      # H1–H2 / H2–H4 / H1–A3 / 气声度 / 鼻化
+│   │   ├── sibilance.ts          # 咝音频谱重心（/s/ 等摩擦音帧自动挑选）
 │   │   ├── algoParams.ts         # 实验性算法参数单例（实时/离线/Worker 同步）
 │   │   ├── reanalyze.ts          # 历史记录用当前算法参数重算（新旧对比后覆盖）
 │   │   ├── analysisPipeline.ts / analysisWorker.ts / analysisClient.ts
@@ -182,6 +190,8 @@ src/
 │   │   ├── golden.test.ts        # 黄金样本回归测试（源-滤波合成，精确真值）
 │   │   └── demo.ts / spectrogram.ts / testHelpers.ts + 其余 *.test.ts
 │   ├── backup/                   # github（设备流）/ webdav / local（目录句柄）/ crypto（AES-GCM）
+│   ├── sync/                     # 局域网点对点同步（WebRTC 信令 / 记录与音频传输）
+│   ├── lua/                      # Lua 脚本引擎（建议规则 / 分享卡 / 声音花 / 导出桥）
 │   ├── export/                   # csv / shareCard（PNG）/ backup（ZIP）/ settings / interactiveHtml / praat
 │   ├── storage/
 │   │   └── idb.ts                # IndexedDB：records / audio / kv（键清单见状态文档）
@@ -243,7 +253,7 @@ docs/                             # ⚠️ 构建产物输出目录（vite outDi
 一套画笔多种模式：`chartPainters.paintChart(kind, ctx, w, h, series, t0, t1, showGrid,
 showLabels, live, playheadT?, target?)`。
 - **live**（测试页）：SeriesChart 挂 rAF 循环，每帧从 recorder 读缓冲，窗口宽度由
-  设置 → 配置 → 图表与回放 的「实时窗口」控制（`liveWindowSec` ∈ 6/12/20，默认 12 秒），
+  设置 → 外观 → 图表与显示 的「实时窗口」控制（`liveWindowSec` ∈ 6/12/20，默认 12 秒），
   数据不足时轴固定从 0 开始，超出后滚动；
 - **static**（分析页）：绑定 `series + [t0,t1]`，数据/尺寸变化时重绘一次；
   `playheadT` 用于回放进度头，`target` 叠加训练靶标带；

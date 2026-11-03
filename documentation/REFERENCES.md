@@ -26,7 +26,7 @@
 
 | 文献 | 用于 |
 | --- | --- |
-| Peterson, G. E. & Barney, H. L. (1952). *Control methods used in a study of the vowels*. J. Acoust. Soc. Am. 24(2), 175–184. | i / a / u 参考元音 F1/F2 位置的原始依据（VOWEL_REFS，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第五节） |
+| Peterson, G. E. & Barney, H. L. (1952). *Control methods used in a study of the vowels*. J. Acoust. Soc. Am. 24(2), 175–184. | i / a / u 参考元音 F1/F2 位置的原始依据（VOWEL_REFS，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第二节 2.5） |
 | Hillenbrand, J. et al. (1995). *Acoustic characteristics of American English vowels*. J. Acoust. Soc. Am. 97(5), 3093–3111. | 成人男女元音共振峰分布的性别差异（「i 是共鸣试金石」等论述） |
 
 ## 声音性别感知参考（VFP 风格）
@@ -46,10 +46,18 @@
 
 | 文献 | 用于 |
 | --- | --- |
-| Baken, R. J. & Orlikoff, R. F. (2000). *Clinical Measurement of Speech and Voice* (2nd ed.). Singular. | Jitter / Shimmer 的经典定义与健康成人参考区间（<1% / >20 dB 量级，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第六节） |
+| Baken, R. J. & Orlikoff, R. F. (2000). *Clinical Measurement of Speech and Voice* (2nd ed.). Singular. | Jitter / Shimmer 的经典定义与健康成人参考区间（<1% / >20 dB 量级，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第四节） |
 | Titze, I. R. (1994). *Principles of Voice Production*. Prentice Hall. | 基频微扰与声带振动质量的生理关联 |
 | Hillenbrand, J., Cleveland, R. A. & Erickson, R. L. (1994). *Acoustic correlates of breathy vocal quality*. J. Speech Hear. Res. 37(4), 769–778. | CPP/CPPS 的经典口径（本实现逐帧 CPP 的窗长与 quefrency 搜索范围，[ALGORITHM-CPPS.md](ALGORITHM-CPPS.md)） |
 | Heman-Ackah, Y. D. et al. (2003). *Cepstral peak prominence: a more reliable approach than voice quality index*. Laryngoscope 113. | CPPS 相对 J/S 在连续语音中的稳健性论述 |
+
+## 谐波频谱与咝音
+
+| 文献 | 用于 |
+| --- | --- |
+| Hanson, H. M. (1997). *Glottal characteristics of female speakers: Acoustic correlates*. J. Acoust. Soc. Am. 101(1), 466–481. | H1–H2 / H1–A3 的谐波差口径与气声解释（[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 4.6） |
+| Chen, M. Y. (1997). *Acoustic correlates of English and French nasalized vowels*. J. Acoust. Soc. Am. 102(4), 2360–2370. | A1–P1 鼻化度口径（鼻腔峰 300–1000Hz，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 4.6） |
+| Schwartz, M. F. (1968). *Identification of speaker sex from isolated, voiceless fricatives*. J. Acoust. Soc. Am. 43(6), 1178–1179. | /s/ 等清摩擦音的频谱重心与说话人性别感知（[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第十三节） |
 
 ## 能量与发声检测（VAD）
 

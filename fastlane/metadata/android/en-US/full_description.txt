@@ -7,7 +7,8 @@
 </ul>
 <p><b>Analyze</b></p>
 <ul>
-<li>Voice quality: Jitter, Shimmer, HNR and CPPS</li>
+<li>Voice quality: Jitter, Shimmer, HNR and CPPS, plus harmonic-spectral metrics</li>
+<li>Voice gender expression reference: a VFP-style 0–100 score from median F0 + F2−F1 resonance, with masculine / neutral / feminine reference anchors</li>
 <li>Shared time axis with zoom and crosshair readouts; accessible data-table views (copy as TSV)</li>
 <li>Re-analyze saved recordings with updated algorithm parameters — no need to re-record</li>
 <li>Import external audio through the same offline pipeline</li>
@@ -15,6 +16,7 @@
 <p><b>Track</b></p>
 <ul>
 <li>Trend charts (average F0, range, MPT, CPPS) and a GitHub-style practice heatmap</li>
+<li>Voice-flower garden: each session becomes a flower, laid out by month to show long-term change</li>
 <li>Pairwise comparison with delta tables and pitch overlay</li>
 <li>Training targets with achievement rate and baseline comparison</li>
 <li>Optional daily practice reminders</li>
@@ -22,6 +24,7 @@
 <p><b>Privacy first</b></p>
 <ul>
 <li>Records, audio and analysis stay in local storage (IndexedDB)</li>
+<li>LAN sync: transfer records and audio directly between two devices on the same Wi-Fi — no server</li>
 <li>Full ZIP backup &amp; restore; optional encrypted cloud backup to your own GitHub repo / WebDAV / local folder</li>
 <li>A data-transparency panel shows exactly what goes where</li>
 </ul>
@@ -34,6 +37,6 @@
 <p><b>Everywhere</b></p>
 <ul>
 <li>Installable as a PWA; shipped as an Android APK and a Windows installer</li>
-<li>Keyboard shortcuts; 5 languages (English, 简体中文, 繁體中文, 日本語, Literary Chinese)</li>
+<li>Keyboard shortcuts; 8 languages (English, 简体中文, 繁體中文, 日本語, Español, Français, Tibetan, Literary Chinese)</li>
 </ul>
 <p>License: MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

@@ -74,6 +74,11 @@
         "shimmerPct": { "type": ["number", "null"], "description": "振幅微扰 %（需录音音频）" },
         "hnrDb": { "type": ["number", "null"], "description": "谐噪比 dB（需录音音频）" },
         "cppsDb": { "type": ["number", "null"], "description": "平滑倒谱峰突出度 dB（需录音音频）" },
+        "h1h2Db": { "type": ["number", "null"], "description": "H1−H2 谐波差 dB（需录音音频）" },
+        "h2h4Db": { "type": ["number", "null"], "description": "H2−H4 谐波差 dB（需录音音频）" },
+        "h1a3Db": { "type": ["number", "null"], "description": "H1−A3 谐波差 dB（需录音音频）" },
+        "breathiness": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "气声综合指数 0–1（需录音音频）" },
+        "nasalityDb": { "type": ["number", "null"], "description": "鼻化 A1−P1 dB（越低鼻化越重；需录音音频）" },
         "inTargetPct": { "type": ["number", "null"], "description": "训练靶标达成率 %" }
       },
       "additionalProperties": true

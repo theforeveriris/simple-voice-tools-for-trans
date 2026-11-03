@@ -2,7 +2,7 @@
 
 Simple Voice Tool for Trans 的所有记录数据（手动导出 JSON、完整备份 ZIP 内的 `records.json`、
 GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
-[records-v2.schema.json](records-v2.schema.json)（JSON Schema 2020-12）直接读写。
+[records-v2.schema.json](schema/records-v2.schema.json)（JSON Schema 2020-12）直接读写。
 
 ## 设计原则
 
@@ -30,12 +30,12 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 | `durationSec` / `sampleHz` | number | 时长（秒）/ 序列采样率（≈30 fps） |
 | `mode` | string? | `reading` / `sustained` / `glide`；v1 缺失 |
 | `series` | object | 帧级序列：`t` / `f0` / `rmsDb` / `f1` / `f2`（等长，未检出 = null） |
-| `stats` | object | 聚合统计（必备 13 个标量 + 可空指标） |
+| `stats` | object | 聚合统计（必备 16 个标量 + 可空指标） |
 | `spec` | object? | 语谱量化：64 频带 × 行 Uint8 base64 |
 | `env` | object? | 环境元数据：`noiseFloorDb` / `micLabel` / `hourOfDay`（v2 新增） |
 | `note` | string? | 用户备注 |
 
-完整定义见 [records-v2.schema.json](records-v2.schema.json)。
+完整定义见 [records-v2.schema.json](schema/records-v2.schema.json)。
 
 ## 校验工具
 
@@ -43,7 +43,7 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 外部工具也可以用任意 JSON Schema 校验器对着 Schema 文件验证：
 
 ```bash
-npx ajv-cli validate -s records-v2.schema.json -d your-export.json
+npx ajv-cli validate -s schema/records-v2.schema.json -d your-export.json
 ```
 
 ## 与 Praat 互操作

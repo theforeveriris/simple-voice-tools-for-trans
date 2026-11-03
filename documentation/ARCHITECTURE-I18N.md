@@ -150,7 +150,7 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字
 ## 应用内文档（与本子系统无关，顺带说明）
 
 设置 → 关于 的「使用说明」不走 i18n 词典：构建时把 `public/guide.md`（仅简体中文
-一个版本）打进产物，运行时 `GuideSheet` 以 `fetch(BASE_URL + 'guide.md')` 拉取、
+一个版本）打进产物，运行时 `DocSheet` 以 `fetch(BASE_URL + 'guide.md')` 拉取、
 内置极简 Markdown 渲染器展示，Service Worker 预缓存使其可离线阅读。开发者文档
 （`documentation/`）在关于页以 GitHub 源文件链接提供，不参与八语言键集校验。
 

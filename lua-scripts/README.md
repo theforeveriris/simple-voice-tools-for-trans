@@ -4,7 +4,7 @@
 无网络、无文件访问、单次运行限时 500ms，只暴露白名单标准库（`string` / `table` / `math`）。
 
 把 `.lua` 文件放进本目录的子目录（如 `advice/`）即可成为内置脚本；
-用户也可以在 **设置 → 实验性功能 → 脚本中心** 直接导入单个 `.lua` 文件，
+用户也可以在 **设置 → 高级 → 脚本中心** 直接导入单个 `.lua` 文件，
 或把这里整个目录的脚本分享给他人。
 
 ## 通用约定
@@ -40,12 +40,15 @@ end
 | `stdF0` | number | 基频标准差（Hz） |
 | `malePct` / `femalePct` / `transitionPct` | number | 音区占比（%） |
 | `avgF1` / `avgF2` | number \| nil | 平均共振峰（Hz，可能缺失） |
-| `f2f1GapHz` | number \| nil | F2−F1 同帧间距均值 |
+| `f2f1GapHz` / `f2f1GapMedianHz` | number \| nil | F2−F1 同帧间距均值 / 中位数 |
 | `spectralTiltDbOct` | number \| nil | 谱倾斜（dB/octave） |
 | `avgDb` / `peakDb` | number | 平均 / 峰值响度（dBFS） |
 | `jitterPct` / `shimmerPct` | number \| nil | 微扰（需保存录音音频） |
 | `hnrDb` | number \| nil | 谐噪比（dB） |
 | `cppsDb` | number \| nil | 平滑倒谱峰突出度（dB） |
+| `h1h2Db` / `h2h4Db` / `h1a3Db` | number \| nil | 谐波谱指标（dB，需保存录音音频） |
+| `breathiness` | number \| nil | 气声综合指数（0–1，越大越气声） |
+| `nasalityDb` | number \| nil | 鼻化 A1−P1（dB，越低鼻化越重） |
 | `inTargetPct` | number \| nil | 靶标达成率（%） |
 | `mode` | string | `'reading'` / `'sustained'` / `'glide'` |
 | `target` | table | `{ enabled, min, max }` 训练靶标设置 |

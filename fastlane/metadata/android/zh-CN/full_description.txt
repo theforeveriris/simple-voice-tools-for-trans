@@ -7,7 +7,8 @@
 </ul>
 <p><b>分析</b></p>
 <ul>
-<li>嗓音质量：Jitter、Shimmer、HNR、CPPS</li>
+<li>嗓音质量：Jitter、Shimmer、HNR、CPPS，以及谐波频谱指标</li>
+<li>声音性别表达参考：VFP 风格的 0–100 参考分，综合中位基频与 F2−F1 共鸣，标注男性化 / 中性 / 女性化参考锚点</li>
 <li>四张图表共享时间轴，双滑块缩放 + 十字线读数；数据表视图（读屏友好，可复制 TSV）</li>
 <li>用当前算法参数重算已存录音——调参无需重录</li>
 <li>外部音频导入，走同一套离线分析管线</li>
@@ -15,6 +16,7 @@
 <p><b>追踪</b></p>
 <ul>
 <li>趋势图（平均基频、音域、MPT、CPPS）+ GitHub 式用声日记热力图</li>
+<li>声音花花园：每次练习变成一朵花，按月排布，观察长期形态变化</li>
 <li>两条记录两两对比：Δ 指标表 + 音高曲线叠加</li>
 <li>训练靶标达成率、基线记录自动对比</li>
 <li>可选每日练习提醒</li>
@@ -22,6 +24,7 @@
 <p><b>隐私优先</b></p>
 <ul>
 <li>记录、音频与分析结果全部存于本机（IndexedDB）</li>
+<li>局域网同步：同一 Wi-Fi 下两台设备直连互传记录与音频，不经服务器</li>
 <li>完整 ZIP 备份恢复；可选加密云备份（你自己的 GitHub 仓库 / WebDAV / 本地文件夹）</li>
 <li>「数据去向」面板如实说明每一类数据的边界</li>
 </ul>
@@ -34,6 +37,6 @@
 <p><b>多端</b></p>
 <ul>
 <li>可安装为 PWA；提供安卓 APK 与 Windows 安装包</li>
-<li>键盘快捷键；五种语言（English、简体中文、繁體中文、日本語、文言）</li>
+<li>键盘快捷键；八种语言（English、简体中文、繁體中文、日本語、Español、Français、བོད་ཡིག、文言）</li>
 </ul>
 <p>许可证：MIT — https://github.com/theforeveriris/simple-voice-tools-for-trans</p>

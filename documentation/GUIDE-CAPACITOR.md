@@ -161,7 +161,7 @@ Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
   需要时换 `@capacitor/filesystem`。
 - **应用图标 / 启动页**：图标已替换为自有设计（与 `src-tauri/icons` 同源，见
   `feat(icons)` 提交）。启动页为 Web 层实现（`SplashScreen.tsx`，最短驻留 +
-  淡出，设置 → 配置 可关），原生侧只保留纯色窗口底（`launch_background`，
+  淡出，设置 → 应用 可关），原生侧只保留纯色窗口底（`launch_background`，
   API 31+ 另在 `values-v31` 统一系统启动画面底色）；旧的图片式 `splash.png`
   已移除。若要恢复图片式原生启动图：`npm i -D @capacitor/assets`，按约定放
   `assets/icon-only.png` 与 `assets/splash.png`，`npx capacitor-assets
