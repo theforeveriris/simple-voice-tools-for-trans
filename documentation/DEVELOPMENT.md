@@ -79,7 +79,7 @@ npx tsc -b --force
 | 动效 | Framer Motion（layout / springs） |
 | 音频 | Web Audio API：AnalyserNode + 自研 DSP（纯 TS，无音频依赖） |
 | 可视化 | 原生 Canvas 2D（自绘，不依赖图表库） |
-| 测试 | Vitest 3（DSP 黄金样本回归 + 导出/备份/LLM/i18n 完整性，51 个测试文件） |
+| 测试 | Vitest 3（DSP 黄金样本回归 + 导出/备份/LLM/i18n 完整性，52 个测试文件） |
 | 原生壳 | Capacitor 7（Android APK）+ Tauri 2（Windows NSIS 安装包） |
 | 图标/提示 | lucide-react / sonner；uqr（分享图二维码） |
 
@@ -167,6 +167,7 @@ src/
 │   │                             #   openai/anthropic 双协议、流式、思考过程）
 │   ├── llmProfiles.ts / llmChats.ts / llmRequestLog.ts / llmResultStore.ts / llmUsage.ts
 │   │                             # LLM 档案 / 助手对话 / 请求日志 / 结果缓存 / 用量统计
+│   ├── llmModels.ts              # /models 拉取、响应解析、上下文长度目录与端点推导
 │   ├── seriesTable.ts            # 图表数据表取数与 TSV 导出
 │   ├── advice.ts                 # 训练建议（本地规则引擎，纯函数）
 │   ├── voiceExpression.ts        # VFP 风格声音性别表达参考分（纯函数）

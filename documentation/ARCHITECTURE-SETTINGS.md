@@ -109,7 +109,7 @@ props 约定：`{ settings, update, onBack }`——`update` 即 `updateSettings`
 | 语言 | 界面语言 + AI 翻译（合一区块） | 见 ARCHITECTURE-I18N.md |
 | 录音 | 录音行为（自动进入分析 / 保存音频 / 静音判停 / 最长时长）· 音质与设备（码率 / 增益降噪 / 震动 / 自动回放 / 麦克风选择） | 环境元数据（底噪 / 麦克风 / 时段）在 `lib/audio/recorder.ts` 采集 |
 | 训练 | 用户画像（方向 / 年龄段）· 训练靶标（靶标 / 共振峰目标区 / 基线记录）· 训练建议（建议模式 / 对比时建议）· 自定义音区边界 · 实时练习视图 ×4 · 每日练习提醒 | 实时视图为 `components/pages/*LiveSheet.tsx`；靶标达成率见 `lib/audio/recorder.ts` |
-| 大模型 | AI 助手入口 · 模型配置 · 配置档案 · 提示词调节 · 用量与费用 | 档案制（`llm:profiles`），支持 openai/anthropic 双协议；请求日志在数据页 |
+| 大模型 | AI 助手入口 · 模型配置 · 配置档案（模型拉取 / 上下文识别） · 提示词调节 · 用量与费用 | 档案制（`llm:profiles`），支持 openai/anthropic 双协议；模型列表与上下文识别见 `lib/llmModels.ts`；请求日志在数据页 |
 | 数据 | 数据去向（页首，含 AI 请求日志）· 存储用量 · 外部音频导入 · 局域网同步 · 备份与恢复（含口令加密）· WebDAV · GitHub 云备份 · 数据操作 | `PrivacyPanel`；加密见 ARCHITECTURE-STATE.md；局域网见 `lib/sync/lanSync.ts` |
 | 应用 | 安装与分享 · 版本与更新 · 启动默认页签 · 启动页（原生）· 运行状态 | 见 GUIDE-PWA.md；原生壳内「检查更新」比对 GitHub Releases APK（`lib/appUpdate.ts`） |
 | 高级 | 功能开关（语谱图 / 实时频谱 / SI 改名 / 音高算法对比）· 算法参数 · 脚本中心 | 算法参数 13 项见 PARAMETERS-GUIDE.md；脚本见 `lib/lua/*` |

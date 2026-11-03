@@ -21,6 +21,17 @@ export {
   type LlmStreamOptions,
 } from './llmClient';
 
+// 模型列表 / 上下文识别
+export {
+  fetchLlmModels,
+  modelsEndpoint,
+  parseLlmModels,
+  contextTokensForModel,
+  formatContextTokens,
+  type LlmModelInfo,
+  type FetchLlmModelsInput,
+} from './llmModels';
+
 // 业务层（建议 / 周报）
 export {
   languageName,

@@ -31,6 +31,9 @@ export interface LlmProfile {
 /** 上下文长度默认值：未配置 / 非法值时的兜底 */
 export const DEFAULT_CONTEXT_TOKENS = 8192;
 
+/** 上下文长度上限：给 1M+ 模型留空间（Gemini 1.5 2M、GPT-4.1 1.047M 等） */
+export const MAX_CONTEXT_TOKENS = 10_000_000;
+
 const KV_PROFILES = 'llm:profiles';
 
 let profiles: LlmProfile[] | null = null;
@@ -68,7 +71,7 @@ function normalizeProfile(
     protocol: p.protocol === 'anthropic' ? 'anthropic' : 'openai',
     stream: p.stream !== false,
     contextTokens: typeof p.contextTokens === 'number' && p.contextTokens >= 1024
-      ? Math.min(p.contextTokens, 1_000_000)
+      ? Math.min(p.contextTokens, MAX_CONTEXT_TOKENS)
       : DEFAULT_CONTEXT_TOKENS,
   };
 }
