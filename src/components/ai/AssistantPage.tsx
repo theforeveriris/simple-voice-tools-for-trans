@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, ArrowUp, Brain, Copy, GitBranch, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2,
+  ArrowLeft, ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -29,7 +29,8 @@ import {
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocs } from '@/lib/docKnowledge';
 import { RecordImage } from '@/lib/assistantCharts';
-import { renderAssistantContent } from '@/lib/assistantChartRoute';
+import { renderAssistantMessage } from '@/lib/assistantContent';
+import { GenUiBlock } from '@/lib/assistantGenui';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { cn } from '@/lib/utils';
@@ -86,10 +87,12 @@ async function historySection(budgetTokens: number): Promise<string> {
 function systemPrompt(history: string, docs = ''): string {
   return [
     '你是 Simple Voice Tool for Trans 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
+    '不要使用 emoji 或颜文字；用文字、Markdown、图表和交互组件表达。',
     '回答简洁、务实、有依据；涉及嗓音训练时给出可操作的练习建议；',
     '不做医学诊断，遇到疑似嗓音疾病（持续嘶哑、疼痛等）时建议就医或咨询言语治疗师。',
-    '回复支持 Markdown：可用 **粗体**、*斜体*、`行内代码`、有序/无序列表、表格（| 列 | 列 |）、> 引用与 ## 小标题，让长回答结构清晰；但不要输出代码块。',
+    '回复支持 Markdown：可用 **粗体**、*斜体*、`行内代码`、有序/无序列表、表格（| 列 | 列 |）、> 引用与 ## 小标题，让长回答结构清晰；除 genui 组件外不要输出代码块。',
     '你可以嵌入用户某次记录的图表，语法：![图表说明](record://<记录id>/<kind>)，kind 取 pitch（音高曲线）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）之一；记录 id 见下方历史清单的「id」字段。仅在有助于说明时插图（如同一条记录不超过 2 张、答趋势时对比不同记录），不要每句都配图；不存在的 id 不要编造。',
+    '如果站点原生图表不够（需要滑块、切换、对比面板等交互），用 ```genui 围栏输出一个 HTML 片段（每条回复最多 2 个）。规则：只写片段，不要 doctype/html/head/body；不要外链资源、网络请求或表单；外层卡片由站点提供，根节点不要再包一层卡片；内部使用 CSS 变量 --c-ink / --c-ink-2 / --c-accent / --c-card / --c-surface-hi / --c-line，以及类 .svt-title / .svt-muted / .svt-grid / .svt-metric / .svt-badge / .svt-row / .svt-row-between / .svt-bar；可写内联 <style> 和 <script>（沙箱运行，不能访问应用数据）；适配 320–640px 宽度，高度自适应，不要写死 100vh。',
     history
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
@@ -121,20 +124,32 @@ function ThinkBlock({ text, live }: { text: string; live?: boolean }) {
   );
 }
 
-/** 消息正文：record:// 图片引用独立渲染，其余 Markdown */
+/** 消息正文：record:// 图表 / genui 组件独立成块，其余 Markdown */
 function MessageBody({ text }: { text: string }) {
-  const parts = renderAssistantContent(text);
+  const parts = renderAssistantMessage(text);
   return (
     <>
-      {parts.map((p, i) =>
-        p.type === 'img' && p.kind && p.recordId ? (
-          <RecordImage key={i} recordId={p.recordId} kind={p.kind} alt={p.alt ?? ''} />
-        ) : (
-          <span key={i} className="block [&>p]:my-0.5 [&_blockquote]:my-1 [&_table]:my-1">
+      {parts.map((p, i) => {
+        if (p.type === 'img' && p.kind && p.recordId) {
+          return <RecordImage key={i} recordId={p.recordId} kind={p.kind} alt={p.alt ?? ''} />;
+        }
+        if (p.type === 'genui') {
+          return <GenUiBlock key={i} html={p.content} />;
+        }
+        if (p.type === 'genui-pending') {
+          return (
+            <span key={i} className="my-2 flex items-center gap-1.5 rounded-2xl bg-card px-3 py-2 text-[11px] text-ink-2">
+              <Loader2 size={11} className="animate-spin" />
+              {t('assistant.genuiPending')}
+            </span>
+          );
+        }
+        return (
+          <span key={i} className="block [&>p]:my-1 [&>ul]:my-1.5 [&>ol]:my-1.5 [&_blockquote]:my-2 [&_table]:my-2">
             {renderMarkdown(p.content)}
           </span>
-        ),
-      )}
+        );
+      })}
     </>
   );
 }
@@ -170,6 +185,30 @@ function Bubble({
   const mine = m.role === 'user';
   const think = streaming ? liveThink : m.think ?? '';
   const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkOpen;
+  const onBodyClick = () => onAction(streaming ? null : active ? null : idx);
+  const body = (
+    <>
+      {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
+      {mine
+        ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
+        : (m.content
+          ? <MessageBody text={m.content} />
+          : (streaming ? (liveThink ? '' : '…') : ''))}
+      {!mine && !!m.think && !streaming && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleThink(idx);
+          }}
+          className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-2"
+        >
+          <Brain size={10} />
+          {t('assistant.think')}
+        </button>
+      )}
+    </>
+  );
   return (
     <div className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
       {!mine && (
@@ -180,34 +219,21 @@ function Bubble({
           <span className="text-[10px] font-medium text-ink-2">{t('assistant.title')}</span>
         </span>
       )}
-      <button
-        onClick={() => onAction(streaming ? null : active ? null : idx)}
-        className={cn(
-          'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink',
-          'shadow-[0_2px_10px_rgba(28,25,45,0.05)]',
-          mine ? 'bg-accent/15' : 'bg-card',
-          mine && 'whitespace-pre-wrap',
-        )}
-      >
-        {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
-        {mine
-          ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
-          : (m.content
-            ? <MessageBody text={m.content} />
-            : (streaming ? (liveThink ? '' : '…') : ''))}
-        {!mine && !!m.think && !streaming && (
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleThink(idx);
-            }}
-            className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-2"
-          >
-            <Brain size={10} />
-            {t('assistant.think')}
-          </span>
-        )}
-      </button>
+      {mine ? (
+        <button
+          onClick={onBodyClick}
+          className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-accent/15 px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
+        >
+          {body}
+        </button>
+      ) : (
+        <div
+          onClick={onBodyClick}
+          className="w-full text-left text-[13px] leading-relaxed text-ink"
+        >
+          {body}
+        </div>
+      )}
       {active && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}

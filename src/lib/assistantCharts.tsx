@@ -120,11 +120,11 @@ function RecordImage({ recordId, kind, alt }: { recordId: string; kind: ImgKind;
   }, [recordId]);
 
   if (rec === 'loading') {
-    return <span className="block h-16 animate-pulse rounded-lg bg-surface-hi/60" aria-label={alt} />;
+    return <span className="my-3 block h-20 animate-pulse rounded-2xl bg-card" aria-label={alt} />;
   }
   if (rec == null) {
     return (
-      <span className="flex items-center gap-1.5 rounded-lg bg-surface-hi/60 px-2.5 py-1.5 text-[10px] text-ink-2">
+      <span className="my-3 flex items-center gap-1.5 rounded-2xl bg-card px-3 py-2 text-[10px] text-ink-2">
         <ImageOff size={11} />
         {t('assistant.chartMissing')}
       </span>
@@ -132,9 +132,12 @@ function RecordImage({ recordId, kind, alt }: { recordId: string; kind: ImgKind;
   }
   const date = new Date(rec.createdAt);
   return (
-    <figure className="my-1 block text-left">
+    <figure
+      className="my-3 block rounded-2xl bg-card p-3 text-left shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
+      onClick={(e) => e.stopPropagation()}
+    >
       <InteractiveRecordChart rec={rec} kind={kind} />
-      <figcaption className="text-[10px] text-ink-2">
+      <figcaption className="mt-1 px-0.5 text-[10px] text-ink-2">
         {alt || t(`mode.${rec.mode ?? 'reading'}`)} · {date.getMonth() + 1}/{date.getDate()}
       </figcaption>
     </figure>
