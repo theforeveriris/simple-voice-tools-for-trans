@@ -29,6 +29,19 @@
 | Peterson, G. E. & Barney, H. L. (1952). *Control methods used in a study of the vowels*. J. Acoust. Soc. Am. 24(2), 175–184. | i / a / u 参考元音 F1/F2 位置的原始依据（VOWEL_REFS，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第五节） |
 | Hillenbrand, J. et al. (1995). *Acoustic characteristics of American English vowels*. J. Acoust. Soc. Am. 97(5), 3093–3111. | 成人男女元音共振峰分布的性别差异（「i 是共鸣试金石」等论述） |
 
+## 声音性别感知参考（VFP 风格）
+
+| 文献 | 用于 |
+| --- | --- |
+| Doukhan, D., Devauchelle, S., Girard-Monneron, L., Chavez Ruz, M., Chaddouk, V., Wagner, I. & Rilliard, A. (2023). *Voice Passing: a Non-Binary Voice Gender Prediction System for evaluating Transgender voice transition*. Interspeech 2023, 5207–5211. doi:10.21437/Interspeech.2023-1835 | VFP（0–100 女性化感知分）与「50 ≈ 中性」的概念；F0+VTL 基线对顺性别 R²≈0.94、跨性别 R²≈0.53 的局限（[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第十二节） |
+| inaSpeechSegmenter（INA，MIT License，https://github.com/ina-foss/inaSpeechSegmenter） | 女声/男声 CNN 分类的公开基线；本项目只借用 VFP 概念与评分口径，不打包其模型权重 |
+| American Speech-Language-Hearing Association. *Gender Affirming Voice and Communication* (Practice Portal). https://www.asha.org/practice-portal/professional-issues/gender-affirming-voice-and-communication/ | 感知阈值：SFF > 180 Hz 更易听成女声、< 130 Hz 更易听成男声、145–175 Hz 为中性带 |
+| Oates, J. & Dacakis, G. (2015). *Transgender Voice and Communication: Research Evidence Underpinning Voice Intervention for Male-to-Female Transsexual Women*. Perspectives on Voice and Voice Disorders, 25(2), 48–58. doi:10.1044/vvd25.2.48 | 女性化目标约 180 Hz，并强调共振峰接近顺性别女性水平 |
+| Wolfe, V. I., Ratusnik, D. L., Smith, F. H. & Northrop, G. (1990). *Intonation and fundamental frequency in male-to-female transsexuals*. J. Speech Hear. Disord. 55(1), 43–50. doi:10.1044/jshd.5501.43 | 被听成女声的 F0 约 155.6–195 Hz（均值 172）、被听成男声约 97.2–145 Hz（均值 118）；评分中心 165 Hz 的依据之一 |
+| Gelfer, M. P. & Schofield, K. J. (2000). *Comparison of acoustic and perceptual measures of voice in male-to-female transsexuals perceived as female versus those perceived as male*. J. Voice, 14(4), 562–573. doi:10.1016/S0892-1997(00)80092-2 | 女声感知组的 F0 下限约 164 Hz；与 Wolfe 的分界相互印证 |
+| Gelfer, M. P. & Mikos, V. A. (2005). *The relative contributions of speaking fundamental frequency and formant frequencies to gender identification based on isolated vowels*. J. Voice, 19(4), 544–554. doi:10.1016/j.jvoice.2004.10.006 | F0 是性别听感的主导线索（即使与共振峰矛盾时），支撑音高 55% / 共鸣 45% 的权重；顺男/顺女平均 F0 约 100–146 / 188–221 Hz |
+| Irwig, M. S., Childs, K. & Hancock, A. B. (2017). *Effects of testosterone on the transgender male voice*. Andrology, 5(1), 107–112. doi:10.1111/andr.12278 | 男性化参考：跨男睾酮治疗 12 个月后阅读 MF0 约 87–128 Hz；顺男约 100–130 Hz |
+
 ## 嗓音质量（Jitter / Shimmer / HNR / CPPS）
 
 | 文献 | 用于 |

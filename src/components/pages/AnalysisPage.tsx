@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui';
 import { useDeferredMount } from '@/hooks/useDeferredMount';
 import { HeroSummary } from '@/components/analysis/HeroCard';
+import { VoiceExpressionCard } from '@/components/analysis/VoiceExpressionCard';
 import { BaselineStrip } from '@/components/analysis/BaselineStrip';
 import { PlaybackCard } from '@/components/analysis/PlaybackCard';
 import { SustainedCard } from '@/components/analysis/SustainedCard';
@@ -316,6 +317,7 @@ export function AnalysisPage() {
       {/* 重内容延迟两帧挂载：Hero 概览先随入场动画绘制（见 useDeferredMount） */}
       {!contentReady && <div className="min-h-[60vh]" aria-hidden />}
       {contentReady && (<>
+      <VoiceExpressionCard record={recordWithStats} />
       {showBaseline && baselineRecord && <BaselineStrip record={record} baseline={baselineRecord} />}
       <PlaybackCard
         url={playback.audioUrl}
