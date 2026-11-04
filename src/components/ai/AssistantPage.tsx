@@ -34,8 +34,8 @@ import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocs } from '@/lib/docKnowledge';
 import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
 import {
-  filterCommands, parseAssistantCommand, parseTestMode,
-  resolveRecordSelectors, reviewRangeDays, type AssistantCommandSpec, type ParsedCommand,
+  buildCommandCompletions, parseAssistantCommand, parseTestMode,
+  resolveRecordSelectors, reviewRangeDays, type CommandCompletion, type ParsedCommand,
 } from '@/lib/assistantCommands';
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
@@ -664,15 +664,18 @@ export function AssistantPage() {
     }
   };
 
-  /** 菜单点击：需要目标的 /open 先补全输入，其余按默认参数执行 */
-  const runCommandSpec = (spec: AssistantCommandSpec) => {
-    setCommandDismissed(true);
-    if (spec.id === 'open') {
-      setInput('/open ');
-      requestAnimationFrame(() => taRef.current?.focus());
-      return;
+  /** 应用补全：命令项补全命令名，参数项补全参数并继续等待下一个参数 */
+  const applyCompletion = (item: CommandCompletion) => {
+    if (item.kind === 'command' && !item.insert.endsWith(' ')) {
+      const parsed = parseAssistantCommand(item.insert);
+      if (parsed) {
+        void executeCommand(parsed);
+        return;
+      }
     }
-    void executeCommand({ id: spec.id, raw: `/${spec.id}`, args: [] });
+    setInput(item.insert);
+    setCommandDismissed(false);
+    requestAnimationFrame(() => taRef.current?.focus());
   };
 
   const send = () => {
@@ -761,11 +764,10 @@ export function AssistantPage() {
   const voiceTime = `${Math.floor(voiceSec / 60)}:${String(voiceSec % 60).padStart(2, '0')}`;
   const voiceMode = !busy && !input.trim() && !inputFocused && voiceState === 'idle';
   const voicePending = voiceState === 'starting' || voiceState === 'processing';
-  const commandQuery = !busy && input.startsWith('/') && !input.startsWith('//') && !input.includes(' ')
-    ? input
-    : '';
-  const commandItems = commandQuery && !commandDismissed ? filterCommands(commandQuery) : [];
-  useEffect(() => setCommandIndex(0), [commandQuery]);
+  const commandItems = !busy && !commandDismissed
+    ? buildCommandCompletions(input, historyRecords, t)
+    : [];
+  useEffect(() => setCommandIndex(0), [input, commandDismissed]);
   const composerDisabled = busy
     ? false
     : voicePending
@@ -795,6 +797,33 @@ export function AssistantPage() {
   };
 
   const onComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (commandItems.length) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setCommandIndex((i) => (i + 1) % commandItems.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setCommandIndex((i) => (i - 1 + commandItems.length) % commandItems.length);
+        return;
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        applyCompletion(commandItems[commandIndex] ?? commandItems[0]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setCommandDismissed(true);
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        applyCompletion(commandItems[commandIndex] ?? commandItems[0]);
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && input.startsWith('/')) {
       if (input.trim() === '/') {
         e.preventDefault();
@@ -803,27 +832,8 @@ export function AssistantPage() {
       const parsed = parseAssistantCommand(input);
       if (parsed && parsed.id !== 'unknown') {
         e.preventDefault();
-        if (parsed.id === 'open' && parsed.args.length === 0) {
-          setInput('/open ');
-          return;
-        }
         void executeCommand(parsed);
-        return;
       }
-    }
-    if (!commandItems.length) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setCommandIndex((i) => (i + 1) % commandItems.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setCommandIndex((i) => (i - 1 + commandItems.length) % commandItems.length);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setCommandDismissed(true);
-    } else if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      runCommandSpec(commandItems[commandIndex] ?? commandItems[0]);
     }
   };
 
@@ -958,19 +968,22 @@ export function AssistantPage() {
             <div className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]">
               {commandItems.map((c, i) => (
                 <button
-                  key={c.id}
+                  key={c.key}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => runCommandSpec(c)}
+                  onClick={() => applyCompletion(c)}
                   className={cn(
                     'flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left transition-colors',
                     i === commandIndex ? 'bg-accent/10' : 'hover:bg-surface-hi/60',
                   )}
                 >
-                  <span className="shrink-0 font-mono text-[11px] text-accent">
-                    {c.usage.split(/\s+/)[0]}
+                  <span className={cn(
+                    'shrink-0 font-mono text-[11px]',
+                    c.kind === 'command' ? 'text-accent' : 'text-ink-2',
+                  )}>
+                    {c.label}
                   </span>
                   <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-ink-2">
-                    {t(c.descriptionKey)}
+                    {c.detail}
                   </span>
                 </button>
               ))}

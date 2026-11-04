@@ -279,3 +279,155 @@ export function reviewRangeDays(arg: string | undefined): { days: number; key: s
     default: return { days: 7, key: 'week' };
   }
 }
+
+/* ------------------------------ 补全 ------------------------------ */
+
+export interface CommandCompletion {
+  key: string;
+  /** 菜单主标签（命令名或参数值） */
+  label: string;
+  /** 右侧说明 */
+  detail: string;
+  /** 选中后写回输入框的完整内容 */
+  insert: string;
+  kind: 'command' | 'arg';
+}
+
+type Translate = (key: DictKey) => string;
+
+const ARG_COMMANDS: ReadonlySet<AssistantCommandId> = new Set([
+  'record', 'attach', 'detach', 'compare', 'review', 'open', 'help',
+]);
+
+function commandCompletions(tr: Translate, query = ''): CommandCompletion[] {
+  const q = query.replace(/^\//, '').toLowerCase();
+  return ASSISTANT_COMMANDS
+    .filter((c) => !q || c.id.includes(q) || c.usage.toLowerCase().includes(q))
+    .map((c) => ({
+      key: `cmd:${c.id}`,
+      label: c.usage.split(/\s+/)[0],
+      detail: tr(c.descriptionKey),
+      insert: ARG_COMMANDS.has(c.id) ? `${c.usage.split(/\s+/)[0]} ` : c.usage,
+      kind: 'command' as const,
+    }));
+}
+
+function recordDetail(rec: AnalysisRecord): string {
+  const d = new Date(rec.createdAt);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} · ${Math.round(rec.stats.avgF0)}Hz`;
+}
+
+function selectorCompletions(
+  tr: Translate,
+  head: string,
+  prior: string[],
+  records: AnalysisRecord[],
+): CommandCompletion[] {
+  const mk = (value: string, label: string, detail: string): CommandCompletion => ({
+    key: `arg:${value}`,
+    label,
+    detail,
+    insert: [head, ...prior, value].join(' ') + ' ',
+    kind: 'arg',
+  });
+  const recent = [...records].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
+  return [
+    mk('latest', 'latest', tr('assistant.arg.latest')),
+    mk('last:5', 'last:5', tr('assistant.arg.last')),
+    mk('today', 'today', tr('assistant.cmd.rangeToday')),
+    mk('yesterday', 'yesterday', tr('assistant.arg.yesterday')),
+    mk('week', 'week', tr('assistant.cmd.rangeWeek')),
+    mk('month', 'month', tr('assistant.cmd.rangeMonth')),
+    mk('baseline', 'baseline', tr('assistant.arg.baseline')),
+    mk('mode:reading', 'mode:reading', `${tr('assistant.arg.mode')} · ${tr('mode.reading')}`),
+    mk('mode:sustained', 'mode:sustained', `${tr('assistant.arg.mode')} · ${tr('mode.sustained')}`),
+    mk('mode:glide', 'mode:glide', `${tr('assistant.arg.mode')} · ${tr('mode.glide')}`),
+    mk('all', 'all', tr('assistant.arg.all')),
+    ...recent.map((r) => mk(`id:${r.id}`, `id:${r.id.slice(0, 8)}`, recordDetail(r))),
+  ];
+}
+
+/**
+ * 根据当前输入生成完整补全：命令名、模式、打开目标、范围、记录选择器。
+ * 参数候选由命令注册表和命令语义共同决定。
+ */
+export function buildCommandCompletions(
+  input: string,
+  records: AnalysisRecord[],
+  tr: Translate,
+): CommandCompletion[] {
+  const raw = input.replace(/^\s+/, '');
+  if (!raw.startsWith('/') || raw.startsWith('//')) return [];
+  const body = raw.slice(1);
+  if (!body) return commandCompletions(tr);
+  const endsSpace = /\s$/.test(raw);
+  const tokens = body.trimEnd().split(/\s+/);
+  const cmdToken = tokens[0] ?? '';
+  const parsed = parseAssistantCommand(`/${cmdToken}`);
+  if (!endsSpace && tokens.length === 1) {
+    return commandCompletions(tr, raw);
+  }
+  if (!parsed || parsed.id === 'unknown') return [];
+
+  const args = tokens.slice(1);
+  const argIndex = endsSpace ? args.length : Math.max(0, args.length - 1);
+  const prefix = (endsSpace ? '' : args[argIndex] ?? '').toLowerCase();
+  const prior = args.slice(0, argIndex);
+  const head = `/${cmdToken}`;
+  let items: CommandCompletion[] = [];
+
+  if (parsed.id === 'record' && argIndex === 0) {
+    items = (['reading', 'sustained', 'glide'] as const).map((mode) => ({
+      key: `arg:${mode}`,
+      label: mode,
+      detail: tr(`mode.${mode}` as DictKey),
+      insert: `${head} ${mode} `,
+      kind: 'arg',
+    }));
+  } else if (parsed.id === 'review' && argIndex === 0) {
+    items = [
+      { value: 'today', label: tr('assistant.cmd.rangeToday') },
+      { value: 'week', label: tr('assistant.cmd.rangeWeek') },
+      { value: 'month', label: tr('assistant.cmd.rangeMonth') },
+      { value: 'all', label: tr('assistant.cmd.rangeAll') },
+    ].map((x) => ({
+      key: `arg:${x.value}`,
+      label: x.value,
+      detail: x.label,
+      insert: `${head} ${x.value} `,
+      kind: 'arg' as const,
+    }));
+  } else if (parsed.id === 'open' && argIndex === 0) {
+    items = [
+      { value: 'analysis', detail: tr('nav.analysis') },
+      { value: 'records', detail: tr('nav.history') },
+      { value: 'settings', detail: tr('nav.settings') },
+    ].map((x) => ({
+      key: `arg:${x.value}`,
+      label: x.value,
+      detail: x.detail,
+      insert: `${head} ${x.value} `,
+      kind: 'arg' as const,
+    }));
+  } else if (parsed.id === 'open' && argIndex === 1 && (prior[0] ?? '').toLowerCase() === 'analysis') {
+    items = selectorCompletions(tr, head, prior, records);
+  } else if (
+    (parsed.id === 'attach' || parsed.id === 'detach' || parsed.id === 'compare')
+    && (parsed.id === 'compare' ? argIndex < 2 : true)
+  ) {
+    items = selectorCompletions(tr, head, prior, records);
+  } else if (parsed.id === 'help' && argIndex === 0) {
+    items = ASSISTANT_COMMANDS.map((c) => ({
+      key: `help:${c.id}`,
+      label: c.usage.split(/\s+/)[0],
+      detail: tr(c.descriptionKey),
+      insert: `/help ${c.id} `,
+      kind: 'arg' as const,
+    }));
+  }
+
+  if (!prefix) return items;
+  return items.filter((item) => item.label.toLowerCase().startsWith(prefix)
+    || item.insert.toLowerCase().includes(prefix));
+}

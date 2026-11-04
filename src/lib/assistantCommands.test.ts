@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisRecord, VoiceStats } from '@/types';
 import {
+  buildCommandCompletions,
   filterCommands,
   parseAssistantCommand,
   parseTestMode,
@@ -126,5 +127,42 @@ describe('记录选择器', () => {
     expect(reviewRangeDays(undefined).key).toBe('week');
     expect(reviewRangeDays('today').days).toBe(1);
     expect(reviewRangeDays('all').days).toBe(0);
+  });
+});
+
+describe('命令补全', () => {
+  const tr = (key: string) => key;
+
+  it('命令名补全', () => {
+    const items = buildCommandCompletions('/rec', records, tr);
+    expect(items.map((i) => i.label)).toContain('/record');
+    expect(items.find((i) => i.label === '/record')?.insert).toBe('/record ');
+  });
+
+  it('录音模式补全', () => {
+    expect(buildCommandCompletions('/record ', records, tr).map((i) => i.label))
+      .toEqual(['reading', 'sustained', 'glide']);
+    expect(buildCommandCompletions('/record s', records, tr).map((i) => i.label))
+      .toEqual(['sustained']);
+  });
+
+  it('open 页面与记录 id 补全', () => {
+    expect(buildCommandCompletions('/open ', records, tr).map((i) => i.label))
+      .toEqual(['analysis', 'records', 'settings']);
+    const analysis = buildCommandCompletions('/open analysis ', records, tr);
+    expect(analysis.map((i) => i.label)).toContain('latest');
+    expect(analysis.some((i) => i.label.startsWith('id:'))).toBe(true);
+  });
+
+  it('review 范围与 help 命令补全', () => {
+    expect(buildCommandCompletions('/review ', records, tr).map((i) => i.label))
+      .toEqual(['today', 'week', 'month', 'all']);
+    expect(buildCommandCompletions('/help ', records, tr).map((i) => i.label))
+      .toContain('/attach');
+  });
+
+  it('attach 选择器按前缀过滤', () => {
+    expect(buildCommandCompletions('/attach last:', records, tr).map((i) => i.label))
+      .toEqual(['last:5']);
   });
 });
