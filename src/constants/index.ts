@@ -193,7 +193,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   bgImageOpacity: 0.8,
   bgImageDrift: true,
   showGrid: true,
-  navStyle: 'classic',
+  navStyle: 'floating',
   maxDurationSec: 120,
   autoEnterAnalysis: true,
   micDeviceId: '',
