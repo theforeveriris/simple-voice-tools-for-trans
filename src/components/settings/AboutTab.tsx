@@ -76,7 +76,10 @@ function DocList({ docs, onOpen }: { docs: OpenDoc[]; onOpen: (doc: OpenDoc) => 
 
 /** 开发者与贡献者名单（头像取 GitHub，点击跳转其主页；新贡献者追加到对应数组即可） */
 const DEVELOPERS = [{ name: '鸢尾 theforeveriris', handle: 'theforeveriris' }];
-const CONTRIBUTORS = [{ name: 'HuLunTunTao', handle: 'HuLunTunTao' }];
+const CONTRIBUTORS = [
+  { name: 'HuLunTunTao', handle: 'HuLunTunTao' },
+  { name: 'OmachiriManbu', handle: 'omajili-manbu' },
+];
 
 function PersonRow({ person, roleKey }: { person: { name: string; handle: string }; roleKey: 'role.developer' | 'role.contributor' }) {
   return (
@@ -142,7 +145,7 @@ export function AboutTab() {
       <SettingsSection icon={Info} title={t('settings.intro')}>
         <div className="pt-1 text-xs leading-relaxed text-ink-2">
           <p className="text-sm font-semibold text-ink">Simple Voice Tool for Trans</p>
-          <p className="mt-1">{t('settings.aboutVersion')}</p>
+          <p className="mt-1">{t('settings.aboutVersion', { version: __APP_VERSION__ })}</p>
           <p className="mt-1">{t('settings.aboutPrivacy')}</p>
           {/* 隐私政策全文：应用内可读（public/privacy-policy.md） */}
           <button
