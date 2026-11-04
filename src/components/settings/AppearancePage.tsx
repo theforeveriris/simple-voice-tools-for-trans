@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, Image as ImageIcon, Palette, PanelBottom, Share2, SlidersHorizontal, Upload } from 'lucide-react';
+import { ArrowLeft, Download, Image as ImageIcon, Palette, PanelBottom, Settings2, Share2, SlidersHorizontal, Sparkles, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
 import { buildThemeExport, parseThemeFile, themeFileName } from '@/lib/theme/themeShare';
@@ -36,6 +36,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { useStore } from '@/store/useStore';
 import { SettingsSection, SettingRow, NUMBER_INPUT_CLASS, SELECT_TRIGGER_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
 import { FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
@@ -65,6 +66,25 @@ function NavStylePreview({ style }: { style: NavStyle }) {
     </div>
   );
 }
+
+/** 导航栏样式预览：AI 工作台（只剩 AI 页 + 侧栏设置入口） */
+function AiWorkspacePreview() {
+  return (
+    <div className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-surface-hi">
+      <Sparkles size={13} className="text-accent" />
+      <span className="h-3.5 w-px bg-line" />
+      <span className="grid size-4 place-items-center rounded-full bg-card text-ink-2">
+        <Settings2 size={9} />
+      </span>
+    </div>
+  );
+}
+
+const NAV_STYLE_LABEL: Record<NavStyle, DictKey> = {
+  floating: 'settings.navStyleFloating',
+  classic: 'settings.navStyleClassic',
+  ai: 'settings.navStyleAi',
+};
 
 const BG_FOCUS_KEYS: BgImageFocus[] = [
   'top-left', 'top', 'top-right',
@@ -458,24 +478,29 @@ export function AppearancePage({
         </SettingsSection>
 
         {/* 导航栏样式：悬浮胶囊 / 贯穿底部的经典底栏 */}
-        <SettingsSection icon={PanelBottom} title={t('settings.navStyle')}>
-          <p className="px-0.5 pb-2 text-[11px] leading-relaxed text-ink-2">{t('settings.navStyleDesc')}</p>
-          <div className="grid grid-cols-2 gap-2">
-            {(['floating', 'classic'] as const).map((style) => {
+        <SettingsSection
+          icon={PanelBottom}
+          title={<InfoTip label={t('settings.navStyle')} text={t('settings.navStyleDesc')} />}
+        >
+          <div className="grid grid-cols-3 gap-2">
+            {(['floating', 'classic', 'ai'] as const).map((style) => {
               const active = settings.navStyle === style;
               return (
                 <button
                   key={style}
-                  onClick={() => update({ navStyle: style })}
+                  onClick={() => {
+                    update({ navStyle: style });
+                    if (style === 'ai') useStore.getState().setTab('assistant');
+                  }}
                   aria-pressed={active}
                   className={cn(
                     'rounded-2xl border p-2 text-left transition-colors',
                     active ? 'border-accent bg-accent/5' : 'border-black/10 bg-surface-hi/40 hover:border-black/20',
                   )}
                 >
-                  <NavStylePreview style={style} />
+                  {style === 'ai' ? <AiWorkspacePreview /> : <NavStylePreview style={style} />}
                   <span className={cn('mt-1.5 block px-0.5 text-[11px] font-medium', active ? 'text-accent' : 'text-ink-2')}>
-                    {t(style === 'floating' ? 'settings.navStyleFloating' : 'settings.navStyleClassic')}
+                    {t(NAV_STYLE_LABEL[style])}
                   </span>
                 </button>
               );

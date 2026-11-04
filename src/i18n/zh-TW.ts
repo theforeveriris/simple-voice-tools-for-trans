@@ -1326,7 +1326,8 @@ export const zhTW = {
   'test.startRecording': '開始錄音',
   'test.stopRecording': '停止',
   'settings.navStyle': '導覽列',
-  'settings.navStyleDesc': '選擇底部導覽樣式；經典底欄在測試頁用扇形錄音鍵，懸浮膠囊保留錄音球。',
+  'settings.navStyleDesc': '選擇底部導覽樣式；經典底欄在測試頁用扇形錄音鍵，懸浮膠囊保留錄音球，AI 工作台只顯示 AI 頁面，並在歷史側邊欄底部提供設定入口。',
   'settings.navStyleFloating': '懸浮膠囊',
   'settings.navStyleClassic': '經典底欄',
+  'settings.navStyleAi': 'AI 工作台',
 } as const;

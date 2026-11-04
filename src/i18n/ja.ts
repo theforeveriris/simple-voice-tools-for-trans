@@ -1327,7 +1327,8 @@ export const ja = {
   'test.startRecording': '録音開始',
   'test.stopRecording': '停止',
   'settings.navStyle': 'ナビゲーション',
-  'settings.navStyleDesc': '下部ナビのスタイルを選択します。クラシックバーはテストページの扇形録音ボタン、フローティングピルは録音オーブを使います。',
+  'settings.navStyleDesc': '下部ナビのスタイルを選択します。クラシックバーはテストページの扇形録音ボタン、フローティングピルは録音オーブを使います。AI ワークスペースでは AI ページだけを表示し、設定入口は履歴サイドバーの最下部にあります。',
   'settings.navStyleFloating': 'フローティングピル',
   'settings.navStyleClassic': 'クラシックバー',
+  'settings.navStyleAi': 'AI ワークスペース',
 } as const;

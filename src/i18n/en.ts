@@ -1326,7 +1326,8 @@ export const en = {
   'test.startRecording': 'Start recording',
   'test.stopRecording': 'Stop',
   'settings.navStyle': 'Navigation',
-  'settings.navStyleDesc': 'Choose the bottom navigation style; the classic bar uses the fan record button on the Test page, while the floating pill keeps the record orb.',
+  'settings.navStyleDesc': 'Choose the bottom navigation style; the classic bar uses the fan record button on the Test page, the floating pill keeps the record orb, and the AI workspace shows only the assistant with a settings entry at the bottom of its history sidebar.',
   'settings.navStyleFloating': 'Floating pill',
   'settings.navStyleClassic': 'Classic bar',
+  'settings.navStyleAi': 'AI workspace',
 } as const;

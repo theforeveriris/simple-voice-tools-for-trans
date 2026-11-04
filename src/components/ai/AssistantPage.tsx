@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft,
+  ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -260,6 +260,7 @@ function Bubble({
 export function AssistantPage() {
   useI18n();
   const settings = useStore((s) => s.settings);
+  const aiWorkspace = settings.navStyle === 'ai';
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
   const setTab = useStore((s) => s.setTab);
   const lastTab = useStore((s) => s.lastTab);
@@ -565,13 +566,19 @@ export function AssistantPage() {
 
   const topBar = (
     <div className="flex items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
-      <button
-        onClick={() => setTab(lastTab === 'assistant' ? 'test' : lastTab)}
-        aria-label={t('common.back')}
-        className={iconBtn}
-      >
-        <ArrowLeft size={18} />
-      </button>
+      {aiWorkspace ? (
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+          <Sparkles size={17} />
+        </span>
+      ) : (
+        <button
+          onClick={() => setTab(lastTab === 'assistant' ? 'test' : lastTab)}
+          aria-label={t('common.back')}
+          className={iconBtn}
+        >
+          <ArrowLeft size={18} />
+        </button>
+      )}
       <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
       <button onClick={newChat} aria-label={t('assistant.newChat')} className={iconBtn}>
         <Plus size={17} />
@@ -752,6 +759,20 @@ export function AssistantPage() {
                 ))
               )}
             </div>
+            {aiWorkspace && (
+              <div className="border-t border-line/60 p-3">
+                <button
+                  onClick={() => {
+                    setSidebarOpen(false);
+                    setTab('settings');
+                  }}
+                  className="flex w-full items-center gap-2 rounded-2xl bg-surface-hi/60 px-3 py-2.5 text-sm font-medium text-ink transition-transform active:scale-[0.98]"
+                >
+                  <Settings2 size={15} className="text-accent" />
+                  {t('nav.settings')}
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

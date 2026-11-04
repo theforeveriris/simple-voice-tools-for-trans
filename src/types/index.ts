@@ -10,9 +10,10 @@ export type ViewType = 'test' | 'analysis' | 'history' | 'assistant' | 'settings
 
 /**
  * 底部导航样式
- * floating 悬浮胶囊（默认）；classic 贯穿底部的经典导航栏
+ * floating 悬浮胶囊（默认）；classic 贯穿底部的经典导航栏；
+ * ai AI 工作台（全应用只保留 AI 页，设置入口在历史侧边栏底部）
  */
-export type NavStyle = 'floating' | 'classic';
+export type NavStyle = 'floating' | 'classic' | 'ai';
 
 /**
  * 界面语言

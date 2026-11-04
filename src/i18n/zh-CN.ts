@@ -1335,9 +1335,10 @@ export const zhCN = {
   'test.startRecording': '开始录音',
   'test.stopRecording': '停止',
   'settings.navStyle': '导航栏',
-  'settings.navStyleDesc': '选择底部导航样式；经典底栏在测试页用扇形录音键，悬浮胶囊保留录音球。',
+  'settings.navStyleDesc': '选择底部导航样式；经典底栏在测试页用扇形录音键，悬浮胶囊保留录音球，AI 工作台只显示 AI 页面，并在历史侧边栏底部提供设置入口。',
   'settings.navStyleFloating': '悬浮胶囊',
   'settings.navStyleClassic': '经典底栏',
+  'settings.navStyleAi': 'AI 工作台',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

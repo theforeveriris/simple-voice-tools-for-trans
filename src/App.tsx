@@ -71,6 +71,7 @@ function App() {
   const prideFlag = useStore((s) => s.settings.prideFlag);
   const theme = useStore((s) => s.settings.theme);
   const navStyle = useStore((s) => s.settings.navStyle);
+  const aiWorkspace = navStyle === 'ai';
   const addRecord = useHistoryStore((s) => s.addRecord);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
@@ -368,12 +369,16 @@ function App() {
           z 高于启动页 / 底部导航，避免与启动动画叠加闪动 */}
       <OnboardingSheet />
 
-      {displayedTab === 'assistant' ? (
+      {aiWorkspace && displayedTab !== 'settings' ? (
+        <AssistantPage />
+      ) : displayedTab === 'assistant' ? (
         <AssistantPage />
       ) : (
         <main
           ref={mainRef}
-          className={`mx-auto w-full max-w-5xl px-5 pt-7 ${navStyle === 'classic' ? 'pb-28' : 'pb-36'}`}
+          className={`mx-auto w-full max-w-5xl px-5 pt-7 ${
+            aiWorkspace ? 'pb-10' : navStyle === 'classic' ? 'pb-28' : 'pb-36'
+          }`}
         >
           {/*
             页面切换策略：两阶段切换（见上方注释）。旧页保留至新页就绪，
@@ -395,7 +400,7 @@ function App() {
         </main>
       )}
 
-      <BottomBar />
+      {!aiWorkspace && <BottomBar />}
 
       {/* 录音浮窗：录音中离开测试页时的全局迷你预览（计时 + 迷你音高图 + 停止） */}
       <RecordingMiniView />

@@ -1335,7 +1335,8 @@ export const fr = {
   'test.startRecording': 'Démarrer l’enregistrement',
   'test.stopRecording': 'Arrêter',
   'settings.navStyle': 'Navigation',
-  'settings.navStyleDesc': 'Choisissez le style de la barre inférieure ; la barre classique utilise le bouton d’enregistrement en éventail sur la page Test, la pilule flottante conserve la pastille d’enregistrement.',
+  'settings.navStyleDesc': 'Choisissez le style de la barre inférieure ; la barre classique utilise le bouton d’enregistrement en éventail sur la page Test, la pilule flottante conserve la pastille d’enregistrement, et l’espace IA n’affiche que l’assistant, avec les réglages en bas de sa barre latérale d’historique.',
   'settings.navStyleFloating': 'Pilule flottante',
   'settings.navStyleClassic': 'Barre classique',
+  'settings.navStyleAi': 'Espace IA',
 } as const;

@@ -666,5 +666,6 @@ function FloatingBottomBar() {
 /** 底栏样式切换：悬浮胶囊保留原录音球；经典底栏是纯导航 + 测试页录音头 */
 export function BottomBar() {
   const navStyle = useStore((s) => s.settings.navStyle);
+  if (navStyle === 'ai') return null;
   return navStyle === 'classic' ? <ClassicNav /> : <FloatingBottomBar />;
 }

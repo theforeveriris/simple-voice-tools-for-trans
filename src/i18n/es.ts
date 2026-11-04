@@ -1335,7 +1335,8 @@ export const es = {
   'test.startRecording': 'Iniciar grabación',
   'test.stopRecording': 'Detener',
   'settings.navStyle': 'Navegación',
-  'settings.navStyleDesc': 'Elige el estilo de la barra inferior; la barra clásica usa el botón de grabación en abanico en la página de prueba y la píldora flotante mantiene la bolita de grabación.',
+  'settings.navStyleDesc': 'Elige el estilo de la barra inferior; la barra clásica usa el botón de grabación en abanico en la página de prueba, la píldora flotante mantiene la bolita de grabación y el espacio AI muestra solo el asistente, con el acceso a ajustes al final de su barra lateral de historial.',
   'settings.navStyleFloating': 'Píldora flotante',
   'settings.navStyleClassic': 'Barra clásica',
+  'settings.navStyleAi': 'Espacio AI',
 } as const;

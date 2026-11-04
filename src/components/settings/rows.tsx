@@ -54,7 +54,7 @@ export function SettingsSection({
   children,
 }: {
   icon: ElementType;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
 }) {
   return (

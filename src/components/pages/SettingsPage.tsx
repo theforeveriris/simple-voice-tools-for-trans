@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Cog, DatabaseBackup, Info, Languages, Mic, Palette, Settings2, Smartphone, Target, ChevronRight, Search, Sparkles, X } from 'lucide-react';
+import { Cog, DatabaseBackup, Info, Languages, Mic, Palette, Settings2, Smartphone, Target, ChevronRight, Search, Sparkles, X, ArrowLeft } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -134,6 +134,8 @@ export function SettingsPage() {
   useI18n();
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
+  const navStyle = useStore((s) => s.settings.navStyle);
+  const setTab = useStore((s) => s.setTab);
   // 主视图两个标签（仿历史页 列表/趋势 的胶囊切换）
   const [view, setView] = useState<'settings' | 'about'>('settings');
   const [query, setQuery] = useState('');
@@ -225,7 +227,17 @@ export function SettingsPage() {
   return (
     <div className="flex flex-col gap-3.5 pb-4">
       {/* 设置 / 关于 切换（仿历史页 列表/趋势 胶囊） */}
-      <div className="flex w-fit items-center gap-0.5 rounded-full bg-card p-1 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+      <div className="flex items-center gap-2">
+        {navStyle === 'ai' && (
+          <button
+            onClick={() => setTab('assistant')}
+            aria-label={t('common.back')}
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        )}
+        <div className="flex w-fit items-center gap-0.5 rounded-full bg-card p-1 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
         {(
           [
             { id: 'settings', label: t('settings.tabSettings'), icon: Settings2 },
@@ -252,6 +264,7 @@ export function SettingsPage() {
             </button>
           );
         })}
+        </div>
       </div>
 
       {view === 'about' ? (
