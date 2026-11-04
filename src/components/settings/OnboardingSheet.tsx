@@ -45,7 +45,7 @@ const ONBOARDED_KEY = 'svt:onboarded';
 /** 步骤枚举（顺序与显示一一对应） */
 const STEPS = ['goal', 'age', 'language', 'appearance'] as const;
 
-/** 大型选项卡（active 态：底色 + 描边 + 左侧色条） */
+/** 大型选项卡（active 态：底色 + 描边） */
 function ChoiceCard({
   active,
   onClick,
@@ -69,7 +69,7 @@ function ChoiceCard({
           : 'border-line/50 bg-surface-hi/40',
       )}
     >
-      <span className={cn('text-[13px] font-semibold', active ? 'text-ink' : 'text-ink')}>{title}</span>
+      <span className="text-[13px] font-semibold text-ink">{title}</span>
       <span className="text-[11px] leading-relaxed text-ink-2">{desc}</span>
     </button>
   );

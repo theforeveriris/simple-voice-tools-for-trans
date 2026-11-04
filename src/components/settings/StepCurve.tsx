@@ -17,6 +17,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { t } from '@/i18n';
+import { useI18n } from '@/i18n/hook';
 
 /** 一段朗读的 F0 采样（Hz），29 点，末尾收在同一条区间带里 */
 const F0 = [
@@ -82,6 +84,7 @@ export function StepCurve({
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(360);
   const reduceMotion = useReducedMotion();
+  useI18n();
 
   useEffect(() => {
     const host = hostRef.current;
@@ -114,7 +117,7 @@ export function StepCurve({
       ref={hostRef}
       className={cn('shrink-0', className)}
       role="img"
-      aria-label={`第 ${step + 1} 步，共 ${total} 步`}
+      aria-label={t('onboard.stepOf', { n: step + 1, total })}
     >
       <svg
         width="100%"
@@ -168,7 +171,7 @@ export function StepCurve({
           165 Hz
         </text>
         <text x={2} y={(bandTop + bandBottom) / 2 + 3} fontSize={8} fill="rgb(var(--c-ink-2-rgb) / 0.85)">
-          目标区间
+          {t('onboard.curveBand')}
         </text>
 
         {/* 未完成段：整条曲线的灰底，保留「还有多远」 */}
