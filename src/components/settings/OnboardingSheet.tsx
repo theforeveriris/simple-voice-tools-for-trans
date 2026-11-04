@@ -3,8 +3,8 @@
  * 全屏覆盖层（z 高于底部导航与原生启动页），只在「未完成引导」时显示一次。
  * 步骤：训练方向 → 年龄段 → 界面语言 → 主题外观。
  *
- * 布局：顶部是 StepCurve（连续的 F0 进度曲线），下面接一张贴合底部的 sheet，
- * 内容只占需要的空间、超出时在 sheet 内滚动，避免大面积留白。
+ * 布局：竖屏为顶部 StepCurve + 底部 sheet；横屏与桌面切换为左侧曲线、
+ * 右侧内容的自适应卡片。内容超高时仅内容区滚动，操作按钮始终固定可见。
  *
  * 设计要点：
  * - 复用 useStore.updateSettings：用户每改一项就立即落库，让主题 / 语言切换
@@ -144,30 +144,32 @@ export function OnboardingSheet() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       data-noswipe
-      className="fixed inset-0 z-[300] flex items-center justify-center overflow-hidden bg-surface"
+      className="onboarding fixed inset-0 z-[300] flex items-center justify-center overflow-hidden bg-surface"
     >
       <div className="onboarding-stage flex h-full w-full max-w-sm flex-col overflow-hidden bg-surface">
-        {/* 品牌栏（右上角的「跳过」按要求不显示） */}
-        <div className="flex shrink-0 items-center gap-2 px-5 pb-1 pt-4">
-          <Sparkles size={16} className="text-accent" />
-          <span className="text-[13px] font-semibold tracking-tight text-ink">
-            Simple Voice Tool
-          </span>
+        <div className="onboarding-visual">
+          {/* 品牌栏（右上角的「跳过」按要求不显示） */}
+          <div className="onboarding-brand flex shrink-0 items-center gap-2 px-5 pb-1 pt-4">
+            <Sparkles size={16} className="text-accent" />
+            <span className="text-[13px] font-semibold tracking-tight text-ink">
+              Simple Voice Tool
+            </span>
+          </div>
+
+          {/* 进度曲线 */}
+          <StepCurve step={step} total={total} className="onboarding-curve px-4" />
         </div>
 
-        {/* 进度曲线 */}
-        <StepCurve step={step} total={total} className="px-4" />
-
         {/* 内容面板：贴着底部的 sheet，高度跟着内容走 */}
-        <div className="relative -mt-4 flex min-h-0 flex-1 flex-col rounded-t-[22px] border-t border-line/60 bg-card px-5 pb-4 pt-3">
-          <div className="mx-auto mb-3 h-1 w-9 shrink-0 rounded-full bg-ink/10" />
+        <div className="onboarding-sheet relative -mt-4 flex min-h-0 flex-1 flex-col rounded-t-[22px] border-t border-line/60 bg-card px-5 pb-4 pt-3">
+          <div className="onboarding-sheet-handle mx-auto mb-3 h-1 w-9 shrink-0 rounded-full bg-ink/10" />
 
           <motion.div
             key={stepKey}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+            className="onboarding-content flex min-h-0 flex-1 flex-col overflow-y-auto"
           >
             <div className="flex flex-col gap-3">
               <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-2/80">
@@ -259,7 +261,7 @@ export function OnboardingSheet() {
           </motion.div>
 
           {/* 底栏：上一步 / 下一步 */}
-          <div className="mt-3 flex shrink-0 items-center gap-2">
+          <div className="onboarding-footer mt-3 flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setStep((s) => Math.max(0, s - 1))}

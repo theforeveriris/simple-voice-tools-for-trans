@@ -40,7 +40,7 @@ const PAD_TOP = 26;
 const PAD_BOTTOM = 30;
 /** 右侧留给 255 / 165 Hz 刻度的宽度 */
 const LABEL_GUTTER = 34;
-const HEIGHT = 186;
+const DEFAULT_HEIGHT = 186;
 
 type Pt = [number, number];
 
@@ -82,7 +82,7 @@ export function StepCurve({
   className?: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(360);
+  const [size, setSize] = useState({ width: 360, height: DEFAULT_HEIGHT });
   const reduceMotion = useReducedMotion();
   useI18n();
 
@@ -90,16 +90,23 @@ export function StepCurve({
     const host = hostRef.current;
     if (!host || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(([entry]) => {
-      setWidth(Math.round(entry.contentRect.width));
+      setSize({
+        width: Math.round(entry.contentRect.width),
+        height: Math.round(entry.contentRect.height),
+      });
     });
     ro.observe(host);
     return () => ro.disconnect();
   }, []);
 
+  const { width, height } = size;
+  const compact = height < 150;
+  const padTop = compact ? 16 : PAD_TOP;
+  const padBottom = compact ? 18 : PAD_BOTTOM;
   const plotRight = Math.max(width - LABEL_GUTTER, 120);
   const x = (i: number) => 2 + (i / (F0.length - 1)) * (plotRight - 2);
   const y = (f: number) =>
-    PAD_TOP + (1 - (f - F_MIN) / (F_MAX - F_MIN)) * (HEIGHT - PAD_TOP - PAD_BOTTOM);
+    padTop + (1 - (f - F_MIN) / (F_MAX - F_MIN)) * (height - padTop - padBottom);
 
   const pts: Pt[] = F0.map((f, i) => [x(i), y(f)]);
   const fullPath = smoothPath(pts);
@@ -121,8 +128,8 @@ export function StepCurve({
     >
       <svg
         width="100%"
-        height={HEIGHT}
-        viewBox={`0 0 ${width} ${HEIGHT}`}
+        height="100%"
+        viewBox={`0 0 ${width} ${height}`}
         fill="none"
         aria-hidden="true"
       >
@@ -170,7 +177,13 @@ export function StepCurve({
         >
           165 Hz
         </text>
-        <text x={2} y={(bandTop + bandBottom) / 2 + 3} fontSize={8} fill="rgb(var(--c-ink-2-rgb) / 0.85)">
+        <text
+          className="onboarding-band-label"
+          x={2}
+          y={(bandTop + bandBottom) / 2 + 3}
+          fontSize={8}
+          fill="rgb(var(--c-ink-2-rgb) / 0.85)"
+        >
           {t('onboard.curveBand')}
         </text>
 
@@ -210,7 +223,7 @@ export function StepCurve({
           x1={head[0]}
           y1={head[1] + 10}
           x2={head[0]}
-          y2={HEIGHT - PAD_BOTTOM}
+          y2={height - padBottom}
           stroke="rgb(var(--c-accent-rgb) / 0.25)"
           strokeWidth={1}
           strokeDasharray="2 3"

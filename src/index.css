@@ -399,13 +399,136 @@ body {
   overflow-x: clip;
 }
 
-/* 首次引导：视口够高够宽时把引导收成一张居中卡片（接近手机比例），
-   手机上仍铺满整屏，避免在小屏上出现一截悬空的圆角矩形 */
-@media (min-height: 800px) and (min-width: 480px) {
+/* 首次引导：窄屏保持竖向全屏；曲线随可用高度收缩，操作区始终留在滚动区外 */
+.onboarding-visual {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.onboarding-curve {
+  height: clamp(112px, 22dvh, 186px);
+}
+
+.onboarding-content {
+  overscroll-behavior: contain;
+}
+
+@media (max-height: 680px) {
+  .onboarding-band-label {
+    display: none;
+  }
+}
+
+/* 桌面 / 平板：品牌与曲线在左，步骤内容在右；卡片包裹内容，超高时仅内容区滚动 */
+@media (min-width: 768px) and (min-height: 560px) {
+  .onboarding {
+    padding: 24px;
+  }
+
   .onboarding-stage {
-    max-height: 780px;
-    border-radius: 28px;
+    display: grid;
+    grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+    width: min(900px, 100%);
+    height: auto;
+    max-height: calc(100dvh - 48px);
+    max-width: none;
     border: 1px solid rgb(var(--c-line-rgb) / 0.6);
+    border-radius: 28px;
+    background: rgb(var(--c-card-rgb) / 0.88);
+    box-shadow: 0 24px 80px -32px rgb(var(--c-ink-rgb) / 0.28);
+  }
+
+  .onboarding-visual {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    padding: 32px;
+    border-right: 1px solid rgb(var(--c-line-rgb) / 0.5);
+    background: rgb(var(--c-accent-rgb) / 0.035);
+  }
+
+  .onboarding-brand {
+    padding: 0;
+  }
+
+  .onboarding-curve {
+    height: 186px;
+    margin-top: 32px;
+    padding: 0;
+  }
+
+  .onboarding-sheet {
+    max-height: calc(100dvh - 48px);
+    margin-top: 0;
+    padding: 28px;
+    overflow: hidden;
+    border-top: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .onboarding-sheet-handle {
+    display: none;
+  }
+
+  .onboarding-footer {
+    margin-top: 20px;
+  }
+}
+
+/* 横屏手机 / 低高度窗口：同样使用双栏，但压缩曲线与间距，保证下一步可见 */
+@media (min-width: 560px) and (max-height: 559px) {
+  .onboarding {
+    padding: 12px;
+  }
+
+  .onboarding-stage {
+    display: grid;
+    grid-template-columns: minmax(200px, 0.72fr) minmax(0, 1.28fr);
+    width: min(880px, 100%);
+    height: 100%;
+    max-width: none;
+    border: 1px solid rgb(var(--c-line-rgb) / 0.6);
+    border-radius: 24px;
+    background: rgb(var(--c-card-rgb) / 0.9);
+  }
+
+  .onboarding-visual {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    padding: 20px;
+    border-right: 1px solid rgb(var(--c-line-rgb) / 0.5);
+    background: rgb(var(--c-accent-rgb) / 0.035);
+  }
+
+  .onboarding-brand {
+    padding: 0;
+  }
+
+  .onboarding-curve {
+    height: 118px;
+    margin-top: 20px;
+    padding: 0;
+  }
+
+  .onboarding-sheet {
+    margin-top: 0;
+    padding: 16px 20px;
+    overflow: hidden;
+    border-top: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .onboarding-sheet-handle {
+    display: none;
+  }
+
+  .onboarding-footer {
+    margin-top: 12px;
   }
 }
 
