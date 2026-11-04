@@ -174,13 +174,13 @@ function recordPayload(rec: AnalysisRecord, target: AdviceTarget): string {
 }
 
 /** 基线 Δ（当前 − 基线；仅在用户钉选基线且与当前记录不同时提供） */
-function baselinePayload(rec: AnalysisRecord, baseline: AnalysisRecord): string {
+export function baselinePayload(rec: AnalysisRecord, baseline: AnalysisRecord): string {
   const s = rec.stats;
   const b = baseline.stats;
   const d = (a: number | null | undefined, c: number | null | undefined, dg = 1) =>
     a != null && c != null ? `${a - c > 0 ? '+' : ''}${(a - c).toFixed(dg)}` : null;
   const lines: (string | null)[] = [
-    `baselineDate: ${new Date(baseline.createdAt).toISOString().slice(0, 16).replace('T', ' ')}`,
+    `baselineDate: ${localStamp(baseline.createdAt, true)}`,
     `baselineMode: ${baseline.mode ?? 'unknown'}`,
     `baselineAvgF0: ${b.avgF0.toFixed(1)} Hz`,
     baseline.note ? `baselineNote: ${baseline.note}` : null,
@@ -196,6 +196,21 @@ function baselinePayload(rec: AnalysisRecord, baseline: AnalysisRecord): string 
     s.shimmerPct != null && b.shimmerPct != null ? `deltaShimmerPct: ${d(s.shimmerPct, b.shimmerPct, 2)}%` : null,
     s.hnrDb != null && b.hnrDb != null ? `deltaHnrDb: ${d(s.hnrDb, b.hnrDb)} dB` : null,
     s.cppsDb != null && b.cppsDb != null ? `deltaCppsDb: ${d(s.cppsDb, b.cppsDb)} dB` : null,
+    s.inTargetPct != null && b.inTargetPct != null ? `deltaInTargetPct: ${d(s.inTargetPct, b.inTargetPct, 0)}%` : null,
+    (() => {
+      const gs = s.f2f1GapHz ?? (s.avgF1 != null && s.avgF2 != null ? s.avgF2 - s.avgF1 : null);
+      const gb = b.f2f1GapHz ?? (b.avgF1 != null && b.avgF2 != null ? b.avgF2 - b.avgF1 : null);
+      return gs != null && gb != null ? `deltaF2F1GapHz: ${d(gs, gb, 0)} Hz` : null;
+    })(),
+    s.breathiness != null && b.breathiness != null ? `deltaBreathiness: ${d(s.breathiness, b.breathiness, 2)}` : null,
+    s.nasalityDb != null && b.nasalityDb != null ? `deltaNasalityDb: ${d(s.nasalityDb, b.nasalityDb, 1)} dB` : null,
+    s.spectralTiltDbOct != null && b.spectralTiltDbOct != null ? `deltaSpectralTiltDbOct: ${d(s.spectralTiltDbOct, b.spectralTiltDbOct, 1)} dB/oct` : null,
+    (() => {
+      if (rec.mode !== 'sustained' || baseline.mode !== 'sustained') return null;
+      const ms = computeSustainedMetrics(rec).mptSec;
+      const mb = computeSustainedMetrics(baseline).mptSec;
+      return `deltaMptSec: ${d(ms, mb, 1)} s`;
+    })(),
   ];
   return lines.filter((l): l is string => l != null).join('\n');
 }

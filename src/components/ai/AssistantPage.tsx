@@ -10,7 +10,8 @@
  * - 右侧抽屉：新建对话 + 历史列表（点按切换、两步删除）
  * 生成中关闭页面不中断请求（跑完照常写入对话，避免丢回复）；中途取消用停止按钮。
  * 对话存 IndexedDB（llm:chats，封顶 30 条）；生成走活动档案（协议/流式/上下文
- * 均由档案决定），系统提示附用户历史测试记录摘要，按上下文预算裁剪。
+ * 均由档案决定），系统提示附用户画像、训练靶标、历史聚合、基线 Δ 与最近记录
+ * 明细，按上下文预算裁剪。
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -28,6 +29,7 @@ import {
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocs } from '@/lib/docKnowledge';
+import { buildAssistantContext } from '@/lib/assistantContext';
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
@@ -39,48 +41,17 @@ import { cn } from '@/lib/utils';
 const estTokens = (s: string) => Math.ceil(s.length / 2);
 
 /**
- * 用户历史测试记录摘要：按上下文预算（tokens）从最旧开始裁剪。
- * 全量读取（getAllRecords，不受内存 200 条窗口截断），并等待 hydrate 完成，
- * 避免应用刚启动时记录未加载导致历史部分为空。
+ * 读取全量历史记录并组装助手上下文：用户画像、聚合、基线 Δ 与最近明细。
+ * 等待 hydrate 完成，避免应用刚启动时把空历史发给模型。
  */
-async function historySection(budgetTokens: number): Promise<string> {
+async function loadAssistantContext(
+  budgetTokens: number,
+  settings: Parameters<typeof buildAssistantContext>[1],
+): Promise<ReturnType<typeof buildAssistantContext>> {
   const store = useHistoryStore.getState();
   if (!store.ready) await store.hydrate();
   const records = await store.getAllRecords();
-  if (records.length === 0) return '';
-  const lines = [...records]
-    .sort((a, b) => a.createdAt - b.createdAt)
-    .map((r) => {
-      const s = r.stats;
-      const d = new Date(r.createdAt);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const parts = [
-        `id ${r.id}`,
-        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-        r.mode ?? 'free',
-        `${Math.round(r.durationSec)}s`,
-        `avg ${s.avgF0.toFixed(1)}Hz`,
-        `p10-p90 ${s.p10F0.toFixed(0)}-${s.p90F0.toFixed(0)}Hz`,
-        s.avgF1 != null ? `F1 ${s.avgF1.toFixed(0)}` : '',
-        s.avgF2 != null ? `F2 ${s.avgF2.toFixed(0)}` : '',
-        s.jitterPct != null ? `Jitter ${s.jitterPct.toFixed(2)}%` : '',
-        s.hnrDb != null ? `HNR ${s.hnrDb.toFixed(1)}dB` : '',
-        s.cppsDb != null ? `CPPS ${s.cppsDb.toFixed(1)}dB` : '',
-        r.note ? `「${r.note}」` : '',
-      ].filter(Boolean);
-      return `- ${parts.join(' | ')}`;
-    });
-  const kept: string[] = [];
-  let acc = 0;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const cost = estTokens(lines[i]) + 4;
-    if (acc + cost > budgetTokens) break;
-    acc += cost;
-    kept.unshift(lines[i]);
-  }
-  if (kept.length === 0) return '';
-  const omitted = lines.length - kept.length;
-  return `\n\n## 用户历史测试记录（共 ${lines.length} 条${omitted > 0 ? `，以下为最近 ${kept.length} 条` : ''}，时间从旧到新）\n${kept.join('\n')}`;
+  return buildAssistantContext(records, settings, budgetTokens);
 }
 
 /**
@@ -110,14 +81,16 @@ const ASSISTANT_VISUAL_GUIDE = [
 ].join('\n');
 
 /** 助手系统提示词：定位与边界 + 历史记录使用规则 + 内置文档摘录，按界面语言回答 */
-function systemPrompt(history: string, docs = ''): string {
+function systemPrompt(profile: string, history: string, docs = ''): string {
   return [
     '你是 Simple Voice Tool for Trans 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
     '不要使用 emoji 或颜文字；用文字、Markdown、图表和交互组件表达。',
     '回答简洁、务实、有依据；涉及嗓音训练时给出可操作的练习建议；',
     '不做医学诊断，遇到疑似嗓音疾病（持续嘶哑、疼痛等）时建议就医或咨询言语治疗师。',
+    '记录里的底噪、麦克风、录音小时是自动采集的环境元数据：可用于解释数据可比性与可信度，缺失时不要假设，也不要据此做医学判断。',
     '回复支持 Markdown：可用 **粗体**、*斜体*、`行内代码`、有序/无序列表、表格（| 列 | 列 |）、> 引用与 ## 小标题，让长回答结构清晰；除 genui 组件外不要输出代码块。',
     ASSISTANT_VISUAL_GUIDE,
+    profile,
     history
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
@@ -278,6 +251,7 @@ function Bubble({
 export function AssistantPage() {
   useI18n();
   const navStyle = useStore((s) => s.settings.navStyle);
+  const settings = useStore((s) => s.settings);
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
   const cfg = useActiveLlmConfig(activeProfileId);
   const chats = useChats();
@@ -331,11 +305,11 @@ export function AssistantPage() {
       512,
       Math.min(Math.floor(context * 0.6), context - convTokens - replyReserve - 512),
     );
-    const hist = await historySection(histBudget);
+    const hist = await loadAssistantContext(histBudget, settings);
     // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
     const docs = lastUser ? await retrieveDocs(lastUser.content) : '';
-    const sys = systemPrompt(hist, docs);
+    const sys = systemPrompt(hist.profile, hist.history, docs);
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
     const maxTok = Math.max(1024, context - reserve);
