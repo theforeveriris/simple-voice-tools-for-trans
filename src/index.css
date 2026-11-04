@@ -398,3 +398,14 @@ html,
 body {
   overflow-x: clip;
 }
+
+/* 首次引导：视口够高够宽时把引导收成一张居中卡片（接近手机比例），
+   手机上仍铺满整屏，避免在小屏上出现一截悬空的圆角矩形 */
+@media (min-height: 800px) and (min-width: 480px) {
+  .onboarding-stage {
+    max-height: 780px;
+    border-radius: 28px;
+    border: 1px solid rgb(var(--c-line-rgb) / 0.6);
+  }
+}
+
