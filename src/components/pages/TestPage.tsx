@@ -299,12 +299,12 @@ function FanRecordButton() {
       aria-label={isRecording ? t('test.stopRecording') : t('test.startRecording')}
       title={isRecording ? t('test.stopRecording') : t('test.startRecording')}
       className={cn(
-        'absolute -bottom-1 -right-1 z-10 grid size-[3.375rem] place-items-end justify-items-end overflow-hidden rounded-br-[20px] text-on-accent shadow-[0_6px_18px_-6px_rgb(var(--c-accent-rgb)/0.5)] transition-transform active:scale-95',
+        'absolute bottom-0 right-0 z-10 grid size-[3.375rem] place-items-center overflow-hidden rounded-br-lg text-on-accent shadow-[0_6px_18px_-6px_rgb(var(--c-accent-rgb)/0.5)] transition-transform active:scale-95',
         isRecording ? 'bg-ink text-surface' : 'bg-accent',
       )}
       style={{ borderTopLeftRadius: '100%' }}
     >
-      <span className="mb-2.5 mr-2.5 grid place-items-center">
+      <span className="grid translate-x-[4px] translate-y-[4px] place-items-center">
         {isRecording
           ? <Square size={15} fill="currentColor" strokeWidth={0} />
           : <Play size={16} fill="currentColor" strokeWidth={0} className="translate-x-[1px]" />}
