@@ -357,20 +357,34 @@ html.bg-image .bg-surface:not(.app-root) {
 }
 
 /* 卡片毛玻璃：半透明 + 背景模糊，隐隐透出底层渐变（强度可调）。
-   .card-surface 是 bg-card 卡片的统一收敛类，同样命中 */
-html.theme-pride .bg-card,
-html.theme-pride .card-surface,
-html.bg-image .bg-card,
-html.bg-image .card-surface {
+   .card-surface 是 bg-card 卡片的统一收敛类，同样命中。
+   固定应用外框（底栏）用 .app-chrome 排除：否则渐变主题会把
+   bg-card 覆盖成 0.55 alpha，底栏突然变成明显的玻璃条 */
+html.theme-pride .bg-card:not(.app-chrome),
+html.theme-pride .card-surface:not(.app-chrome),
+html.bg-image .bg-card:not(.app-chrome),
+html.bg-image .card-surface:not(.app-chrome) {
   background-color: rgb(var(--c-card-rgb) / 0.55);
   backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
   -webkit-backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
 }
-html.theme-pride.dark .bg-card,
-html.theme-pride.dark .card-surface,
-html.bg-image.dark .bg-card,
-html.bg-image.dark .card-surface {
+html.theme-pride.dark .bg-card:not(.app-chrome),
+html.theme-pride.dark .card-surface:not(.app-chrome),
+html.bg-image.dark .bg-card:not(.app-chrome),
+html.bg-image.dark .card-surface:not(.app-chrome) {
   background-color: rgb(var(--c-card-rgb) / 0.45);
+}
+/* 渐变 / 自定义背景图主题：底栏单独恢复毛玻璃（普通莫奈主题仍为实色）。
+   透明度用有效 CSS 值显式给出，避免再出现 92% 这类 Tailwind 不生成的类 */
+html.theme-pride .app-chrome,
+html.bg-image .app-chrome {
+  background-color: rgb(var(--c-card-rgb) / 0.74);
+  backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
+}
+html.theme-pride.dark .app-chrome,
+html.bg-image.dark .app-chrome {
+  background-color: rgb(var(--c-card-rgb) / 0.64);
 }
 /* 卡内的输入框 / 药丸 / 分段控件：轻微透明保持同气质（不加模糊，控制模糊层数量） */
 html.theme-pride .bg-surface-hi,
