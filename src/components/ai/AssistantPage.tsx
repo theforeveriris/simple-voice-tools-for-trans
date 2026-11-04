@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
@@ -27,11 +28,15 @@ import { useI18n } from '@/i18n/hook';
 import { isAbortError, languageName, llmChatStreamMessages } from '@/lib/llm';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import {
-  addMessage, createChat, deleteChat, getChat, setMessages, useChats, type ChatMessage,
+  addMessage, createChat, deleteChat, getChat, setMessages, setPinnedRecords, useChats, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocs } from '@/lib/docKnowledge';
-import { buildAssistantContext } from '@/lib/assistantContext';
+import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
+import {
+  filterCommands, parseAssistantCommand, parseTestMode,
+  resolveRecordSelectors, reviewRangeDays, type AssistantCommandSpec, type ParsedCommand,
+} from '@/lib/assistantCommands';
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
@@ -39,28 +44,39 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
+import type { AnalysisRecord, TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 
 /** Token 粗估：中英混合按 2 字符 ≈ 1 token（量级参考，用于预算裁剪） */
 const estTokens = (s: string) => Math.ceil(s.length / 2);
 
+function startOfLocalDay(ts: number): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 /**
  * 读取全量历史记录并组装助手上下文：用户画像、聚合、基线 Δ 与最近明细。
  * 等待 hydrate 完成，避免应用刚启动时把空历史发给模型。
  */
-async function loadAssistantContext(
-  budgetTokens: number,
-  settings: Parameters<typeof buildAssistantContext>[1],
-): Promise<ReturnType<typeof buildAssistantContext>> {
+/** 全量历史记录（IDB + 内存中刚写入的记录），供助手上下文与命令共用 */
+async function loadAllRecords(): Promise<AnalysisRecord[]> {
   const store = useHistoryStore.getState();
   if (!store.ready) await store.hydrate();
   const stored = await store.getAllRecords();
-  // 合并内存中的最新记录：刚录完的语音可能还没等到 IDB 落盘，
-  // 直接读 getAllRecords 会漏掉它，导致助手看不到本次录音。
   const byId = new Map(stored.map((r) => [r.id, r]));
   for (const r of useHistoryStore.getState().records) byId.set(r.id, r);
-  const records = [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
-  return buildAssistantContext(records, settings, budgetTokens);
+  return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
+}
+
+async function loadAssistantContext(
+  budgetTokens: number,
+  settings: Parameters<typeof buildAssistantContext>[1],
+  pinnedIds: string[] = [],
+): Promise<ReturnType<typeof buildAssistantContext>> {
+  const records = await loadAllRecords();
+  return buildAssistantContext(records, settings, budgetTokens, pinnedIds);
 }
 
 /**
@@ -90,7 +106,7 @@ const ASSISTANT_VISUAL_GUIDE = [
 ].join('\n');
 
 /** 助手系统提示词：定位与边界 + 历史记录使用规则 + 内置文档摘录，按界面语言回答 */
-function systemPrompt(profile: string, history: string, docs = ''): string {
+function systemPrompt(profile: string, history: string, docs = '', extra = ''): string {
   return [
     '你是 Simple Voice Tool for Trans 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
     '不要使用 emoji 或颜文字；用文字、Markdown、图表和交互组件表达。',
@@ -105,6 +121,7 @@ function systemPrompt(profile: string, history: string, docs = ''): string {
       : '',
     history,
     docs,
+    extra,
     `使用「${languageName()}」回答。`,
   ].filter(Boolean).join('\n');
 }
@@ -264,6 +281,7 @@ export function AssistantPage() {
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
   const setTab = useStore((s) => s.setTab);
   const lastTab = useStore((s) => s.lastTab);
+  const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const cfg = useActiveLlmConfig(activeProfileId);
   const chats = useChats();
   /** null = 尚未开始对话（发送第一条时创建） */
@@ -290,10 +308,14 @@ export function AssistantPage() {
   const [voiceState, setVoiceState] = useState<'idle' | 'starting' | 'recording' | 'processing'>('idle');
   const [voiceSec, setVoiceSec] = useState(0);
   const voiceActiveRef = useRef(false);
+  const [commandIndex, setCommandIndex] = useState(0);
+  const [commandDismissed, setCommandDismissed] = useState(false);
+  const historyRecords = useHistoryStore((s) => s.records);
 
   const conv = activeId ? chats?.find((c) => c.id === activeId) ?? null : null;
   const messages = conv?.messages ?? [];
   const busy = streamText !== null;
+  const pinnedIds = conv?.pinnedRecordIds ?? [];
 
   // 自动滚底：仅当用户本来就贴近底部时跟随（上翻历史时不打扰）
   useEffect(() => {
@@ -327,7 +349,7 @@ export function AssistantPage() {
       .catch(() => undefined);
   }, []);
 
-  const generate = async (convId: string, history: ChatMessage[]) => {
+  const generate = async (convId: string, history: ChatMessage[], extraContext = '') => {
     if (!cfg || history.length === 0) return;
     // 上下文预算：历史记录摘要 + 系统提示 + 对话 + 回复余量都要装进窗口。
     // 历史记录预算自适应：对话越短分给记录摘要越多（旧实现固定 40%，
@@ -339,11 +361,15 @@ export function AssistantPage() {
       512,
       Math.min(Math.floor(context * 0.6), context - convTokens - replyReserve - 512),
     );
-    const hist = await loadAssistantContext(histBudget, settings);
+    const hist = await loadAssistantContext(
+      histBudget,
+      settings,
+      getChat(convId)?.pinnedRecordIds ?? [],
+    );
     // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
     const docs = lastUser ? await retrieveDocs(lastUser.content) : '';
-    const sys = systemPrompt(hist.profile, hist.history, docs);
+    const sys = systemPrompt(hist.profile, hist.history, docs, extraContext);
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
     const maxTok = Math.max(1024, context - reserve);
@@ -385,8 +411,8 @@ export function AssistantPage() {
     }
   };
 
-  /** 发送一条文本消息（文本输入与语音记录共用） */
-  const sendMessage = (raw: string) => {
+  /** 发送一条文本消息（文本输入、语音和命令共用） */
+  const sendMessage = (raw: string, extraContext = '') => {
     const text = raw.trim();
     if (!text || busy || !cfg) return;
     setInput('');
@@ -396,13 +422,15 @@ export function AssistantPage() {
       setActiveId(convId);
     }
     addMessage(convId, { role: 'user', content: text });
-    void generate(convId, getChat(convId)?.messages ?? [{ role: 'user', content: text }]);
+    void generate(
+      convId,
+      getChat(convId)?.messages ?? [{ role: 'user', content: text }],
+      extraContext,
+    );
   };
 
-  const send = () => sendMessage(input);
-
   /** 语音输入：本地录音 → 保存历史 → 把分析结果通过记录 id 交给助手 */
-  const startVoice = async () => {
+  const startVoice = async (mode: TestMode = 'reading') => {
     if (voiceState !== 'idle') return;
     const st = useStore.getState();
     if (st.isRecording) return;
@@ -415,7 +443,7 @@ export function AssistantPage() {
         deviceId: s.micDeviceId || undefined,
         silenceStopSec: 0,
         targetRange: s.targetEnabled ? [s.targetF0Min, s.targetF0Max] : null,
-        mode: 'reading',
+        mode,
         saveAudio: s.audioSave,
         micEnhance: s.micEnhance,
         audioBitrateKbps: s.audioBitrateKbps,
@@ -457,6 +485,203 @@ export function AssistantPage() {
       setVoiceState('idle');
       toast.error(t('toast.micError'));
     }
+  };
+
+  /** 命令执行：本地动作、会话上下文或提示请求都在这里分派 */
+  const executeCommand = async (cmd: ParsedCommand) => {
+    if (cmd.id === 'unknown') {
+      toast.error(t('assistant.cmd.unknown'));
+      return;
+    }
+    if (busy && cmd.id !== 'stop' && cmd.id !== 'help') {
+      toast.info(t('assistant.cmd.busy'));
+      return;
+    }
+    setCommandDismissed(true);
+    const currentChat = () => {
+      if (activeId && getChat(activeId)) return activeId;
+      const id = createChat('');
+      setActiveId(id);
+      return id;
+    };
+    const records = async () => loadAllRecords();
+    const pinnedOf = (id: string) => getChat(id)?.pinnedRecordIds ?? [];
+
+    switch (cmd.id) {
+      case 'help':
+        setInput('/');
+        setCommandDismissed(false);
+        requestAnimationFrame(() => taRef.current?.focus());
+        return;
+
+      case 'new':
+        newChat();
+        setInput('');
+        return;
+
+      case 'record': {
+        const mode = parseTestMode(cmd.args[0]);
+        if (!mode) {
+          toast.error(t('assistant.cmd.badArgs'));
+          return;
+        }
+        setInput('');
+        await startVoice(mode);
+        return;
+      }
+
+      case 'stop':
+        if (voiceState === 'recording') await stopVoice();
+        else if (busy) abortRef.current?.abort();
+        setInput('');
+        return;
+
+      case 'attach': {
+        const selectors = cmd.args.length ? cmd.args : ['latest'];
+        const matched = resolveRecordSelectors(
+          selectors,
+          await records(),
+          settings.baselineRecordId,
+        );
+        if (!matched.length) {
+          toast.error(t('assistant.cmd.noRecords'));
+          return;
+        }
+        const id = currentChat();
+        setPinnedRecords(id, [...pinnedOf(id), ...matched.map((r) => r.id)]);
+        setInput('');
+        toast.success(t('assistant.cmd.attached', { n: matched.length }));
+        return;
+      }
+
+      case 'detach': {
+        if (!activeId) {
+          setInput('');
+          return;
+        }
+        const current = pinnedOf(activeId);
+        if (!cmd.args.length || cmd.args[0].toLowerCase() === 'all') {
+          setPinnedRecords(activeId, []);
+        } else {
+          const matched = resolveRecordSelectors(
+            cmd.args,
+            await records(),
+            settings.baselineRecordId,
+          );
+          const drop = new Set(matched.map((r) => r.id));
+          setPinnedRecords(activeId, current.filter((rid) => !drop.has(rid)));
+        }
+        setInput('');
+        toast.success(t('assistant.cmd.detached'));
+        return;
+      }
+
+      case 'compare': {
+        const selectors = cmd.args.length >= 2 ? cmd.args : ['last:2'];
+        const matched = resolveRecordSelectors(
+          selectors,
+          await records(),
+          settings.baselineRecordId,
+        );
+        if (matched.length < 2) {
+          toast.error(t('assistant.cmd.needTwo'));
+          return;
+        }
+        const pair = matched.slice(-2);
+        const extra = [
+          '## 命令附加上下文（/compare）',
+          ...pair.map((r) => formatRecordLine(r)),
+        ].join('\n');
+        setInput('');
+        sendMessage(t('assistant.cmd.compareAsk', {
+          a: pair[0].id,
+          b: pair[1].id,
+        }), extra);
+        return;
+      }
+
+      case 'review': {
+        const range = reviewRangeDays(cmd.args[0]);
+        const all = await records();
+        const from = range.days > 0 ? startOfLocalDay(Date.now()) - (range.days - 1) * 86_400_000 : 0;
+        const filtered = range.days > 0 ? all.filter((r) => r.createdAt >= from) : all;
+        if (!filtered.length) {
+          toast.error(t('assistant.cmd.noRecords'));
+          return;
+        }
+        const rangeKey = range.key === 'today'
+          ? 'assistant.cmd.rangeToday'
+          : range.key === 'month'
+            ? 'assistant.cmd.rangeMonth'
+            : range.key === 'all'
+              ? 'assistant.cmd.rangeAll'
+              : 'assistant.cmd.rangeWeek';
+        const extra = [
+          `## 命令范围（/review）`,
+          `范围：${t(rangeKey)}，记录 ${filtered.length} 条`,
+          `记录 id：${filtered.slice(-30).map((r) => r.id).join(', ')}`,
+        ].join('\n');
+        setInput('');
+        sendMessage(t('assistant.cmd.reviewAsk', { range: t(rangeKey) }), extra);
+        return;
+      }
+
+      case 'open': {
+        const page = (cmd.args[0] ?? '').toLowerCase();
+        if (page === 'analysis') {
+          const selector = cmd.args[1] ?? 'latest';
+          const matched = resolveRecordSelectors(
+            [selector],
+            await records(),
+            settings.baselineRecordId,
+          );
+          const rec = matched[matched.length - 1];
+          if (!rec) {
+            toast.error(t('assistant.cmd.noRecords'));
+            return;
+          }
+          setCurrentAnalysis(rec);
+          setTab('analysis');
+          setInput('');
+          return;
+        }
+        if (page === 'records' || page === 'history') {
+          setTab('history');
+          setInput('');
+          return;
+        }
+        if (page === 'settings') {
+          setTab('settings');
+          setInput('');
+          return;
+        }
+        toast.error(t('assistant.cmd.badArgs'));
+        return;
+      }
+
+      default:
+        toast.error(t('assistant.cmd.unknown'));
+    }
+  };
+
+  /** 菜单点击：需要目标的 /open 先补全输入，其余按默认参数执行 */
+  const runCommandSpec = (spec: AssistantCommandSpec) => {
+    setCommandDismissed(true);
+    if (spec.id === 'open') {
+      setInput('/open ');
+      requestAnimationFrame(() => taRef.current?.focus());
+      return;
+    }
+    void executeCommand({ id: spec.id, raw: `/${spec.id}`, args: [] });
+  };
+
+  const send = () => {
+    const parsed = parseAssistantCommand(input);
+    if (parsed) {
+      void executeCommand(parsed);
+      return;
+    }
+    sendMessage(input);
   };
 
   /** 重做：截断到该消息之前重新生成（用户消息会原样重发） */
@@ -536,6 +761,11 @@ export function AssistantPage() {
   const voiceTime = `${Math.floor(voiceSec / 60)}:${String(voiceSec % 60).padStart(2, '0')}`;
   const voiceMode = !busy && !input.trim() && !inputFocused && voiceState === 'idle';
   const voicePending = voiceState === 'starting' || voiceState === 'processing';
+  const commandQuery = !busy && input.startsWith('/') && !input.startsWith('//') && !input.includes(' ')
+    ? input
+    : '';
+  const commandItems = commandQuery && !commandDismissed ? filterCommands(commandQuery) : [];
+  useEffect(() => setCommandIndex(0), [commandQuery]);
   const composerDisabled = busy
     ? false
     : voicePending
@@ -561,6 +791,39 @@ export function AssistantPage() {
       void startVoice();
     } else {
       send();
+    }
+  };
+
+  const onComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && input.startsWith('/')) {
+      if (input.trim() === '/') {
+        e.preventDefault();
+        return;
+      }
+      const parsed = parseAssistantCommand(input);
+      if (parsed && parsed.id !== 'unknown') {
+        e.preventDefault();
+        if (parsed.id === 'open' && parsed.args.length === 0) {
+          setInput('/open ');
+          return;
+        }
+        void executeCommand(parsed);
+        return;
+      }
+    }
+    if (!commandItems.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCommandIndex((i) => (i + 1) % commandItems.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCommandIndex((i) => (i - 1 + commandItems.length) % commandItems.length);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setCommandDismissed(true);
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      runCommandSpec(commandItems[commandIndex] ?? commandItems[0]);
     }
   };
 
@@ -667,43 +930,100 @@ export function AssistantPage() {
 
       {/* 输入栏 */}
       <div className="px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <div className="min-w-0 flex-1 rounded-2xl bg-card px-3.5 py-2.5 shadow-[0_2px_10px_rgba(28,25,45,0.06)]">
-            <textarea
-              ref={taRef}
-              rows={1}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              placeholder={voiceState === 'recording'
-                ? t('assistant.voiceRecording', { time: voiceTime })
-                : t('assistant.ph')}
-              className="max-h-[120px] w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-2/60"
-            />
+        <div className="relative mx-auto max-w-2xl">
+          {pinnedIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pb-1.5">
+              <span className="text-[10px] text-ink-2">
+                {t('assistant.cmd.attached', { n: pinnedIds.length })}
+              </span>
+              {pinnedIds.map((id) => {
+                const rec = historyRecords.find((r) => r.id === id);
+                const label = rec
+                  ? `${new Date(rec.createdAt).toLocaleDateString([], { month: 'numeric', day: 'numeric' })} · ${Math.round(rec.stats.avgF0)}Hz`
+                  : id.slice(0, 8);
+                return (
+                  <button
+                    key={id}
+                    onClick={() => conv && setPinnedRecords(conv.id, pinnedIds.filter((x) => x !== id))}
+                    className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent"
+                    title={t('assistant.cmd.detach')}
+                  >
+                    {label} ×
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {commandItems.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]">
+              {commandItems.map((c, i) => (
+                <button
+                  key={c.id}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runCommandSpec(c)}
+                  className={cn(
+                    'flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left transition-colors',
+                    i === commandIndex ? 'bg-accent/10' : 'hover:bg-surface-hi/60',
+                  )}
+                >
+                  <span className="shrink-0 font-mono text-[11px] text-accent">
+                    {c.usage.split(/\s+/)[0]}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-ink-2">
+                    {t(c.descriptionKey)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1 rounded-2xl bg-card px-3.5 py-2.5 shadow-[0_2px_10px_rgba(28,25,45,0.06)]">
+              <textarea
+                ref={taRef}
+                rows={1}
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  if (e.target.value.startsWith('/')) setCommandDismissed(false);
+                }}
+                onFocus={() => {
+                  setInputFocused(true);
+                  if (input.startsWith('/')) setCommandDismissed(false);
+                }}
+                onBlur={() => {
+                  setInputFocused(false);
+                  setCommandDismissed(true);
+                }}
+                onKeyDown={onComposerKeyDown}
+                placeholder={voiceState === 'recording'
+                  ? t('assistant.voiceRecording', { time: voiceTime })
+                  : t('assistant.ph')}
+                className="max-h-[120px] w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-2/60"
+              />
+            </div>
+            <button
+              onClick={onComposerAction}
+              disabled={composerDisabled}
+              aria-label={composerLabel}
+              title={composerLabel}
+              className={cn(
+                'grid size-10 shrink-0 place-items-center rounded-full text-white transition-transform active:scale-90',
+                'bg-accent disabled:opacity-40',
+                busy && 'bg-ink text-surface',
+                voiceState === 'recording' && 'ring-4 ring-accent/20',
+              )}
+            >
+              {busy || voiceState === 'recording' ? (
+                <Square size={14} />
+              ) : voicePending ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : voiceMode ? (
+                <AudioLines size={17} />
+              ) : (
+                <ArrowUp size={17} />
+              )}
+            </button>
           </div>
-          <button
-            onClick={onComposerAction}
-            disabled={composerDisabled}
-            aria-label={composerLabel}
-            title={composerLabel}
-            className={cn(
-              'grid size-10 shrink-0 place-items-center rounded-full text-white transition-transform active:scale-90',
-              'bg-accent disabled:opacity-40',
-              busy && 'bg-ink text-surface',
-              voiceState === 'recording' && 'ring-4 ring-accent/20',
-            )}
-          >
-            {busy || voiceState === 'recording' ? (
-              <Square size={14} />
-            ) : voicePending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : voiceMode ? (
-              <AudioLines size={17} />
-            ) : (
-              <ArrowUp size={17} />
-            )}
-          </button>
         </div>
       </div>
 

@@ -456,14 +456,33 @@ export function buildRawSection(
   return `${header}\n${kept.join('\n')}`;
 }
 
+/** 当前会话固定记录：/attach 指定的记录优先完整展示 */
+export function buildPinnedSection(
+  records: AnalysisRecord[],
+  pinnedIds: string[],
+  sustained: Map<string, SustainedMetrics | null>,
+): string {
+  if (!pinnedIds.length) return '';
+  const byId = new Map(records.map((r) => [r.id, r]));
+  const lines: string[] = [];
+  for (const id of pinnedIds) {
+    const rec = byId.get(id);
+    if (!rec) continue;
+    lines.push(formatRecordLine(rec, sustained.get(rec.id) ?? null));
+  }
+  if (!lines.length) return '';
+  return `## 当前会话固定记录（用户通过 /attach 指定，共 ${lines.length} 条）\n${lines.join('\n')}`;
+}
+
 /**
  * 组装助手上下文。预算只约束历史部分，画像始终保留。
- * 顺序：画像（由调用方放系统提示）→ 聚合 → 基线 → 最近明细。
+ * 顺序：画像（由调用方放系统提示）→ 固定记录 → 聚合 → 基线 → 最近明细。
  */
 export function buildAssistantContext(
   records: AnalysisRecord[],
   settings: AssistantContextSettings,
   budgetTokens: number,
+  pinnedIds: string[] = [],
 ): AssistantContext {
   const profile = buildAssistantProfile(settings);
   if (records.length === 0) return { profile, history: '' };
@@ -474,13 +493,22 @@ export function buildAssistantContext(
   let remaining = budgetTokens - estimateTokens(profile);
   if (remaining <= 40) return { profile, history: '' };
 
+  const parts: string[] = [];
+  const pinned = buildPinnedSection(records, pinnedIds, sustained);
+  if (pinned) {
+    const cost = estimateTokens(pinned);
+    if (cost <= Math.max(120, remaining * 0.6)) {
+      parts.push(pinned);
+      remaining -= cost;
+    }
+  }
+
   // 聚合优先：预算紧时逐步减少周数，至少保留整体与按模式汇总
   let agg = '';
   for (let weeks = MAX_WEEKS; weeks >= 0; weeks -= 2) {
     agg = buildAggregateSection(records, sustained, weeks, settings.targetEnabled);
     if (estimateTokens(agg) <= remaining * 0.6 || weeks === 0) break;
   }
-  const parts: string[] = [];
   if (agg) {
     parts.push(agg);
     remaining -= estimateTokens(agg);

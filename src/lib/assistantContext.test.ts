@@ -249,4 +249,14 @@ describe('上下文预算', () => {
     expect(ctx.profile).not.toMatch(/undefined|NaN/);
     expect(ctx.history).not.toMatch(/undefined|NaN/);
   });
+
+  it('/attach 固定的记录优先注入', () => {
+    const withBaseline = [
+      makeRecord('base', new Date(2026, 0, 1).getTime()),
+      ...records,
+    ];
+    const ctx = buildAssistantContext(withBaseline, makeSettings(), 4096, ['r1']);
+    expect(ctx.history).toContain('当前会话固定记录');
+    expect(ctx.history).toContain('id r1');
+  });
 });

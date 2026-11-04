@@ -20,6 +20,8 @@ export interface ChatConversation {
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];
+  /** 通过 /attach 固定的历史记录 id（跨轮保留，/detach 或新对话清除） */
+  pinnedRecordIds?: string[];
 }
 
 const KV_CHATS = 'llm:chats';
@@ -51,7 +53,9 @@ function validConversation(c: unknown): c is ChatConversation {
     && o.messages.every((m) => !!m
       && typeof m.content === 'string'
       && (m.role === 'user' || m.role === 'assistant')
-      && (m.think === undefined || typeof m.think === 'string'));
+      && (m.think === undefined || typeof m.think === 'string'))
+    && (o.pinnedRecordIds === undefined
+      || (Array.isArray(o.pinnedRecordIds) && o.pinnedRecordIds.every((id) => typeof id === 'string')));
 }
 
 async function ensureLoaded(): Promise<void> {
@@ -165,6 +169,15 @@ export function addMessage(id: string, msg: ChatMessage): void {
 export function setMessages(id: string, messages: ChatMessage[]): void {
   if (!chats) return;
   commit(chats.map((c) => (c.id === id ? { ...c, updatedAt: Date.now(), messages } : c)));
+}
+
+/** 替换当前会话固定的历史记录 id（/attach /detach） */
+export function setPinnedRecords(id: string, ids: string[]): void {
+  if (!chats) return;
+  const unique = [...new Set(ids)];
+  commit(chats.map((c) => (c.id === id
+    ? { ...c, updatedAt: Date.now(), pinnedRecordIds: unique.length ? unique : undefined }
+    : c)));
 }
 
 export function deleteChat(id: string): void {

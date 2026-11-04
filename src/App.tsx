@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState, startTransition, useCallb
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
+import { ArrowLeft } from 'lucide-react';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { RecordingMiniView } from '@/components/layout/RecordingMiniView';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
@@ -61,6 +62,41 @@ function tabFromHash(): ViewType {
 // 模块级启动一次，随应用存活
 startAmbientLoop();
 watchAuroraHours();
+
+/**
+ * AI 工作台的临时页面浮层：分析 / 历史 / 设置。
+ * AssistantPage 始终保留在底下，关闭浮层后聊天、输入和录音状态都不丢。
+ */
+function AiWorkspaceOverlay({ tab, onClose }: { tab: ViewType; onClose: () => void }) {
+  const title = tab === 'analysis'
+    ? t('nav.analysis')
+    : tab === 'history'
+      ? t('nav.history')
+      : t('nav.settings');
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col bg-surface" data-noswipe>
+      <div className="flex items-center gap-2 px-4 pb-2 pt-[max(env(safe-area-inset-top),0.75rem)]">
+        <button
+          onClick={onClose}
+          aria-label={t('common.back')}
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90"
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{title}</p>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto" data-noswipe>
+        <div className="mx-auto w-full max-w-5xl px-5 pb-10 pt-2">
+          <PageErrorBoundary pageKey={`ai-${tab}`}>
+            {tab === 'analysis' && <AnalysisPage />}
+            {tab === 'history' && <HistoryPage />}
+            {tab === 'settings' && <SettingsPage />}
+          </PageErrorBoundary>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const currentTab = useStore((s) => s.currentTab);
@@ -369,8 +405,13 @@ function App() {
           z 高于启动页 / 底部导航，避免与启动动画叠加闪动 */}
       <OnboardingSheet />
 
-      {aiWorkspace && displayedTab !== 'settings' ? (
-        <AssistantPage />
+      {aiWorkspace ? (
+        <>
+          <AssistantPage />
+          {(displayedTab === 'analysis' || displayedTab === 'history' || displayedTab === 'settings') && (
+            <AiWorkspaceOverlay tab={displayedTab} onClose={() => setTab('assistant')} />
+          )}
+        </>
       ) : displayedTab === 'assistant' ? (
         <AssistantPage />
       ) : (
