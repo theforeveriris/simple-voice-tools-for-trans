@@ -7,6 +7,8 @@
  * - 思考过程：推理模型（reasoning_content / thinking 块）的思考流式展示，
  *   完成后保存到消息里、点气泡内的「思考过程」可展开回看
  * - 底部输入栏：随内容自动增高（上限后内部滚动），生成中变为停止按钮
+ * - 输入框为空且无光标时，右侧按钮切换为语音输入：按一下录音、再按一下
+ *   结束；录音落历史记录，并把记录 id 交给助手分析后再自动发送
  * - 右侧抽屉：新建对话 + 历史列表（点按切换、两步删除）
  * 生成中关闭页面不中断请求（跑完照常写入对话，避免丢回复）；中途取消用停止按钮。
  * 对话存 IndexedDB（llm:chats，封顶 30 条）；生成走活动档案（协议/流式/上下文
@@ -17,7 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2,
+  ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -35,6 +37,8 @@ import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
+import { recorder } from '@/lib/audio/recorder';
+import { maybeAutoBackup } from '@/lib/backup/local';
 import { cn } from '@/lib/utils';
 
 /** Token 粗估：中英混合按 2 字符 ≈ 1 token（量级参考，用于预算裁剪） */
@@ -50,7 +54,12 @@ async function loadAssistantContext(
 ): Promise<ReturnType<typeof buildAssistantContext>> {
   const store = useHistoryStore.getState();
   if (!store.ready) await store.hydrate();
-  const records = await store.getAllRecords();
+  const stored = await store.getAllRecords();
+  // 合并内存中的最新记录：刚录完的语音可能还没等到 IDB 落盘，
+  // 直接读 getAllRecords 会漏掉它，导致助手看不到本次录音。
+  const byId = new Map(stored.map((r) => [r.id, r]));
+  for (const r of useHistoryStore.getState().records) byId.set(r.id, r);
+  const records = [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
   return buildAssistantContext(records, settings, budgetTokens);
 }
 
@@ -250,9 +259,10 @@ function Bubble({
 
 export function AssistantPage() {
   useI18n();
-  const navStyle = useStore((s) => s.settings.navStyle);
   const settings = useStore((s) => s.settings);
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
+  const setTab = useStore((s) => s.setTab);
+  const lastTab = useStore((s) => s.lastTab);
   const cfg = useActiveLlmConfig(activeProfileId);
   const chats = useChats();
   /** null = 尚未开始对话（发送第一条时创建） */
@@ -274,6 +284,11 @@ export function AssistantPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  /** 输入框是否有光标：无光标且为空时，右侧按钮切换为语音输入 */
+  const [inputFocused, setInputFocused] = useState(false);
+  const [voiceState, setVoiceState] = useState<'idle' | 'starting' | 'recording' | 'processing'>('idle');
+  const [voiceSec, setVoiceSec] = useState(0);
+  const voiceActiveRef = useRef(false);
 
   const conv = activeId ? chats?.find((c) => c.id === activeId) ?? null : null;
   const messages = conv?.messages ?? [];
@@ -292,6 +307,24 @@ export function AssistantPage() {
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, [input]);
+
+  // 语音输入计时（录音仍是全局音频管线，但这里不进入分析页）
+  useEffect(() => {
+    if (voiceState !== 'recording') return;
+    const id = window.setInterval(() => setVoiceSec(Math.floor(recorder.getLive().elapsedSec)), 250);
+    return () => window.clearInterval(id);
+  }, [voiceState]);
+
+  // 离开页面时若还在录音：收尾并落库，避免音频上下文悬挂
+  useEffect(() => () => {
+    if (!voiceActiveRef.current) return;
+    voiceActiveRef.current = false;
+    const raw = recorder.stop();
+    if (!raw) return;
+    void recorder.finishRecord(raw)
+      .then(({ record, audio }) => useHistoryStore.getState().addRecord(record, audio ?? undefined))
+      .catch(() => undefined);
+  }, []);
 
   const generate = async (convId: string, history: ChatMessage[]) => {
     if (!cfg || history.length === 0) return;
@@ -351,8 +384,9 @@ export function AssistantPage() {
     }
   };
 
-  const send = () => {
-    const text = input.trim();
+  /** 发送一条文本消息（文本输入与语音记录共用） */
+  const sendMessage = (raw: string) => {
+    const text = raw.trim();
     if (!text || busy || !cfg) return;
     setInput('');
     let convId = activeId;
@@ -362,6 +396,66 @@ export function AssistantPage() {
     }
     addMessage(convId, { role: 'user', content: text });
     void generate(convId, getChat(convId)?.messages ?? [{ role: 'user', content: text }]);
+  };
+
+  const send = () => sendMessage(input);
+
+  /** 语音输入：本地录音 → 保存历史 → 把分析结果通过记录 id 交给助手 */
+  const startVoice = async () => {
+    if (voiceState !== 'idle') return;
+    const st = useStore.getState();
+    if (st.isRecording) return;
+    setVoiceState('starting');
+    setVoiceSec(0);
+    taRef.current?.blur();
+    const s = st.settings;
+    try {
+      await recorder.start({
+        deviceId: s.micDeviceId || undefined,
+        silenceStopSec: 0,
+        targetRange: s.targetEnabled ? [s.targetF0Min, s.targetF0Max] : null,
+        mode: 'reading',
+        saveAudio: s.audioSave,
+        micEnhance: s.micEnhance,
+        audioBitrateKbps: s.audioBitrateKbps,
+      });
+      voiceActiveRef.current = true;
+      setVoiceState('recording');
+      if (s.haptics) navigator.vibrate?.(30);
+    } catch (err) {
+      console.error('语音输入启动失败:', err);
+      setVoiceState('idle');
+      toast.error(t('toast.micError'));
+    }
+  };
+
+  const stopVoice = async () => {
+    if (voiceState !== 'recording') return;
+    setVoiceState('processing');
+    voiceActiveRef.current = false;
+    const st = useStore.getState();
+    try {
+      const raw = recorder.stop();
+      if (!raw) {
+        toast.error(t('toast.tooShort'));
+        setVoiceState('idle');
+        return;
+      }
+      if (st.settings.haptics) navigator.vibrate?.(20);
+      const { record, audio } = await recorder.finishRecord(raw);
+      useHistoryStore.getState().addRecord(record, audio ?? undefined);
+      void maybeAutoBackup('record');
+      setVoiceState('idle');
+      setVoiceSec(0);
+      sendMessage(t('assistant.voicePrompt', {
+        id: record.id,
+        duration: Math.round(record.stats.durationSec),
+      }));
+    } catch (err) {
+      console.error('语音输入收尾失败:', err);
+      setVoiceState('idle');
+      toast.error(t('toast.micError'));
+    }
   };
 
   /** 重做：截断到该消息之前重新生成（用户消息会原样重发） */
@@ -437,11 +531,47 @@ export function AssistantPage() {
   const iconBtn =
     'grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90';
 
+  /** 输入栏右侧按钮：有文字/光标 → 发送；空且失焦 → 语音；录音中 → 停止 */
+  const voiceTime = `${Math.floor(voiceSec / 60)}:${String(voiceSec % 60).padStart(2, '0')}`;
+  const voiceMode = !busy && !input.trim() && !inputFocused && voiceState === 'idle';
+  const voicePending = voiceState === 'starting' || voiceState === 'processing';
+  const composerDisabled = busy
+    ? false
+    : voicePending
+      ? true
+      : voiceState === 'recording' || voiceMode
+        ? false
+        : !input.trim();
+  const composerLabel = busy
+    ? t('assistant.stop')
+    : voiceState === 'recording'
+      ? t('assistant.voiceStop')
+      : voiceMode
+        ? t('assistant.voiceStart')
+        : t('assistant.send');
+  const onComposerAction = () => {
+    if (busy) {
+      abortRef.current?.abort();
+    } else if (voiceState === 'recording') {
+      void stopVoice();
+    } else if (voicePending) {
+      return;
+    } else if (voiceMode) {
+      void startVoice();
+    } else {
+      send();
+    }
+  };
+
   const topBar = (
     <div className="flex items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
-      <span className="grid size-9 place-items-center rounded-full bg-accent/15 text-accent">
-        <Sparkles size={17} />
-      </span>
+      <button
+        onClick={() => setTab(lastTab === 'assistant' ? 'test' : lastTab)}
+        aria-label={t('common.back')}
+        className={iconBtn}
+      >
+        <ArrowLeft size={18} />
+      </button>
       <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
       <button onClick={newChat} aria-label={t('assistant.newChat')} className={iconBtn}>
         <Plus size={17} />
@@ -456,12 +586,7 @@ export function AssistantPage() {
     </div>
   );
 
-  const shellClass = cn(
-    'fixed inset-x-0 top-0 z-40 flex flex-col bg-surface',
-    navStyle === 'classic'
-      ? 'bottom-[calc(4.25rem+env(safe-area-inset-bottom))]'
-      : 'bottom-[5.6rem]',
-  );
+  const shellClass = 'fixed inset-0 z-[60] flex flex-col bg-surface';
 
   if (!cfg) {
     return (
@@ -542,21 +667,35 @@ export function AssistantPage() {
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={t('assistant.ph')}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              placeholder={voiceState === 'recording'
+                ? t('assistant.voiceRecording', { time: voiceTime })
+                : t('assistant.ph')}
               className="max-h-[120px] w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-2/60"
             />
           </div>
           <button
-            onClick={busy ? () => abortRef.current?.abort() : send}
-            disabled={!busy && !input.trim()}
-            aria-label={busy ? t('assistant.stop') : t('assistant.send')}
+            onClick={onComposerAction}
+            disabled={composerDisabled}
+            aria-label={composerLabel}
+            title={composerLabel}
             className={cn(
               'grid size-10 shrink-0 place-items-center rounded-full text-white transition-transform active:scale-90',
               'bg-accent disabled:opacity-40',
               busy && 'bg-ink text-surface',
+              voiceState === 'recording' && 'ring-4 ring-accent/20',
             )}
           >
-            {busy ? <Square size={14} /> : <ArrowUp size={17} />}
+            {busy || voiceState === 'recording' ? (
+              <Square size={14} />
+            ) : voicePending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : voiceMode ? (
+              <AudioLines size={17} />
+            ) : (
+              <ArrowUp size={17} />
+            )}
           </button>
         </div>
       </div>

@@ -18,6 +18,8 @@ interface AppState {
   /** 当前页面 */
   currentTab: ViewType;
   setTab: (tab: ViewType) => void;
+  /** 上一个页签（独立全屏页的返回按钮使用） */
+  lastTab: ViewType;
 
   /** 是否正在录音（含权限等待期间） */
   isRecording: boolean;
@@ -42,8 +44,10 @@ export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       currentTab: 'test',
+      lastTab: 'test',
       setTab: (tab) => {
-        set({ currentTab: tab });
+        const previous = get().currentTab;
+        set({ currentTab: tab, lastTab: previous });
         // 同步 hash（pushState 不触发 hashchange，App 内的 hashchange 监听
         // 只负责浏览器返回/前进键）：页签可深链接，返回键在页签间回退而非退出应用
         const want = `#/${tab}`;
