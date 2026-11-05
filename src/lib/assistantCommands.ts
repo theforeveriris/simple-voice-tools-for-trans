@@ -180,6 +180,14 @@ function startOfDay(ts: number): number {
   return d.getTime();
 }
 
+/** 本地日历日回退 N 天（跨夏令时也按日期移动，不做小时偏移） */
+function startOfDayMinusDays(ts: number, days: number): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return d.getTime();
+}
+
 function dayStartFromYmd(ymd: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
   if (!m) return null;
@@ -220,12 +228,13 @@ export function resolveRecordSelector(
   }
   if (s === 'today' || s === 'yesterday' || s === 'week' || s === 'month') {
     const today = startOfDay(now);
-    let from = today;
-    if (s === 'yesterday') from = today - DAY;
-    if (s === 'week') from = today - 6 * DAY;
-    if (s === 'month') from = today - 29 * DAY;
-    const to = s === 'yesterday' ? today : today + DAY;
-    return sorted.filter((r) => r.createdAt >= from && r.createdAt < to);
+    if (s === 'yesterday') {
+      const from = startOfDayMinusDays(now, 1);
+      return sorted.filter((r) => r.createdAt >= from && r.createdAt < today);
+    }
+    const days = s === 'week' ? 6 : s === 'month' ? 29 : 0;
+    const from = days > 0 ? startOfDayMinusDays(now, days) : today;
+    return sorted.filter((r) => r.createdAt >= from);
   }
   if (s.startsWith('id:')) {
     const id = selector.trim().slice(3);
@@ -280,14 +289,14 @@ export function reviewRangeDays(arg: string | undefined): { days: number; key: s
   }
 }
 
-/** 最近 N 天（含今天）的记录；days = 0 表示全部 */
+/** 最近 N 个本地日历日（含今天）的记录；days = 0 表示全部 */
 export function recordsWithinLastDays(
   records: AnalysisRecord[],
   days: number,
   now = Date.now(),
 ): AnalysisRecord[] {
   if (days <= 0) return records;
-  const from = startOfDay(now) - (days - 1) * DAY;
+  const from = startOfDayMinusDays(now, days - 1);
   return records.filter((r) => r.createdAt >= from);
 }
 
@@ -339,6 +348,7 @@ function selectorCompletions(
     key: `arg:${value}`,
     label,
     detail,
+    // 页面快捷命令的隐式参数已在 head 中（/analysis 本身），prior 只含显式参数
     insert: [head, ...prior, value].join(' ') + ' ',
     kind: 'arg',
   });
@@ -363,6 +373,13 @@ function selectorCompletions(
  * 根据当前输入生成完整补全：命令名、模式、打开目标、范围、记录选择器。
  * 参数候选由命令注册表和命令语义共同决定。
  */
+/**
+ * 根据当前输入生成完整补全：命令名、模式、打开目标、范围、记录选择器。
+ * 参数候选由命令注册表和命令语义共同决定。
+ *
+ * 页面快捷命令（/analysis 等）在解析时会注入隐式页面参数（args[0]），
+ * 这里统一剥掉：补全与 insert 只处理用户显式输入的部分。
+ */
 export function buildCommandCompletions(
   input: string,
   records: AnalysisRecord[],
@@ -375,17 +392,22 @@ export function buildCommandCompletions(
   const endsSpace = /\s$/.test(raw);
   const tokens = body.trimEnd().split(/\s+/);
   const cmdToken = tokens[0] ?? '';
+  const headLower = cmdToken.toLowerCase();
+  const isPageShortcut = ['analysis', '分析页', 'records', '记录', 'settings', '设置'].includes(headLower);
   const parsed = parseAssistantCommand(raw);
-  if (!endsSpace && tokens.length === 1) {
+  if (!endsSpace && tokens.length <= 1) {
+    // 仍在命令名本身：按前缀过滤命令菜单
     return commandCompletions(tr, raw);
   }
   if (!parsed || parsed.id === 'unknown') return [];
 
   const args = parsed.args;
-  const argIndex = endsSpace ? args.length : Math.max(0, args.length - 1);
-  const prefix = (endsSpace ? '' : args[argIndex] ?? '').toLowerCase();
-  const prior = args.slice(0, argIndex);
+  const visibleArgs = isPageShortcut && parsed.id === 'open' ? args.slice(1) : args;
+  const argIndex = endsSpace ? visibleArgs.length : Math.max(0, visibleArgs.length - 1);
+  const prefix = (endsSpace ? '' : visibleArgs[argIndex] ?? '').toLowerCase();
+  const prior = visibleArgs.slice(0, argIndex);
   const head = `/${cmdToken}`;
+  const openPage = parsed.id === 'open' ? args[0]?.toLowerCase() : undefined;
   let items: CommandCompletion[] = [];
 
   if (parsed.id === 'record' && argIndex === 0) {
@@ -409,7 +431,7 @@ export function buildCommandCompletions(
       insert: `${head} ${x.value} `,
       kind: 'arg' as const,
     }));
-  } else if (parsed.id === 'open' && argIndex === 0) {
+  } else if (parsed.id === 'open' && argIndex === 0 && !isPageShortcut) {
     items = [
       { value: 'analysis', detail: tr('nav.analysis') },
       { value: 'records', detail: tr('nav.history') },
@@ -421,7 +443,7 @@ export function buildCommandCompletions(
       insert: `${head} ${x.value} `,
       kind: 'arg' as const,
     }));
-  } else if (parsed.id === 'open' && argIndex === 1 && (prior[0] ?? '').toLowerCase() === 'analysis') {
+  } else if (parsed.id === 'open' && openPage === 'analysis' && argIndex === (isPageShortcut ? 0 : 1)) {
     items = selectorCompletions(tr, head, prior, records);
   } else if (
     (parsed.id === 'attach' || parsed.id === 'detach' || parsed.id === 'compare')

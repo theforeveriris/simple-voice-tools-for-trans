@@ -174,4 +174,10 @@ describe('命令补全', () => {
     expect(buildCommandCompletions('/analysis ', records, tr).map((i) => i.label))
       .not.toContain('analysis');
   });
+
+  it('页面快捷命令补全不重复隐式参数', () => {
+    const items = buildCommandCompletions('/analysis ', records, tr);
+    expect(items.find((i) => i.label === 'last:5')?.insert).toBe('/analysis last:5 ');
+    expect(buildCommandCompletions('/analysis latest ', records, tr)).toHaveLength(0);
+  });
 });

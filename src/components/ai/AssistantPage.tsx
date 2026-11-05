@@ -614,7 +614,8 @@ export function AssistantPage() {
         const extra = [
           `## 命令范围（/review）`,
           `范围：${t(rangeKey)}，记录 ${filtered.length} 条`,
-          `记录 id：${filtered.slice(-30).map((r) => r.id).join(', ')}`,
+          `以下为该范围内全部记录的单行明细（时间从旧到新）：`,
+          ...filtered.map((r) => formatRecordLine(r)),
         ].join('\n');
         setInput('');
         sendMessage(t('assistant.cmd.reviewAsk', { range: t(rangeKey) }), extra);
