@@ -9,26 +9,31 @@
  * - 底部输入栏：随内容自动增高（上限后内部滚动），生成中变为停止按钮
  * - 输入框为空且无光标时，右侧按钮切换为语音输入：按一下录音、再按一下
  *   结束；录音落历史记录，并把记录 id 交给助手分析后再自动发送
- * - 右侧抽屉：新建对话 + 历史列表（点按切换、两步删除）
- * 生成中关闭页面不中断请求（跑完照常写入对话，避免丢回复）；中途取消用停止按钮。
+ * - 右侧抽屉：新建对话 + 搜索 + 历史列表（点按切换、重命名、导出 Markdown、
+ *   两步删除）
+ * 生成中关闭页面不中断请求（跑完照常写入对话，避免丢回复）；中途点停止会保留
+ * 已生成部分并标注「已中断」，切换/新建/删除对话时同样收尾当前流。
  * 对话存 IndexedDB（llm:chats，封顶 30 条）；生成走活动档案（协议/流式/上下文
  * 均由档案决定），系统提示附用户画像、训练靶标、历史聚合、基线 Δ 与最近记录
  * 明细，按上下文预算裁剪。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
+  ArrowUp, Brain, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight, Pencil,
+  Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isAbortError, languageName, llmChatStreamMessages } from '@/lib/llm';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
+import { downloadBlob } from '@/lib/file';
 import {
-  addMessage, createChat, deleteChat, getChat, setMessages, setPinnedRecords, useChats, type ChatMessage,
+  addMessage, createChat, deleteChat, getChat, renameChat, saveAssistantDraft, setMessages,
+  setPinnedRecords, useChats, type ChatConversation, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocs } from '@/lib/docKnowledge';
@@ -49,8 +54,50 @@ import { estimateTokens } from '@/lib/llmUsage';
 import type { AnalysisRecord, TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 
-/** Token 粗估：中英混合按 2 字符 ≈ 1 token（量级参考，用于预算裁剪） */
-const estTokens = (s: string) => Math.ceil(s.length / 2);
+/** Token 粗估：CJK 1 字 ≈ 1 token，其余 4 字符 ≈ 1 token（与用量统计同一口径） */
+const estTokens = estimateTokens;
+
+/** 用户可读的错误分类：401/403=密钥、429=限流、超时、网络 */
+type ErrorKind = 'auth' | 'rate' | 'timeout' | 'network' | 'unknown';
+interface AssistantError { kind: ErrorKind; detail: string }
+
+function classifyError(err: unknown): AssistantError {
+  const detail = err instanceof Error ? err.message : String(err);
+  const s = detail.toLowerCase();
+  const kind: ErrorKind = /http (401|403)\b/.test(s)
+    || s.includes('invalid api key') || s.includes('unauthorized')
+    || s.includes('authentication') || s.includes('api-key')
+    ? 'auth'
+    : /http 429\b/.test(s) || s.includes('rate limit') || s.includes('quota')
+      || s.includes('insufficient_quota')
+      ? 'rate'
+      : s.includes('timeout') || /http (408|504)\b/.test(s)
+        ? 'timeout'
+        : s.includes('failed to fetch') || s.includes('networkerror')
+          || s.includes('network error') || s.includes('econnrefused')
+          || s.includes('load failed')
+          ? 'network'
+          : 'unknown';
+  return { kind, detail: detail.slice(0, 240) };
+}
+
+/** 触屏（粗指针）：Enter 保留换行，避免手机上误发 */
+function coarsePointer(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
+}
+
+/** 导出单条对话为 Markdown */
+function chatToMarkdown(c: ChatConversation): string {
+  const lines: string[] = [`# ${c.title || t('assistant.title')}`, ''];
+  for (const m of c.messages) {
+    if (m.draft) continue;
+    lines.push(m.role === 'user' ? `## ${t('assistant.you')}` : `## ${t('assistant.title')}`, '');
+    if (m.interrupted) lines.push(`> ${t('assistant.interrupted')}`, '');
+    if (m.think) lines.push('<details><summary>' + t('assistant.think') + '</summary>', '', m.think, '', '</details>', '');
+    lines.push(m.content, '');
+  }
+  return lines.join('\n');
+}
 
 /**
  * 读取全量历史记录并组装助手上下文：用户画像、聚合、基线 Δ 与最近明细。
@@ -145,9 +192,9 @@ function ThinkBlock({ text, live }: { text: string; live?: boolean }) {
   );
 }
 
-/** 消息正文：record:// 图表 / genui 组件独立成块，其余 Markdown */
-function MessageBody({ text }: { text: string }) {
-  const parts = renderAssistantMessage(text);
+/** 消息正文：record:// 图表 / genui 组件独立成块，其余 Markdown（解析结果随文本缓存） */
+const MessageBody = memo(function MessageBody({ text }: { text: string }) {
+  const parts = useMemo(() => renderAssistantMessage(text), [text]);
   return (
     <>
       {parts.map((p, i) => {
@@ -173,10 +220,10 @@ function MessageBody({ text }: { text: string }) {
       })}
     </>
   );
-}
+});
 
-/** 消息气泡（模块级，理由同上；交互状态与回调由 props 传入） */
-function Bubble({
+/** 消息气泡（模块级 + memo：流式时只有正在生成的那一条重渲染） */
+const Bubble = memo(function Bubble({
   m,
   idx,
   streaming = false,
@@ -203,6 +250,7 @@ function Bubble({
   onRedo: (idx: number) => void;
   onBranch: (idx: number) => void;
 }) {
+  useI18n();
   const mine = m.role === 'user';
   const think = streaming ? liveThink : m.think ?? '';
   const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkOpen;
@@ -227,6 +275,9 @@ function Bubble({
           <Brain size={10} />
           {t('assistant.think')}
         </button>
+      )}
+      {!mine && m.interrupted && (
+        <p className="mt-1 text-[10px] text-ink-2/70">{t('assistant.interrupted')}</p>
       )}
     </>
   );
@@ -269,7 +320,7 @@ function Bubble({
       )}
     </div>
   );
-}
+});
 
 export function AssistantPage() {
   useI18n();
@@ -291,12 +342,17 @@ export function AssistantPage() {
   const [streamThink, setStreamThink] = useState('');
   /** 展开思考过程的持久化消息下标 */
   const [thinkIdx, setThinkIdx] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AssistantError | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   /** 点按气泡浮出操作行的消息下标 */
   const [actionIdx, setActionIdx] = useState<number | null>(null);
   /** 侧边栏两步删除的待确认对话 id */
   const [delId, setDelId] = useState<string | null>(null);
+  /** 侧边栏：搜索词 / 展开操作菜单的对话 id / 重命名中的对话 id */
+  const [chatQuery, setChatQuery] = useState('');
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -312,9 +368,38 @@ export function AssistantPage() {
   const historyRecords = useHistoryStore((s) => s.records);
 
   const conv = activeId ? chats?.find((c) => c.id === activeId) ?? null : null;
-  const messages = conv?.messages ?? [];
+  /** 末尾的流式草稿由「正在生成」气泡显示，列表里隐藏以免重复 */
+  const messages = useMemo(() => {
+    const all = conv?.messages ?? [];
+    return all.length && all[all.length - 1].draft ? all.slice(0, -1) : all;
+  }, [conv]);
   const busy = streamText !== null;
   const pinnedIds = conv?.pinnedRecordIds ?? [];
+
+  /** 侧边栏搜索：匹配标题或任意一条用户消息 */
+  const visibleChats = useMemo(() => {
+    const list = chats ?? [];
+    const q = chatQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((c) => c.title.toLowerCase().includes(q)
+      || c.messages.some((m) => m.role === 'user' && m.content.toLowerCase().includes(q)));
+  }, [chats, chatQuery]);
+
+  /**
+   * 气泡回调经 ref 转发：Bubble 用 memo 后只在内容变化时重渲染，
+   * 但回调闭包始终指向本次渲染的最新状态（避免 busy 等状态陈旧）。
+   */
+  const actionsRef = useRef<{
+    copy: (idx: number) => void;
+    redo: (idx: number) => void;
+    branch: (idx: number) => void;
+  }>({ copy: () => {}, redo: () => {}, branch: () => {} });
+  const onCopy = useCallback((idx: number) => actionsRef.current.copy(idx), []);
+  const onRedo = useCallback((idx: number) => actionsRef.current.redo(idx), []);
+  const onBranch = useCallback((idx: number) => actionsRef.current.branch(idx), []);
+  const onToggleThink = useCallback((idx: number) => {
+    setThinkIdx((cur) => (cur === idx ? null : idx));
+  }, []);
 
   // 自动滚底：仅当用户本来就贴近底部时跟随（上翻历史时不打扰）
   useEffect(() => {
@@ -417,28 +502,46 @@ export function AssistantPage() {
     setStreamThink('');
     stickRef.current = true;
     let thinkAcc = '';
+    let textAcc = '';
+    // 流式草稿节流落库（1.5s 或 200 字符）：切页 / 杀进程 / 崩溃也能留下已生成部分
+    let lastDraftAt = 0;
+    let savedLen = 0;
+    const persistDraft = () => {
+      if (!textAcc && !thinkAcc) return;
+      const now = Date.now();
+      if (now - lastDraftAt < 1500 && textAcc.length - savedLen < 200) return;
+      lastDraftAt = now;
+      savedLen = textAcc.length;
+      saveAssistantDraft(convId, { content: textAcc, think: thinkAcc, draft: true });
+    };
     try {
       const reply = await llmChatStreamMessages(cfg, turns, {
         feature: 'assistant',
         signal: controller.signal,
         system: sys,
-        onDelta: (acc) => setStreamText(acc),
+        onDelta: (acc) => {
+          textAcc = acc;
+          setStreamText(acc);
+          persistDraft();
+        },
         onThink: (acc) => {
           thinkAcc = acc;
           setStreamThink(acc);
+          persistDraft();
         },
       });
-      addMessage(convId, {
-        role: 'assistant',
-        content: reply,
-        ...(thinkAcc ? { think: thinkAcc } : {}),
-      });
+      saveAssistantDraft(convId, { content: reply, think: thinkAcc, draft: false });
     } catch (err: unknown) {
-      if (!isAbortError(err)) setError(err instanceof Error ? err.message : String(err));
+      // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
+      if (textAcc || thinkAcc) {
+        saveAssistantDraft(convId, { content: textAcc, think: thinkAcc, draft: false, interrupted: true });
+      }
+      if (!isAbortError(err)) setError(classifyError(err));
     } finally {
       setStreamText(null);
       setStreamThink('');
-      abortRef.current = null;
+      // 切换对话时可能已经开始了新的生成：只清自己这个 controller
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -755,7 +858,7 @@ export function AssistantPage() {
 
   /** 分支：以该消息为结尾复制出一个新对话并切换过去 */
   const branch = (idx: number) => {
-    if (!conv) return;
+    if (!conv || busy) return;
     const id = createChat(
       conv.title ? `${conv.title} · ${t('assistant.branch')}` : t('assistant.title'),
       conv.messages.slice(0, idx + 1),
@@ -785,9 +888,26 @@ export function AssistantPage() {
     setThinkIdx(null);
   };
 
+  /** 切换/新建/删除对话前先收尾当前流：中止并保留已生成部分 */
+  const stopStream = () => {
+    abortRef.current?.abort();
+  };
+
   const newChat = () => {
+    stopStream();
     setActiveId(null);
     setSidebarOpen(false);
+    setMenuId(null);
+    setRenamingId(null);
+    resetConversationView();
+  };
+
+  const openChat = (id: string) => {
+    if (id !== activeId) stopStream();
+    setActiveId(id);
+    setSidebarOpen(false);
+    setMenuId(null);
+    setRenamingId(null);
     resetConversationView();
   };
 
@@ -796,18 +916,57 @@ export function AssistantPage() {
       setDelId(id);
       return;
     }
+    if (activeId === id) stopStream();
     deleteChat(id);
     if (activeId === id) setActiveId(null);
     setDelId(null);
+    setMenuId(null);
   };
+
+  const startRename = (c: ChatConversation) => {
+    setRenamingId(c.id);
+    setRenameDraft(c.title);
+    setMenuId(null);
+    setDelId(null);
+  };
+
+  const commitRename = (id: string) => {
+    renameChat(id, renameDraft);
+    setRenamingId(null);
+    setRenameDraft('');
+  };
+
+  const exportChat = (c: ChatConversation) => {
+    const md = chatToMarkdown(c);
+    const safe = (c.title || t('assistant.title')).replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 40);
+    const day = new Date(c.updatedAt);
+    const stamp = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, '0')}${String(day.getDate()).padStart(2, '0')}`;
+    downloadBlob(`${safe || 'chat'}-${stamp}.md`, new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+    setMenuId(null);
+    toast.success(t('assistant.exported'));
+  };
+
+  // 气泡回调保持稳定引用（Bubble 已 memo），始终调用最新实现
+  useEffect(() => {
+    actionsRef.current = { copy, redo, branch };
+  });
 
   const retry = () => {
     if (!conv || busy) return;
-    void generate(conv.id, conv.messages);
+    const all = conv.messages;
+    // 重新生成最后一条回答：丢掉中断留下的半截内容，避免把它当历史再喂给模型
+    const last = all[all.length - 1];
+    const base = last?.role === 'assistant' ? all.slice(0, -1) : all;
+    if (base.length === 0) return;
+    if (base.length !== all.length) setMessages(conv.id, base);
+    setError(null);
+    void generate(conv.id, base);
   };
 
   const iconBtn =
     'grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90';
+  const menuBtn =
+    'flex items-center gap-1 rounded-full bg-surface-hi/70 px-2.5 py-1.5 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink';
 
   /** 输入栏右侧按钮：有文字/光标 → 发送；空且失焦 → 语音；录音中 → 停止 */
   const voiceTime = `${Math.floor(voiceSec / 60)}:${String(voiceSec % 60).padStart(2, '0')}`;
@@ -875,7 +1034,8 @@ export function AssistantPage() {
         return;
       }
     }
-    if (e.key === 'Enter' && !e.shiftKey && input.startsWith('/')) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (input.startsWith('/')) {
       if (input.trim() === '/') {
         e.preventDefault();
         return;
@@ -885,7 +1045,13 @@ export function AssistantPage() {
         e.preventDefault();
         void executeCommand(parsed);
       }
+      return;
     }
+    // 桌面端（精确指针）Enter 发送、Shift+Enter 换行；触屏保留换行，避免误发
+    if (busy || voicePending || coarsePointer()) return;
+    if (!input.trim()) return;
+    e.preventDefault();
+    send();
   };
 
   const topBar = (
@@ -961,10 +1127,10 @@ export function AssistantPage() {
                 active={actionIdx === i}
                 thinkOpen={thinkIdx === i}
                 onAction={setActionIdx}
-                onToggleThink={(idx) => setThinkIdx(thinkIdx === idx ? null : idx)}
-                onCopy={copy}
-                onRedo={redo}
-                onBranch={branch}
+                onToggleThink={onToggleThink}
+                onCopy={onCopy}
+                onRedo={onRedo}
+                onBranch={onBranch}
               />
             ))}
             {busy && (
@@ -983,11 +1149,23 @@ export function AssistantPage() {
               />
             )}
             {error && (
-              <div className="mx-auto flex flex-col items-center gap-1.5">
-                <p className="max-w-md text-center text-[11px] leading-relaxed text-red-500">{error}</p>
-                <button onClick={retry} className="text-[11px] font-medium text-accent">
-                  {t('assistant.retry')}
-                </button>
+              <div className="mx-auto flex max-w-md flex-col items-center gap-1.5 rounded-2xl bg-card px-3 py-2.5 text-center">
+                <p className="text-[12px] font-medium leading-relaxed text-red-500">
+                  {error.kind === 'unknown' ? error.detail : t(`assistant.err.${error.kind}`)}
+                </p>
+                {error.kind !== 'unknown' && (
+                  <p className="text-[10px] leading-relaxed text-ink-2/80">{error.detail}</p>
+                )}
+                <div className="mt-0.5 flex items-center gap-3">
+                  {error.kind === 'auth' && (
+                    <button onClick={() => setTab('settings')} className="text-[11px] font-medium text-accent">
+                      {t('assistant.errSettings')}
+                    </button>
+                  )}
+                  <button onClick={retry} className="text-[11px] font-medium text-accent">
+                    {t('assistant.retry')}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1128,37 +1306,91 @@ export function AssistantPage() {
               <Plus size={15} />
               {t('assistant.newChat')}
             </button>
+            <div className="mx-3 mt-2">
+              <input
+                value={chatQuery}
+                onChange={(e) => setChatQuery(e.target.value)}
+                placeholder={t('assistant.searchChats')}
+                aria-label={t('assistant.searchChats')}
+                className="w-full rounded-xl bg-surface-hi/60 px-3 py-2 text-[12px] text-ink outline-none placeholder:text-ink-2/60"
+              />
+            </div>
             <p className="px-4 pb-1 pt-3 text-[11px] font-medium text-ink-2">{t('assistant.history')}</p>
-            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-              {(chats ?? []).length === 0 ? (
-                <p className="px-3 py-4 text-xs text-ink-2/70">{t('assistant.historyEmpty')}</p>
+            <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+              {visibleChats.length === 0 ? (
+                <p className="px-3 py-4 text-xs text-ink-2/70">
+                  {(chats ?? []).length === 0 ? t('assistant.historyEmpty') : t('assistant.noSearchResult')}
+                </p>
               ) : (
-                (chats ?? []).map((c) => (
+                visibleChats.map((c) => (
                   <div
                     key={c.id}
-                    className={cn('flex items-center gap-1 rounded-xl px-1.5', c.id === activeId && 'bg-accent/10')}
+                    className={cn('rounded-xl', c.id === activeId && 'bg-accent/10')}
                   >
-                    <button
-                      onClick={() => { setActiveId(c.id); setSidebarOpen(false); resetConversationView(); }}
-                      className="min-w-0 flex-1 py-2.5 text-left"
-                    >
-                      <span className="block truncate text-[13px] text-ink">
-                        {c.title || t('assistant.newChat')}
-                      </span>
-                      <span className="block text-[10px] text-ink-2">
-                        {new Date(c.updatedAt).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => onDeleteChat(c.id)}
-                      aria-label={t('assistant.deleteChat')}
-                      className={cn(
-                        'grid size-8 shrink-0 place-items-center rounded-full text-ink-2 transition-colors',
-                        delId === c.id && 'bg-red-500/10 text-red-500',
+                    <div className="flex items-center gap-1 px-1.5">
+                      {renamingId === c.id ? (
+                        <input
+                          autoFocus
+                          value={renameDraft}
+                          onChange={(e) => setRenameDraft(e.target.value)}
+                          onBlur={() => commitRename(c.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              commitRename(c.id);
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setRenamingId(null);
+                            }
+                          }}
+                          aria-label={t('assistant.renameChat')}
+                          placeholder={t('assistant.renamePlaceholder')}
+                          className="my-1.5 min-w-0 flex-1 rounded-lg bg-surface-hi px-2 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-2/60"
+                        />
+                      ) : (
+                        <button
+                          onClick={() => openChat(c.id)}
+                          className="min-w-0 flex-1 py-2.5 text-left"
+                        >
+                          <span className="block truncate text-[13px] text-ink">
+                            {c.title || t('assistant.newChat')}
+                          </span>
+                          <span className="block text-[10px] text-ink-2">
+                            {new Date(c.updatedAt).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </button>
                       )}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                      <button
+                        onClick={() => {
+                          setMenuId(menuId === c.id ? null : c.id);
+                          setDelId(null);
+                        }}
+                        aria-label={t('assistant.more')}
+                        aria-expanded={menuId === c.id}
+                        className="grid size-8 shrink-0 place-items-center rounded-full text-ink-2 transition-colors hover:text-ink"
+                      >
+                        <MoreHorizontal size={15} />
+                      </button>
+                    </div>
+                    {menuId === c.id && (
+                      <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+                        <button onClick={() => startRename(c)} className={menuBtn}>
+                          <Pencil size={11} />
+                          {t('assistant.renameChat')}
+                        </button>
+                        <button onClick={() => exportChat(c)} className={menuBtn}>
+                          <Download size={11} />
+                          {t('assistant.exportChat')}
+                        </button>
+                        <button
+                          onClick={() => onDeleteChat(c.id)}
+                          className={cn(menuBtn, delId === c.id && 'bg-red-500/10 text-red-500')}
+                        >
+                          <Trash2 size={11} />
+                          {t('assistant.deleteChat')}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

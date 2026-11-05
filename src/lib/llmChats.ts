@@ -12,6 +12,10 @@ export interface ChatMessage {
   content: string;
   /** 思考过程（推理模型 / thinking 块返回时保存，气泡可展开查看） */
   think?: string;
+  /** 流式草稿：生成中节流写入，完成后清除；残留草稿（崩溃/杀进程）读取时转为 interrupted */
+  draft?: boolean;
+  /** 生成被用户中止（或异常中断），content 为已输出的部分内容 */
+  interrupted?: boolean;
 }
 
 export interface ChatConversation {
@@ -64,6 +68,13 @@ async function ensureLoaded(): Promise<void> {
     try {
       const stored = await idbGetKV<ChatConversation[]>(KV_CHATS);
       raw = Array.isArray(stored) ? stored.filter(validConversation) : [];
+      // 上次运行留下的流式草稿 = 生成过程中被中断：保留内容并标注「已中断」
+      for (const c of raw) {
+        if (!c.messages.some((m) => m.draft)) continue;
+        c.messages = c.messages.map((m) => (m.draft
+          ? { ...m, draft: undefined, interrupted: true }
+          : m));
+      }
     } catch {
       // IndexedDB 瞬态不可用（打开阻塞等）：不把「失败」当成「无数据」缓存，
       // 置空 loaded 让下一次订阅/写入重试；本会话先以内存态运行
@@ -169,6 +180,39 @@ export function addMessage(id: string, msg: ChatMessage): void {
 export function setMessages(id: string, messages: ChatMessage[]): void {
   if (!chats) return;
   commit(chats.map((c) => (c.id === id ? { ...c, updatedAt: Date.now(), messages } : c)));
+}
+
+/**
+ * 写入助手回复：末尾已有草稿则原位替换，否则追加。
+ * draft=true 为生成中的节流快照；结束时用 draft=false（可带 interrupted）定稿。
+ */
+export function saveAssistantDraft(
+  id: string,
+  patch: { content: string; think?: string; draft: boolean; interrupted?: boolean },
+): void {
+  if (!chats) return;
+  const conv = chats.find((c) => c.id === id);
+  if (!conv) return;
+  const last = conv.messages[conv.messages.length - 1];
+  const msg: ChatMessage = {
+    role: 'assistant',
+    content: patch.content,
+    ...(patch.think ? { think: patch.think } : {}),
+    ...(patch.draft ? { draft: true } : {}),
+    ...(patch.interrupted ? { interrupted: true } : {}),
+  };
+  const messages = last?.role === 'assistant' && last.draft
+    ? [...conv.messages.slice(0, -1), msg]
+    : [...conv.messages, msg];
+  commit(chats.map((c) => (c.id === id ? { ...c, updatedAt: Date.now(), messages } : c)));
+}
+
+/** 重命名对话（空白标题忽略） */
+export function renameChat(id: string, title: string): void {
+  if (!chats) return;
+  const next = title.trim().slice(0, 60);
+  if (!next) return;
+  commit(chats.map((c) => (c.id === id ? { ...c, title: next } : c)));
 }
 
 /** 替换当前会话固定的历史记录 id（/attach /detach） */
