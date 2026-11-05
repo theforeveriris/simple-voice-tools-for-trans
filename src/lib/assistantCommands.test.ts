@@ -7,6 +7,7 @@ import {
   parseTestMode,
   resolveRecordSelector,
   resolveRecordSelectors,
+  recordsWithinLastDays,
   reviewRangeDays,
 } from './assistantCommands';
 
@@ -117,6 +118,7 @@ describe('记录选择器', () => {
   it('date / range', () => {
     expect(resolveRecordSelector('date:2026-11-04', records, undefined, now).map((r) => r.id)).toEqual(['b']);
     expect(resolveRecordSelector('range:2026-11-01..2026-11-04', records, undefined, now).map((r) => r.id)).toEqual(['a', 'b']);
+    expect(recordsWithinLastDays(records, 1, now).map((r) => r.id)).toEqual(['c']);
   });
 
   it('多选择器取并集并去重', () => {
@@ -164,5 +166,12 @@ describe('命令补全', () => {
   it('attach 选择器按前缀过滤', () => {
     expect(buildCommandCompletions('/attach last:', records, tr).map((i) => i.label))
       .toEqual(['last:5']);
+  });
+
+  it('页面快捷命令使用隐式参数补全', () => {
+    expect(buildCommandCompletions('/analysis ', records, tr).map((i) => i.label))
+      .toContain('latest');
+    expect(buildCommandCompletions('/analysis ', records, tr).map((i) => i.label))
+      .not.toContain('analysis');
   });
 });

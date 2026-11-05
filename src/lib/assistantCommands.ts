@@ -280,6 +280,17 @@ export function reviewRangeDays(arg: string | undefined): { days: number; key: s
   }
 }
 
+/** 最近 N 天（含今天）的记录；days = 0 表示全部 */
+export function recordsWithinLastDays(
+  records: AnalysisRecord[],
+  days: number,
+  now = Date.now(),
+): AnalysisRecord[] {
+  if (days <= 0) return records;
+  const from = startOfDay(now) - (days - 1) * DAY;
+  return records.filter((r) => r.createdAt >= from);
+}
+
 /* ------------------------------ 补全 ------------------------------ */
 
 export interface CommandCompletion {
@@ -364,13 +375,13 @@ export function buildCommandCompletions(
   const endsSpace = /\s$/.test(raw);
   const tokens = body.trimEnd().split(/\s+/);
   const cmdToken = tokens[0] ?? '';
-  const parsed = parseAssistantCommand(`/${cmdToken}`);
+  const parsed = parseAssistantCommand(raw);
   if (!endsSpace && tokens.length === 1) {
     return commandCompletions(tr, raw);
   }
   if (!parsed || parsed.id === 'unknown') return [];
 
-  const args = tokens.slice(1);
+  const args = parsed.args;
   const argIndex = endsSpace ? args.length : Math.max(0, args.length - 1);
   const prefix = (endsSpace ? '' : args[argIndex] ?? '').toLowerCase();
   const prior = args.slice(0, argIndex);
@@ -428,6 +439,8 @@ export function buildCommandCompletions(
   }
 
   if (!prefix) return items;
-  return items.filter((item) => item.label.toLowerCase().startsWith(prefix)
-    || item.insert.toLowerCase().includes(prefix));
+  return items.filter((item) => (item.kind === 'arg'
+    ? item.label.toLowerCase().startsWith(prefix)
+    : item.label.toLowerCase().includes(prefix)
+      || item.insert.toLowerCase().includes(prefix)));
 }

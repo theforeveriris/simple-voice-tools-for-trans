@@ -35,7 +35,8 @@ import { retrieveDocs } from '@/lib/docKnowledge';
 import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
-  resolveRecordSelectors, reviewRangeDays, type CommandCompletion, type ParsedCommand,
+  recordsWithinLastDays, resolveRecordSelectors, reviewRangeDays,
+  type CommandCompletion, type ParsedCommand,
 } from '@/lib/assistantCommands';
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
@@ -49,12 +50,6 @@ import { cn } from '@/lib/utils';
 
 /** Token 粗估：中英混合按 2 字符 ≈ 1 token（量级参考，用于预算裁剪） */
 const estTokens = (s: string) => Math.ceil(s.length / 2);
-
-function startOfLocalDay(ts: number): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
 
 /**
  * 读取全量历史记录并组装助手上下文：用户画像、聚合、基线 Δ 与最近明细。
@@ -510,6 +505,7 @@ export function AssistantPage() {
     switch (cmd.id) {
       case 'help':
         setInput('/');
+        setCommandIndex(0);
         setCommandDismissed(false);
         requestAnimationFrame(() => taRef.current?.focus());
         return;
@@ -603,8 +599,7 @@ export function AssistantPage() {
       case 'review': {
         const range = reviewRangeDays(cmd.args[0]);
         const all = await records();
-        const from = range.days > 0 ? startOfLocalDay(Date.now()) - (range.days - 1) * 86_400_000 : 0;
-        const filtered = range.days > 0 ? all.filter((r) => r.createdAt >= from) : all;
+        const filtered = recordsWithinLastDays(all, range.days);
         if (!filtered.length) {
           toast.error(t('assistant.cmd.noRecords'));
           return;
@@ -674,6 +669,7 @@ export function AssistantPage() {
       }
     }
     setInput(item.insert);
+    setCommandIndex(0);
     setCommandDismissed(false);
     requestAnimationFrame(() => taRef.current?.focus());
   };
@@ -767,7 +763,8 @@ export function AssistantPage() {
   const commandItems = !busy && !commandDismissed
     ? buildCommandCompletions(input, historyRecords, t)
     : [];
-  useEffect(() => setCommandIndex(0), [input, commandDismissed]);
+  const commandListId = 'assistant-command-list';
+  const activeCommandId = commandItems.length ? `assistant-command-${commandIndex}` : undefined;
   const composerDisabled = busy
     ? false
     : voicePending
@@ -797,6 +794,7 @@ export function AssistantPage() {
   };
 
   const onComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return;
     if (commandItems.length) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -965,11 +963,20 @@ export function AssistantPage() {
             </div>
           )}
           {commandItems.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]">
+            <div
+              id={commandListId}
+              role="listbox"
+              aria-label={t('assistant.cmd.help')}
+              className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]"
+            >
               {commandItems.map((c, i) => (
                 <button
                   key={c.key}
+                  id={`assistant-command-${i}`}
+                  role="option"
+                  aria-selected={i === commandIndex}
                   onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setCommandIndex(i)}
                   onClick={() => applyCompletion(c)}
                   className={cn(
                     'flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left transition-colors',
@@ -997,6 +1004,7 @@ export function AssistantPage() {
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
+                  setCommandIndex(0);
                   if (e.target.value.startsWith('/')) setCommandDismissed(false);
                 }}
                 onFocus={() => {
@@ -1008,6 +1016,11 @@ export function AssistantPage() {
                   setCommandDismissed(true);
                 }}
                 onKeyDown={onComposerKeyDown}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={commandItems.length > 0}
+                aria-controls={commandListId}
+                aria-activedescendant={activeCommandId}
                 placeholder={voiceState === 'recording'
                   ? t('assistant.voiceRecording', { time: voiceTime })
                   : t('assistant.ph')}
