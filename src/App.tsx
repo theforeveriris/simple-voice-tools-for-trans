@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState, startTransition, useCallb
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
+import { ArrowLeft } from 'lucide-react';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { RecordingMiniView } from '@/components/layout/RecordingMiniView';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
@@ -62,6 +63,52 @@ function tabFromHash(): ViewType {
 startAmbientLoop();
 watchAuroraHours();
 
+/**
+ * AI 工作台的临时页面浮层：分析 / 历史 / 设置。
+ * AssistantPage 始终保留在底下，关闭浮层后聊天、输入和录音状态都不丢。
+ */
+function AiWorkspaceOverlay({ tab, onClose }: { tab: ViewType; onClose: () => void }) {
+  const backRef = useRef<HTMLButtonElement>(null);
+  const title = tab === 'analysis'
+    ? t('nav.analysis')
+    : tab === 'history'
+      ? t('nav.history')
+      : t('nav.settings');
+  useEffect(() => {
+    backRef.current?.focus();
+  }, [tab]);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-[70] flex flex-col bg-surface"
+      data-noswipe
+    >
+      <div className="flex items-center gap-2 px-4 pb-2 pt-[max(env(safe-area-inset-top),0.75rem)]">
+        <button
+          ref={backRef}
+          onClick={onClose}
+          aria-label={t('common.back')}
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90"
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{title}</p>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto" data-noswipe>
+        <div className="mx-auto w-full max-w-5xl px-5 pb-10 pt-2">
+          <PageErrorBoundary pageKey={`ai-${tab}`}>
+            {tab === 'analysis' && <AnalysisPage />}
+            {tab === 'history' && <HistoryPage />}
+            {tab === 'settings' && <SettingsPage />}
+          </PageErrorBoundary>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const currentTab = useStore((s) => s.currentTab);
   const hue = useStore((s) => s.settings.hue);
@@ -87,6 +134,8 @@ function App() {
    * 滚动位置若被保留，新页高度不同会被浏览器钳制跳变；instant 覆盖
    * CSS 的 scroll-behavior:smooth，避免与入场动画叠加出二次位移。 */
   const [displayedTab, setDisplayedTab] = useState<ViewType>(currentTab);
+  const aiOverlayOpen = aiWorkspace
+    && (displayedTab === 'analysis' || displayedTab === 'history' || displayedTab === 'settings');
   useEffect(() => {
     if (currentTab === displayedTab) return;
     startTransition(() => setDisplayedTab(currentTab));
@@ -369,8 +418,15 @@ function App() {
           z 高于启动页 / 底部导航，避免与启动动画叠加闪动 */}
       <OnboardingSheet />
 
-      {aiWorkspace && displayedTab !== 'settings' ? (
-        <AssistantPage />
+      {aiWorkspace ? (
+        <>
+          <div inert={aiOverlayOpen || undefined} aria-hidden={aiOverlayOpen || undefined} className="contents">
+            <AssistantPage />
+          </div>
+          {aiOverlayOpen && (
+            <AiWorkspaceOverlay tab={displayedTab} onClose={() => setTab('assistant')} />
+          )}
+        </>
       ) : displayedTab === 'assistant' ? (
         <AssistantPage />
       ) : (

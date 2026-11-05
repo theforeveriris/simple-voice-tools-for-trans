@@ -456,14 +456,44 @@ export function buildRawSection(
   return `${header}\n${kept.join('\n')}`;
 }
 
+/** 当前会话固定记录：/attach 指定的记录优先完整展示，按预算从最新开始装入 */
+export function buildPinnedSection(
+  records: AnalysisRecord[],
+  pinnedIds: string[],
+  sustained: Map<string, SustainedMetrics | null>,
+  budgetTokens = Number.POSITIVE_INFINITY,
+): string {
+  if (!pinnedIds.length) return '';
+  const byId = new Map(records.map((r) => [r.id, r]));
+  const pinned = pinnedIds
+    .map((id) => byId.get(id))
+    .filter((r): r is AnalysisRecord => r != null)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  if (!pinned.length) return '';
+
+  const lines: string[] = [];
+  let used = 0;
+  for (const rec of pinned) {
+    const line = formatRecordLine(rec, sustained.get(rec.id) ?? null);
+    const cost = estimateTokens(line) + 2;
+    if (used + cost > budgetTokens) break;
+    used += cost;
+    lines.push(line);
+  }
+  if (!lines.length) return '';
+  const omitted = pinned.length - lines.length;
+  return `## 当前会话固定记录（用户通过 /attach 指定，共 ${pinned.length} 条${omitted > 0 ? `，以下为最近 ${lines.length} 条` : ''}）\n${lines.join('\n')}`;
+}
+
 /**
  * 组装助手上下文。预算只约束历史部分，画像始终保留。
- * 顺序：画像（由调用方放系统提示）→ 聚合 → 基线 → 最近明细。
+ * 顺序：画像（由调用方放系统提示）→ 固定记录 → 聚合 → 基线 → 最近明细。
  */
 export function buildAssistantContext(
   records: AnalysisRecord[],
   settings: AssistantContextSettings,
   budgetTokens: number,
+  pinnedIds: string[] = [],
 ): AssistantContext {
   const profile = buildAssistantProfile(settings);
   if (records.length === 0) return { profile, history: '' };
@@ -474,13 +504,25 @@ export function buildAssistantContext(
   let remaining = budgetTokens - estimateTokens(profile);
   if (remaining <= 40) return { profile, history: '' };
 
+  const parts: string[] = [];
+  const pinned = buildPinnedSection(
+    records,
+    pinnedIds,
+    sustained,
+    Math.max(120, remaining * 0.6),
+  );
+  if (pinned) {
+    const cost = estimateTokens(pinned);
+    parts.push(pinned);
+    remaining -= cost;
+  }
+
   // 聚合优先：预算紧时逐步减少周数，至少保留整体与按模式汇总
   let agg = '';
   for (let weeks = MAX_WEEKS; weeks >= 0; weeks -= 2) {
     agg = buildAggregateSection(records, sustained, weeks, settings.targetEnabled);
     if (estimateTokens(agg) <= remaining * 0.6 || weeks === 0) break;
   }
-  const parts: string[] = [];
   if (agg) {
     parts.push(agg);
     remaining -= estimateTokens(agg);
