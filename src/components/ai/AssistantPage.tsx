@@ -93,10 +93,11 @@ const ASSISTANT_VISUAL_GUIDE = [
   '- 外层卡片、背景、圆角、阴影由站点提供：根节点直接写内容，不要再包卡片/背景/阴影。',
   '- 颜色只用 CSS 变量：文字 --c-ink / --c-ink-2，主色 --c-accent，浅底 --c-accent-soft，卡片 --c-card，次级底 --c-surface-hi，分隔线 --c-line；透明度用 rgb(var(--c-xxx-rgb) / 0.1)。不要写死黑白/亮色，不要渐变或多套强调色，不要外链图片/字体/图标。',
   '- 版式：宽度 100%，不要固定宽度或横向滚动；内边距 12–14px，元素间距 8–12px，圆角 12–16px；正文 13px/1.6，标题 14px/600，辅助 11px，数字 tabular-nums；标题最多两级。',
+  '- 尺寸自适应：高度由内容决定，不要写固定 height / min-height:100vh，也不要给内部容器 overflow:auto|scroll——组件内不允许出现任何滚动条；内容多就拆成分区或折叠，文字/表格用换行与收缩，绝不横向溢出。',
   '- 优先用站点类：.svt-title / .svt-muted / .svt-grid / .svt-metric / .svt-badge / .svt-row / .svt-row-between / .svt-bar；需要内部分区时才用 .svt-card。',
   '- 典型结构：.svt-row-between（标题 + 徽标）→ .svt-grid > .svt-metric（2–4 个指标）→ 控件 → .svt-muted（当前值/说明）；不要堆满整屏，信息密度留白。',
   '- 交互：按钮/输入继承主题色；触控区 ≥ 40px；状态不能只靠颜色，配文字或图标；动画 120–180ms，遵循 prefers-reduced-motion，不做无限动画。',
-  '- 可访问性：语义标签、aria-label、可见 focus；布局适配 320–640px，高度自适应，通常 120–320px，不要 100vh。',
+  '- 可访问性：语义标签、aria-label、可见 focus；布局适配 320–640px 任意宽度，越窄越紧凑（指标从 4 列自然降到 2 列），高度随内容自然增长，不要 100vh。',
   '- 数据必须来自历史记录，或明确标注「示例」；不要编造用户数据。',
   '【选择】单条记录的音高/共振峰/能量/元音优先用 record://；多记录对比、趋势、可调参数用 genui；纯文字能讲清就不用图表。',
 ].join('\n');

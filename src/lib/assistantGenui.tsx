@@ -17,7 +17,8 @@ import { useStore } from '@/store/useStore';
 /** 单条组件 HTML 上限：超过就省略，避免把对话撑爆 */
 const MAX_GENUI_CHARS = 48_000;
 const MIN_HEIGHT = 120;
-const MAX_HEIGHT = 640;
+/** 高度完全跟随内容（不设可视上限，避免出现内部滚动条）；这个值只是防跑飞的保险 */
+const MAX_HEIGHT = 6000;
 const INITIAL_HEIGHT = 220;
 
 const VAR_NAMES = [
@@ -57,13 +58,23 @@ const FALLBACK_VARS: Record<string, string> = {
 };
 
 const BASE_CSS = `
-* { box-sizing: border-box; }
+* { box-sizing: border-box; min-width: 0; }
+/* 组件内部永远不出现滚动条：高度由内容决定并由外层跟随（见 HEIGHT_SCRIPT），
+   超宽元素一律收缩/换行，绝不横向溢出。 */
 html, body {
   margin: 0; padding: 0; background: transparent; color: var(--c-ink);
   font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   font-size: 13px; line-height: 1.6;
+  width: 100%; max-width: 100%; overflow: hidden !important;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
-body { overflow: auto; }
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+img, svg, video, canvas { max-width: 100%; height: auto; }
+pre, code { white-space: pre-wrap; overflow-wrap: anywhere; }
+table { width: 100%; max-width: 100%; table-layout: fixed; }
+th, td { overflow-wrap: anywhere; }
+p, li, span, div, label, button { overflow-wrap: anywhere; }
 h1, h2, h3, h4 { margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 1.35; }
 p { margin: 0 0 8px; }
 p:last-child { margin-bottom: 0; }
@@ -77,13 +88,14 @@ button:hover { border-color: var(--c-accent); }
 input, select, textarea {
   font: inherit; color: var(--c-ink); background: var(--c-card);
   border: 1px solid var(--c-line); border-radius: 8px; padding: 6px 8px;
+  max-width: 100%; margin: 0;
 }
-input[type="range"] { border: 0; padding: 0; background: transparent; accent-color: var(--c-accent); }
+input[type="range"] { border: 0; padding: 0; margin: 0; background: transparent; accent-color: var(--c-accent); width: 100%; }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--c-accent); }
 .svt-card { background: var(--c-surface-hi); border-radius: 14px; padding: 12px; }
 .svt-title { font-size: 13px; font-weight: 600; }
 .svt-muted { color: var(--c-ink-2); font-size: 11px; }
-.svt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.svt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr)); gap: 8px; }
 .svt-metric { background: var(--c-surface-hi); border-radius: 12px; padding: 10px; }
 .svt-metric b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
 .svt-badge {
@@ -91,8 +103,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--c-accent); }
   background: var(--c-accent-soft); color: var(--c-on-accent-soft);
   padding: 2px 8px; font-size: 10px; font-weight: 500;
 }
-.svt-row { display: flex; align-items: center; gap: 8px; }
-.svt-row-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.svt-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.svt-row-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .svt-bar { height: 8px; border-radius: 9999px; background: var(--c-line); overflow: hidden; }
 .svt-bar > span { display: block; height: 100%; background: var(--c-accent); }
 `;
