@@ -274,6 +274,7 @@ export function AssistantPage() {
   useI18n();
   const settings = useStore((s) => s.settings);
   const aiWorkspace = settings.navStyle === 'ai';
+  const classicNav = settings.navStyle === 'classic';
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
   const setTab = useStore((s) => s.setTab);
   const lastTab = useStore((s) => s.lastTab);
@@ -886,7 +887,12 @@ export function AssistantPage() {
     </div>
   );
 
-  const shellClass = 'fixed inset-0 z-[60] flex flex-col bg-surface';
+  const shellClass = cn(
+    'fixed inset-x-0 top-0 z-[60] flex flex-col bg-surface',
+    // 经典底栏包含 AI 页签：助手页让出底栏高度，保留导航；
+    // 悬浮胶囊 / AI 工作台没有可见页签，助手页占满全屏。
+    classicNav ? 'bottom-[calc(4.25rem+env(safe-area-inset-bottom))]' : 'bottom-0',
+  );
 
   if (!cfg) {
     return (

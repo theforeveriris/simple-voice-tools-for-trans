@@ -456,7 +456,7 @@ function App() {
         </main>
       )}
 
-      {!aiWorkspace && <BottomBar />}
+      {!aiWorkspace && !(displayedTab === 'assistant' && navStyle === 'floating') && <BottomBar />}
 
       {/* 录音浮窗：录音中离开测试页时的全局迷你预览（计时 + 迷你音高图 + 停止） */}
       <RecordingMiniView />
