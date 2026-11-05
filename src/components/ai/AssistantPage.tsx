@@ -45,6 +45,7 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
+import { estimateTokens } from '@/lib/llmUsage';
 import type { AnalysisRecord, TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -352,9 +353,13 @@ export function AssistantPage() {
     const context = cfg.contextTokens ?? DEFAULT_CONTEXT_TOKENS;
     const replyReserve = Math.ceil(context * 0.25);
     const convTokens = history.reduce((n, x) => n + estTokens(x.content), 0);
+    const extraTokens = estTokens(extraContext);
     const histBudget = Math.max(
-      512,
-      Math.min(Math.floor(context * 0.6), context - convTokens - replyReserve - 512),
+      0,
+      Math.min(
+        Math.floor(context * 0.6),
+        context - convTokens - replyReserve - extraTokens - 512,
+      ),
     );
     const hist = await loadAssistantContext(
       histBudget,
@@ -611,11 +616,27 @@ export function AssistantPage() {
             : range.key === 'all'
               ? 'assistant.cmd.rangeAll'
               : 'assistant.cmd.rangeWeek';
+        // /review all 可能覆盖大量记录：明细只装预算内的最近部分，
+        // 其余由上方聚合与周趋势承担，避免系统提示超出模型上下文窗口。
+        const contextTokens = cfg?.contextTokens ?? DEFAULT_CONTEXT_TOKENS;
+        const detailBudget = Math.max(300, Math.min(2400, Math.floor(contextTokens * 0.25)));
+        const lines: string[] = [];
+        let used = 0;
+        for (let i = filtered.length - 1; i >= 0; i -= 1) {
+          const line = formatRecordLine(filtered[i]);
+          const cost = estimateTokens(line) + 2;
+          if (used + cost > detailBudget) break;
+          used += cost;
+          lines.unshift(line);
+        }
+        const omitted = filtered.length - lines.length;
         const extra = [
           `## 命令范围（/review）`,
           `范围：${t(rangeKey)}，记录 ${filtered.length} 条`,
-          `以下为该范围内全部记录的单行明细（时间从旧到新）：`,
-          ...filtered.map((r) => formatRecordLine(r)),
+          omitted > 0
+            ? `以下为最近 ${lines.length} 条明细，其余 ${omitted} 条请依据上方聚合与周趋势回答：`
+            : `以下为该范围内全部记录的单行明细（时间从旧到新）：`,
+          ...lines,
         ].join('\n');
         setInput('');
         sendMessage(t('assistant.cmd.reviewAsk', { range: t(rangeKey) }), extra);
