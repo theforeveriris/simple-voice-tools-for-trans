@@ -321,12 +321,19 @@ export function AssistantPage() {
     if (el && stickRef.current) el.scrollTop = el.scrollHeight;
   }, [messages.length, streamText, streamThink]);
 
-  // 输入栏随内容增高（上限 120px，之后内部滚动）
+  // 输入栏随内容增高：上限约 35% 视口高（约 240px 封顶），
+  // 超过后内部滚动但隐藏滚动条——手机与桌面都不出现可见滚动条。
   useEffect(() => {
     const el = taRef.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    const fit = () => {
+      el.style.height = 'auto';
+      const cap = Math.max(96, Math.min(240, Math.round(window.innerHeight * 0.35)));
+      el.style.height = `${Math.min(el.scrollHeight, cap)}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
   }, [input]);
 
   // 语音输入计时（录音仍是全局音频管线，但这里不进入分析页）
@@ -935,7 +942,7 @@ export function AssistantPage() {
       <div ref={scrollRef} onScroll={() => {
         const el = scrollRef.current;
         if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-      }} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      }} className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {messages.length === 0 && !busy ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <span className="grid size-14 place-items-center rounded-full bg-accent/15 text-accent">
@@ -1017,7 +1024,7 @@ export function AssistantPage() {
               id={commandListId}
               role="listbox"
               aria-label={t('assistant.cmd.help')}
-              className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]"
+              className="no-scrollbar absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]"
             >
               {commandItems.map((c, i) => (
                 <button
@@ -1074,7 +1081,7 @@ export function AssistantPage() {
                 placeholder={voiceState === 'recording'
                   ? t('assistant.voiceRecording', { time: voiceTime })
                   : t('assistant.ph')}
-                className="max-h-[120px] w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-2/60"
+                className="no-scrollbar w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-2/60"
               />
             </div>
             <button

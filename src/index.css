@@ -132,6 +132,17 @@
   .animate-pulse-soft {
     animation: pulseSoft 1.6s ease-in-out infinite;
   }
+
+  /* 可滚动但不显示滚动条（触屏与内容自适应的输入框用；键盘、滚轮、拖动滚动均保留） */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
 }
 
 @layer components {
