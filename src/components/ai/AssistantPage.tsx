@@ -298,6 +298,7 @@ export function AssistantPage() {
   const [delId, setDelId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
   const taRef = useRef<HTMLTextAreaElement>(null);
   /** 输入框是否有光标：无光标且为空时，右侧按钮切换为语音输入 */
@@ -344,6 +345,35 @@ export function AssistantPage() {
     void recorder.finishRecord(raw)
       .then(({ record, audio }) => useHistoryStore.getState().addRecord(record, audio ?? undefined))
       .catch(() => undefined);
+  }, []);
+
+  // 手机软键盘：布局视口不会跟着缩小，浏览器会把页面向上卷，
+  // 固定定位的助手外壳也被顶走，顶栏跟着消失。这里跟随 visualViewport
+  // 把外壳钉在可视区域内；键盘收起后清除内联样式，恢复底栏让位。
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => {
+      const el = shellRef.current;
+      if (!el) return;
+      const keyboardOpen = window.innerHeight - vv.height > 120;
+      if (keyboardOpen) {
+        el.style.top = `${vv.offsetTop}px`;
+        el.style.height = `${vv.height}px`;
+        el.style.bottom = 'auto';
+      } else {
+        el.style.top = '';
+        el.style.height = '';
+        el.style.bottom = '';
+      }
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
   }, []);
 
   const generate = async (convId: string, history: ChatMessage[], extraContext = '') => {
@@ -859,7 +889,7 @@ export function AssistantPage() {
   };
 
   const topBar = (
-    <div className="flex items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
+    <div className="flex shrink-0 items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
       {aiWorkspace ? (
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
           <Sparkles size={17} />
@@ -888,7 +918,7 @@ export function AssistantPage() {
   );
 
   const shellClass = cn(
-    'fixed inset-x-0 top-0 z-[60] flex flex-col bg-surface',
+    'fixed inset-x-0 top-0 z-[60] flex flex-col overflow-hidden bg-surface',
     // 经典底栏包含 AI 页签：助手页让出底栏高度，保留导航；
     // 悬浮胶囊 / AI 工作台没有可见页签，助手页占满全屏。
     classicNav ? 'bottom-[calc(4.25rem+env(safe-area-inset-bottom))]' : 'bottom-0',
@@ -896,7 +926,7 @@ export function AssistantPage() {
 
   if (!cfg) {
     return (
-      <div className={shellClass}>
+      <div ref={shellRef} className={shellClass}>
         {topBar}
         <div className="flex flex-1 items-center justify-center p-6">
           <p className="max-w-xs text-center text-sm leading-relaxed text-ink-2">{t('assistant.needConfig')}</p>
@@ -965,7 +995,7 @@ export function AssistantPage() {
       </div>
 
       {/* 输入栏 */}
-      <div className="px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
+      <div className="shrink-0 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
         <div className="relative mx-auto max-w-2xl">
           {pinnedIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 pb-1.5">
