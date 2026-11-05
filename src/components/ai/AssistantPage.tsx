@@ -347,25 +347,17 @@ export function AssistantPage() {
       .catch(() => undefined);
   }, []);
 
-  // 手机软键盘：布局视口不会跟着缩小，浏览器会把页面向上卷，
-  // 固定定位的助手外壳也被顶走，顶栏跟着消失。这里跟随 visualViewport
-  // 把外壳钉在可视区域内；键盘收起后清除内联样式，恢复底栏让位。
+  // 手机软键盘：visual viewport 会向上平移（offsetTop > 0），
+  // 固定外壳如果仍贴在布局视口 top:0，顶栏就会被推出可视区域。
+  // 始终跟随 offsetTop，只改 top，底栏让位仍交给 CSS。
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const sync = () => {
       const el = shellRef.current;
       if (!el) return;
-      const keyboardOpen = window.innerHeight - vv.height > 120;
-      if (keyboardOpen) {
-        el.style.top = `${vv.offsetTop}px`;
-        el.style.height = `${vv.height}px`;
-        el.style.bottom = 'auto';
-      } else {
-        el.style.top = '';
-        el.style.height = '';
-        el.style.bottom = '';
-      }
+      const offset = Math.max(0, vv.offsetTop);
+      el.style.top = offset > 0 ? `${offset}px` : '';
     };
     sync();
     vv.addEventListener('resize', sync);
@@ -889,7 +881,7 @@ export function AssistantPage() {
   };
 
   const topBar = (
-    <div className="flex shrink-0 items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
+    <div className="flex min-h-14 shrink-0 items-center gap-2 bg-surface px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
       {aiWorkspace ? (
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
           <Sparkles size={17} />
