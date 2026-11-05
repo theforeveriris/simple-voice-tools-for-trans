@@ -215,6 +215,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   siRenameEnabled: false,
   gardenColumns: 4,
   gardenMonthSections: true,
+  showGarden: false,
   liveSpectrum: false,
   pitchAlgorithm: 'yin',
   pitchCompareEnabled: true,

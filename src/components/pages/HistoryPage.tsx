@@ -111,8 +111,11 @@ export function HistoryPage() {
   const getAudio = useHistoryStore((s) => s.getAudio);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
+  const showGarden = useStore((s) => s.settings.showGarden);
 
   const [view, setView] = useState<'list' | 'trend' | 'garden'>('list');
+  /** 花园入口关闭时，即使 state 仍停在 garden，也回退到列表 */
+  const effectiveView = view === 'garden' && !showGarden ? 'list' : view;
   const [query, setQuery] = useState('');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -201,7 +204,7 @@ export function HistoryPage() {
           || target.tagName === 'TEXTAREA'
           || target.tagName === 'SELECT'
           || target.isContentEditable);
-      if (e.key === '/' && !typing && view === 'list' && !selectionMode) {
+      if (e.key === '/' && !typing && effectiveView === 'list' && !selectionMode) {
         e.preventDefault();
         searchRef.current?.focus();
         return;
@@ -231,10 +234,12 @@ export function HistoryPage() {
           [
             { id: 'list', label: t('history.viewList'), icon: ListFilter },
             { id: 'trend', label: t('history.viewTrend'), icon: TrendingUp },
-            { id: 'garden', label: t('garden.title'), icon: Flower2 },
+            ...(showGarden
+              ? [{ id: 'garden' as const, label: t('garden.title'), icon: Flower2 }]
+              : []),
           ] as const
         ).map((tab) => {
-          const active = view === tab.id;
+          const active = effectiveView === tab.id;
           const Icon = tab.icon;
           return (
             <button
@@ -255,7 +260,7 @@ export function HistoryPage() {
           );
         })}
         </div>
-        {view === 'list' && !selectionMode && records.length > 0 && (
+        {effectiveView === 'list' && !selectionMode && records.length > 0 && (
           <button
             onClick={() => enterSelection()}
             aria-label={t('history.selectAria')}
@@ -270,7 +275,7 @@ export function HistoryPage() {
           记录卡 / 热力图 / 趋势图的挂载开销不再把入场动画阻塞成闪动 */}
       {!contentReady ? (
         <div className="min-h-[55vh]" aria-hidden />
-      ) : view === 'trend' ? (
+      ) : effectiveView === 'trend' ? (
         records.length === 0 ? (
           <EmptyHistory />
         ) : (
@@ -281,7 +286,7 @@ export function HistoryPage() {
             <WeeklyReportCard records={records} />
           </>
         )
-      ) : view === 'garden' ? (
+      ) : effectiveView === 'garden' ? (
         records.length === 0 ? (
           <EmptyHistory />
         ) : (

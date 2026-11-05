@@ -641,30 +641,40 @@ export function AppearancePage({
 
         {/* 花园布局（声之花视图的排版） */}
         <SettingsSection icon={Palette} title={t('settings.gardenLayout')}>
-          <SettingRow label={<InfoTip label={t('garden.colsLabel')} text={t('settings.gardenColsDesc')} />}>
-            <div className="flex items-center gap-1" role="group" aria-label={t('garden.colsLabel')}>
-              {[2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => update({ gardenColumns: n })}
-                  aria-pressed={settings.gardenColumns === n}
-                  aria-label={t('garden.colsAria', { n })}
-                  className={cn(
-                    'grid size-8 place-items-center rounded-full text-xs font-semibold tabular-nums transition-colors',
-                    settings.gardenColumns === n ? 'bg-accent text-on-accent' : 'bg-surface-hi text-ink-2 hover:text-ink',
-                  )}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </SettingRow>
-          <SettingRow label={<InfoTip label={t('garden.monthSections')} text={t('settings.gardenMonthDesc')} />}>
+          <SettingRow label={<InfoTip label={t('garden.show')} text={t('settings.gardenShowDesc')} />}>
             <Switch
-              checked={settings.gardenMonthSections}
-              onCheckedChange={(v) => update({ gardenMonthSections: v })}
+              checked={!!settings.showGarden}
+              onCheckedChange={(v) => update({ showGarden: v })}
             />
           </SettingRow>
+          {settings.showGarden && (
+            <>
+              <SettingRow label={<InfoTip label={t('garden.colsLabel')} text={t('settings.gardenColsDesc')} />}>
+                <div className="flex items-center gap-1" role="group" aria-label={t('garden.colsLabel')}>
+                  {[2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => update({ gardenColumns: n })}
+                      aria-pressed={settings.gardenColumns === n}
+                      aria-label={t('garden.colsAria', { n })}
+                      className={cn(
+                        'grid size-8 place-items-center rounded-full text-xs font-semibold tabular-nums transition-colors',
+                        settings.gardenColumns === n ? 'bg-accent text-on-accent' : 'bg-surface-hi text-ink-2 hover:text-ink',
+                      )}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </SettingRow>
+              <SettingRow label={<InfoTip label={t('garden.monthSections')} text={t('settings.gardenMonthDesc')} />}>
+                <Switch
+                  checked={settings.gardenMonthSections}
+                  onCheckedChange={(v) => update({ gardenMonthSections: v })}
+                />
+              </SettingRow>
+            </>
+          )}
         </SettingsSection>
 
         {/* 主题分享（.svt-theme 导入导出） */}

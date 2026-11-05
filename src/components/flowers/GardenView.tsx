@@ -1,7 +1,9 @@
 /**
  * 花园视图（历史页第三视图）——虚拟化版本
  * 按月分节的虚拟滚动列表：只渲染视口 ± 缓冲内的花，窗口外用占位高度，
- * 记录数增长到几千条时渲染量恒定（每行 3–4 朵，总 DOM 节点 ≈ 视口行数 × 每行数）。
+ * 记录数增长到几千条时渲染量恒定（总 DOM 节点 ≈ 视口行数 × 每行数）。
+ * 每行花数严格跟随设置（2–5），移动端与桌面端一致；行高按容器宽度收缩，
+ * 避免窄屏多列时花朵溢出单元格。
  * flowerOf 映射结果经 useMemo 缓存，滚动与重渲染不重复计算。
  * 点花弹详情：大花 + 映射依据标注 + 跳转分析页。
  */
@@ -26,14 +28,9 @@ const GARDEN_FILTERS: { id: 'all' | TestMode; labelKey: 'common.all' | 'mode.rea
   { id: 'glide', labelKey: 'mode.glide' },
 ];
 
-/** 布局常量（px）：行高按列数自适应（花尺寸随行宽缩放） */
+/** 布局常量（px）：行高按列数与容器宽度自适应（花尺寸随单元格缩放） */
 const BASE_ROW_H = 132; // 4 列时的行高基准
 const BUFFER_ROWS = 3; // 视口上下各多渲染的行数
-/** 窄屏判定（列数上限减半；与 CSS grid-cols-2 对应，粗略但一致性够） */
-const MOBILE_COLS_CAP = 2;
-function isNarrow(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth < 640;
-}
 
 /** 月份标签（YYYY/M） */
 function monthLabel(ts: number): string {
@@ -157,6 +154,7 @@ export function GardenView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportH, setViewportH] = useState(600);
+  const [viewportW, setViewportW] = useState(0);
   const COLS = Math.max(1, Math.min(5, gardenColumns));
 
   const filtered = useMemo(
@@ -176,12 +174,14 @@ export function GardenView({
     return () => { alive = false; };
   }, [filtered]);
 
-  // 窄屏列数减半（下限 1）；行高随列数缩放（花尺寸随行宽变化）
-  const cols = useMemo(() => {
-    const cap = isNarrow() ? Math.min(COLS, MOBILE_COLS_CAP) : COLS;
-    return Math.max(1, cap);
-  }, [COLS]);
-  const rowH = Math.round(BASE_ROW_H * (4 / cols) ** 0.5);
+  // 列数严格跟随设置；行高按容器宽度与列数缩放，窄屏多列也不会溢出
+  const cols = useMemo(() => Math.max(1, COLS), [COLS]);
+  const rowH = useMemo(() => {
+    const cellW = viewportW > 0
+      ? (viewportW - 16 - (cols - 1) * 8) / cols
+      : BASE_ROW_H * 0.82;
+    return Math.round(Math.max(70, Math.min(BASE_ROW_H * (4 / cols) ** 0.5, cellW * 1.15)));
+  }, [cols, viewportW]);
   const monthH = 36;
 
   // 行布局（含 flowerOf 映射）：luaVersion 有意依赖（Lua 花异步就绪后重算）
@@ -209,6 +209,7 @@ export function GardenView({
       raf = requestAnimationFrame(() => {
         setScrollTop(el.scrollTop);
         setViewportH(el.clientHeight);
+        setViewportW(el.clientWidth);
       });
     };
     el.addEventListener('scroll', onScroll, { passive: true });
