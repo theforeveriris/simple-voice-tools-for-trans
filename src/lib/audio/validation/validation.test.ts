@@ -115,7 +115,7 @@ afterAll(() => {
 
 /* ======================= 1. 构造真值 ======================= */
 
-describe('validation: constructed truth', () => {
+describe.skipIf(!hasFixtures)('validation: constructed truth', () => {
   it('sine_220：F0 全链路', () => {
     const { raw } = analyzeFixture('sine_220.wav');
     expect(Math.abs(raw.f0Mean! - 220)).toBeLessThan(1.5);
@@ -207,7 +207,7 @@ describe('validation: constructed truth', () => {
 
 /* ======================= 2. Praat 交叉验证 ======================= */
 
-describe('validation: Praat cross-check', () => {
+describe.skipIf(!hasFixtures)('validation: Praat cross-check', () => {
   it('有 expected_praat.json 时逐项对齐（F0 优先）', () => {
     if (!praat['sine_220.wav']) return; // 无 Praat 参考时跳过
     const mine = analyzed['sine_220.wav']?.raw ?? analyzeFixture('sine_220.wav').raw;
