@@ -46,7 +46,7 @@ import {
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
-import { ContextChip } from '@/components/ai/ContextChip';
+import { ContextChipButton, ContextPanel } from '@/components/ai/ContextChip';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -253,34 +253,48 @@ const Bubble = memo(function Bubble({
   onBranch: (idx: number) => void;
 }) {
   useI18n();
+  const [ctxOpen, setCtxOpen] = useState(false);
   const mine = m.role === 'user';
   const think = streaming ? liveThink : m.think ?? '';
   const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkOpen;
   const onBodyClick = () => onAction(streaming ? null : active ? null : idx);
   const body = (
     <>
-      {!mine && !!m.think && !streaming && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleThink(idx);
-          }}
-          aria-expanded={thinkOpen}
-          className="mb-1.5 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/60 hover:text-ink"
-        >
-          <Brain size={10} />
-          {t('assistant.think')}
-          <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
-        </button>
-      )}
       {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
       {mine
         ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
-      {!mine && !streaming && m.context && <ContextChip meta={m.context} />}
+      {!mine && !streaming && (!!m.think || !!m.context) && (
+        <>
+          <div className={cn('mt-2 flex items-center gap-2', m.think ? 'justify-between' : 'justify-end')}>
+            {m.think ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleThink(idx);
+                }}
+                aria-expanded={thinkOpen}
+                className="inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/60 hover:text-ink"
+              >
+                <Brain size={10} />
+                {t('assistant.think')}
+                <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
+              </button>
+            ) : null}
+            {m.context ? (
+              <ContextChipButton
+                meta={m.context}
+                open={ctxOpen}
+                onToggle={() => setCtxOpen((v) => !v)}
+              />
+            ) : null}
+          </div>
+          {ctxOpen && m.context ? <ContextPanel meta={m.context} /> : null}
+        </>
+      )}
       {!mine && m.interrupted && (
         <p className="mt-1 text-[10px] text-ink-2/70">{t('assistant.interrupted')}</p>
       )}
