@@ -45,6 +45,6 @@ cat VERIFICATION-REPORT.md
 
 ## 已知差异
 
-- **CPPS 量级**：本口径（dB 谱 + 1/N 归一化）约为 Praat（ln 谱 + 内部缩放）的 1/20，绝对数值不可直接比较
+- **CPPS 量级**：本口径（dB 谱 + 1/N 归一化）与 Praat（ln 谱 + 内部缩放）存在量级差异，实测约为其 1/9 – 1/24（逐信号不同，见 `VERIFICATION-REPORT.md`），绝对数值不可直接比较
 - **Jitter/Shimmer 噪声敏感性**：峰检测法在噪声下偏高（sine200_snr20: jitter +2.1%, shimmer +12.7%），Praat 用交叉相关更稳健
 - **共振峰**：纯音（sine）的 Praat Burg 会把基频当成"共振峰"，仅元音信号可对比

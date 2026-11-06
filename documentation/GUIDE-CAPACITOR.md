@@ -1,7 +1,7 @@
 # Capacitor 安卓壳（GUIDE-CAPACITOR）
 
 用 Capacitor 把现有 Web 应用原样打包为安卓 App：**Web 代码 100% 复用**，
-壳层只做权限、分享接收、通知、系统栏适配、应用快捷方式五件事。
+壳层只做权限、分享接收、通知、系统栏适配、应用快捷方式、快捷磁贴六件事。
 
 ## 架构总览
 
@@ -10,7 +10,9 @@
                                         ├─ 麦克风：RECORD_AUDIO 权限 + WebView getUserMedia 桥
                                         ├─ 分享接收：ShareTargetPlugin（Java）→ Web 导入管线
                                         ├─ 提醒通知：@capacitor/local-notifications
-                                        └─ 应用快捷方式：AppShortcutPlugin（长按图标深链页签）
+                                        ├─ 系统栏：SystemBarsPlugin（配色 / 沉浸式）
+                                        ├─ 应用快捷方式：AppShortcutPlugin（长按图标深链页签）
+                                        └─ 快捷磁贴：RouteTileService + 录音/历史/设置三张
 ```
 
 Web 层平台分支的主要入口是 `src/lib/platform.ts` 的 `isNative`
@@ -23,6 +25,7 @@ Web 层平台分支的主要入口是 `src/lib/platform.ts` 的 `isNative`
 | 检查更新 | 比对线上 `version.json` | 比对 GitHub Releases 最新 APK（`lib/appUpdate.ts`），新版本给下载按钮，浏览器下载后覆盖安装（数据保留） |
 | 设置 → 应用 | 安装入口 / 检查更新 / 清缓存可见 | 隐藏安装入口 / SW 状态 / 清缓存重置；版本、检查更新、分享应用、诊断信息可见 |
 | 应用快捷方式 | manifest shortcuts（长按图标） | `AppShortcutPlugin`：静态 shortcuts 深链录音 / 历史 / 设置（同一套 `#/hash` 语义） |
+| 快捷磁贴 | 无 | `RouteTileService` + 录音 / 历史 / 设置三张 TileService（API 24+；下拉通知栏的快捷设置区） |
 | 「分享到」 | manifest share_target（SW 拦截 POST） | `ShareTargetPlugin` 收 SEND intent → 缓存目录 → 事件给 Web |
 | 练习提醒 | Web Notification | `LocalNotifications.schedule`（即时展示） |
 | 其余（Web Audio / MediaRecorder / IndexedDB / vibrate / clipboard） | — | WebView 原样可用，无分支 |
@@ -30,7 +33,8 @@ Web 层平台分支的主要入口是 `src/lib/platform.ts` 的 `isNative`
 ## 日常开发流
 
 ```bash
-npm run cap:sync   # = npm run build + npx cap sync android（构建产物拷入 android 工程）
+npm run cap:sync   # = npm run build + npx cap sync android + node scripts/prune-android-assets.mjs
+                    #   （构建产物拷入 android 工程，再裁掉 web-only 资源，省约 550KB APK）
 npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 ```
 
@@ -48,7 +52,8 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 
 `.github/workflows/android-release.yml`：
 
-- **推送到 main**：跑 vitest → vite build → cap sync → gradle 构建——三个签名
+- **推送到 main**：跑 vitest → vite build → cap sync → 裁掉 web-only 资源
+  （`scripts/prune-android-assets.mjs`）→ gradle 构建——三个签名
   secrets 齐全时 `assembleRelease`（产出 `SimpleVoiceToolForTrans-v{版本}-release.apk`），
   否则回退 debug 签名；APK 传到 **`latest` 预发布**（滚动替换并清理旧版本 .apk，
   固定下载入口：`github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest`）。

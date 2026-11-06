@@ -57,7 +57,7 @@ const OPTIONAL_NUMBER_KEYS: Partial<Record<keyof AppSettings, [number, number]>>
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   theme: ['light', 'dark', 'system'],
-  navStyle: ['floating', 'classic'],
+  navStyle: ['floating', 'classic', 'ai'],
   huePreset: ['monet', 'pride', 'image'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'es', 'fr', 'ai'],

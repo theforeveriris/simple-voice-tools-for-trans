@@ -9,6 +9,10 @@
 - `vite-plugin-pwa`，`registerType: 'autoUpdate'`：SW 更新下载完成后**下次加载
   生效**（skipWaiting + clientsClaim 由插件注入）；
 - Workbox 预缓存 `**/*.{js,css,html,svg,png,woff2,md}`，`navigateFallback: index.html`；
+- `includeAssets: ['favicon.svg', 'og-image.png', 'privacy-policy.md']`：
+  这三个文件不在 globPatterns 的扩展名白名单里（`.txt` 不在其中），需显式列入，
+  否则隐私政策等页面在离线时取不到；
+- `injectRegister: null` + `main.tsx` 手动注册：原生壳内不注册 SW；
 - `importScripts: ['sw-custom.js']`：自定义 SW 先于 Workbox 路由注册；
 - 产物输出 `docs/`（GitHub Pages），`base: './'` 相对路径。
 
@@ -51,7 +55,7 @@ define: {
   升级（seen 存在且不同）→ toast 一次 + 写标记 `svt:update-notes-open = '1'`；
   无论是否升级都刷新 `svt:update-seen`。
 - 应用子页读到该标记 → 「版本与更新」区顶部显示
-  `settings.updateNotes` 卡片（每版本维护一段 i18n 文案，**发版时记得更新五语言**），
+  `settings.updateNotes` 卡片（每版本维护一段 i18n 文案，**发版时记得更新七语言**），
   点「知道了」清除标记。
 
 ## 修复工具（resetAppRuntime）

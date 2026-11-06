@@ -76,7 +76,7 @@ export function registerAiDict(label: string, dict: Record<string, string>, lang
 /**
  * 显示文本转换开关（设置 → 实验性功能 → 「AI 显示为 SI」）。
  * 开启后所有经 t() 的界面文案把 "AI" 替换为 "SI"（含提示词侧的模型称呼不变，
- * 只影响 UI 展示层）。挂在 i18n 输出端：一处生效，全应用 73 处 t() 调用点无需改动。
+ * 只影响 UI 展示层）。挂在 i18n 输出端：一处生效，全应用 1400+ 处 t() 调用点无需改动。
  */
 let siRename = false;
 
