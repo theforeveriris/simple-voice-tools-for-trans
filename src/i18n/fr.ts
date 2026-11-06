@@ -177,6 +177,7 @@ export const fr = {
   'analysis.rowTargetPct': 'Taux d\'atteinte de la plage cible',
   'analysis.rowNote': 'Remarque',
   'analysis.vqHint': 'Nécessite l\'audio sauvegardé · CPPS convient aussi à la parole continue',
+  'analysis.vqHintMissing': 'Certains indicateurs nécessitent l’audio enregistré ; les anciens enregistrements avec audio peuvent être complétés via « Recalculer »',
   'analysis.specAria': 'Spectrogramme',
   'analysis.baselineTitle': 'Comparé à la référence',
   'analysis.baselineDesc': '{date} · {f0} Hz',

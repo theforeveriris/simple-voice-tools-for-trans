@@ -178,6 +178,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'analysis.rowTargetPct': '中鵠之率',
   'analysis.rowNote': '釋',
   'analysis.vqHint': '須存所錄之聲 · CPPS 亦宜於連語',
+  'analysis.vqHintMissing': '數項需存錄音方可算；有音之舊錄可於「重算」補之',
   'analysis.specAria': '語譜圖',
   'analysis.baselineTitle': '與基線比',
   'analysis.baselineDesc': '{date} · {f0} Hz',

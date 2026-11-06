@@ -178,6 +178,7 @@ export const ja = {
   'analysis.rowTargetPct': '目標区間の達成率',
   'analysis.rowNote': 'メモ',
   'analysis.vqHint': '録音音声の保存が必要 · CPPS は連続音声にも対応します',
+  'analysis.vqHintMissing': '一部の指標は録音音声の保存が必要です。音声がある古い記録は「再計算」で補えます',
   'analysis.specAria': 'スペクトログラム',
   'analysis.baselineTitle': 'ベースラインとの比較',
   'analysis.baselineDesc': '{date} · {f0} Hz',

@@ -177,6 +177,7 @@ export const es = {
   'analysis.rowTargetPct': 'Tasa de acierto del rango objetivo',
   'analysis.rowNote': 'Nota',
   'analysis.vqHint': 'Requiere audio guardado · CPPS también sirve para habla continua',
+  'analysis.vqHintMissing': 'Algunos indicadores necesitan el audio guardado; los registros antiguos con audio se pueden completar con «Recalcular»',
   'analysis.specAria': 'Espectrograma',
   'analysis.baselineTitle': 'vs. línea base',
   'analysis.baselineDesc': '{date} · {f0} Hz',

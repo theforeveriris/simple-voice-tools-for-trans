@@ -88,6 +88,12 @@ export function createDemoRecord(): AnalysisRecord {
       shimmerPct: 3.4,
       hnrDb: 15.8,
       cppsDb: 14.2,
+      // 谱类指标：与上面的 HNR/CPPS 口径一致的合成值，保证示例记录四组指标都有内容
+      h1h2Db: 7.4,
+      h2h4Db: 5.1,
+      h1a3Db: 19.6,
+      breathiness: 0.32,
+      nasalityDb: -10.8,
     },
     mode: 'reading',
     spec: { bands: SPEC_BANDS, data: base64FromBytes(flat) },

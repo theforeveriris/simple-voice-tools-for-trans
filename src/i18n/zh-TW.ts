@@ -177,6 +177,7 @@ export const zhTW = {
   'analysis.rowTargetPct': '目標區間達成率',
   'analysis.rowNote': '說明',
   'analysis.vqHint': '需儲存錄音音訊 · CPPS 亦適用於連續語音',
+  'analysis.vqHintMissing': '部分指標需保存錄音音訊才能計算；有音訊的舊記錄可用「重算」補齊',
   'analysis.specAria': '語譜圖',
   'analysis.baselineTitle': '與基線對比',
   'analysis.baselineDesc': '{date} · {f0} Hz',

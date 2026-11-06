@@ -178,6 +178,7 @@ export const zhCN = {
   'analysis.rowTargetPct': '目标区间达成率',
   'analysis.rowNote': '说明',
   'analysis.vqHint': '需保存录音音频 · CPPS 亦适用于连续语音',
+  'analysis.vqHintMissing': '部分指标需要保存录音音频才能计算；有音频的旧记录可用「重算」补齐',
   'analysis.specAria': '语谱图',
   'analysis.baselineTitle': '与基线对比',
   'analysis.baselineDesc': '{date} · {f0} Hz',

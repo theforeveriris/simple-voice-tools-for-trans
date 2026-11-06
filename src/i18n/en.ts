@@ -177,6 +177,7 @@ export const en = {
   'analysis.rowTargetPct': 'Target range hit rate',
   'analysis.rowNote': 'Note',
   'analysis.vqHint': 'Requires saved audio · CPPS also works for connected speech',
+  'analysis.vqHintMissing': 'Some metrics need the saved audio to be computed; older records with audio can be filled in with "Re-analyze"',
   'analysis.specAria': 'Spectrogram',
   'analysis.baselineTitle': 'vs. baseline',
   'analysis.baselineDesc': '{date} · {f0} Hz',

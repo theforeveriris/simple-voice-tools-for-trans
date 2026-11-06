@@ -170,10 +170,18 @@ export function AnalysisPage() {
     const r = syncChartRange ? sharedRange : (ownRanges.pitch ?? fullRange);
     return {
       ...computeStats(sliceSeries(record.series, r[0], r[1]), record.sampleHz),
+      // 以下来自整段录音的离线分析（或整段临床指标），不随查看区间变化：
+      // 必须原样带过来，否则表格会显示成「—」
       jitterPct: record.stats.jitterPct,
       shimmerPct: record.stats.shimmerPct,
       hnrDb: record.stats.hnrDb,
       cppsDb: record.stats.cppsDb,
+      h1h2Db: record.stats.h1h2Db,
+      h2h4Db: record.stats.h2h4Db,
+      h1a3Db: record.stats.h1a3Db,
+      breathiness: record.stats.breathiness,
+      nasalityDb: record.stats.nasalityDb,
+      spectralTiltDbOct: record.stats.spectralTiltDbOct,
       inTargetPct: record.stats.inTargetPct,
     };
   }, [record, syncChartRange, sharedRange, ownRanges, fullRange]);
