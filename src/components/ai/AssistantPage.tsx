@@ -1163,13 +1163,147 @@ export function AssistantPage() {
     classicNav ? 'bottom-[calc(4.25rem+env(safe-area-inset-bottom))]' : 'bottom-0',
   );
 
+  /** 右侧历史抽屉（未配置大模型时也要可用：顶栏的历史按钮在两个分支都在） */
+  const sidebarDrawer = sidebarOpen ? (
+    <div className="absolute inset-0 z-20">
+      <div className="absolute inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
+        className="absolute inset-y-0 right-0 flex w-72 flex-col bg-surface shadow-[-8px_0_30px_rgba(28,25,45,0.12)]"
+      >
+        <button
+          onClick={newChat}
+          className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-2xl bg-accent/15 py-2.5 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
+        >
+          <Plus size={15} />
+          {t('assistant.newChat')}
+        </button>
+        <div className="mx-3 mt-2">
+          <input
+            value={chatQuery}
+            onChange={(e) => setChatQuery(e.target.value)}
+            placeholder={t('assistant.searchChats')}
+            aria-label={t('assistant.searchChats')}
+            className="w-full rounded-xl bg-surface-hi/60 px-3 py-2 text-[12px] text-ink outline-none placeholder:text-ink-2/60"
+          />
+        </div>
+        <p className="px-4 pb-1 pt-3 text-[11px] font-medium text-ink-2">{t('assistant.history')}</p>
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+          {visibleChats.length === 0 ? (
+            <p className="px-3 py-4 text-xs text-ink-2/70">
+              {(chats ?? []).length === 0 ? t('assistant.historyEmpty') : t('assistant.noSearchResult')}
+            </p>
+          ) : (
+            visibleChats.map((c) => (
+              <div
+                key={c.id}
+                className={cn('rounded-xl', c.id === activeId && 'bg-accent/10')}
+              >
+                <div className="flex items-center gap-1 px-1.5">
+                  {renamingId === c.id ? (
+                    <input
+                      autoFocus
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onBlur={() => commitRename(c.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitRename(c.id);
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          setRenamingId(null);
+                        }
+                      }}
+                      aria-label={t('assistant.renameChat')}
+                      placeholder={t('assistant.renamePlaceholder')}
+                      className="my-1.5 min-w-0 flex-1 rounded-lg bg-surface-hi px-2 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-2/60"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => openChat(c.id)}
+                      className="min-w-0 flex-1 py-2.5 text-left"
+                    >
+                      <span className="block truncate text-[13px] text-ink">
+                        {c.title || t('assistant.newChat')}
+                      </span>
+                      <span className="block text-[10px] text-ink-2">
+                        {new Date(c.updatedAt).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setMenuId(menuId === c.id ? null : c.id);
+                      setDelId(null);
+                    }}
+                    aria-label={t('assistant.more')}
+                    aria-expanded={menuId === c.id}
+                    className="grid size-8 shrink-0 place-items-center rounded-full text-ink-2 transition-colors hover:text-ink"
+                  >
+                    <MoreHorizontal size={15} />
+                  </button>
+                </div>
+                {menuId === c.id && (
+                  <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+                    <button onClick={() => startRename(c)} className={menuBtn}>
+                      <Pencil size={11} />
+                      {t('assistant.renameChat')}
+                    </button>
+                    <button onClick={() => exportChat(c)} className={menuBtn}>
+                      <Download size={11} />
+                      {t('assistant.exportChat')}
+                    </button>
+                    <button
+                      onClick={() => onDeleteChat(c.id)}
+                      className={cn(menuBtn, delId === c.id && 'bg-red-500/10 text-red-500')}
+                    >
+                      <Trash2 size={11} />
+                      {t('assistant.deleteChat')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+        {aiWorkspace && (
+          <div className="border-t border-line/60 p-3">
+            <button
+              onClick={() => {
+                setSidebarOpen(false);
+                setTab('settings');
+              }}
+              className="flex w-full items-center gap-2 rounded-2xl bg-surface-hi/60 px-3 py-2.5 text-sm font-medium text-ink transition-transform active:scale-[0.98]"
+            >
+              <Settings2 size={15} className="text-accent" />
+              {t('nav.settings')}
+            </button>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  ) : null;
+
   if (!cfg) {
     return (
       <div ref={shellRef} className={shellClass}>
         {topBar}
         <div className="flex flex-1 items-center justify-center p-6">
-          <p className="max-w-xs text-center text-sm leading-relaxed text-ink-2">{t('assistant.needConfig')}</p>
+          <div className="flex max-w-xs flex-col items-center gap-3 text-center">
+            <p className="text-sm leading-relaxed text-ink-2">{t('assistant.needConfig')}</p>
+            <button
+              onClick={() => setTab('settings')}
+              className="flex items-center gap-1.5 rounded-2xl bg-accent/15 px-4 py-2 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
+            >
+              <Settings2 size={15} />
+              {t('assistant.goSettings')}
+            </button>
+          </div>
         </div>
+        {sidebarDrawer}
       </div>
     );
   }
@@ -1373,129 +1507,7 @@ export function AssistantPage() {
         </div>
       </div>
 
-      {/* 右侧历史抽屉 */}
-      {sidebarOpen && (
-        <div className="absolute inset-0 z-20">
-          <div className="absolute inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
-            className="absolute inset-y-0 right-0 flex w-72 flex-col bg-surface shadow-[-8px_0_30px_rgba(28,25,45,0.12)]"
-          >
-            <button
-              onClick={newChat}
-              className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-2xl bg-accent/15 py-2.5 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
-            >
-              <Plus size={15} />
-              {t('assistant.newChat')}
-            </button>
-            <div className="mx-3 mt-2">
-              <input
-                value={chatQuery}
-                onChange={(e) => setChatQuery(e.target.value)}
-                placeholder={t('assistant.searchChats')}
-                aria-label={t('assistant.searchChats')}
-                className="w-full rounded-xl bg-surface-hi/60 px-3 py-2 text-[12px] text-ink outline-none placeholder:text-ink-2/60"
-              />
-            </div>
-            <p className="px-4 pb-1 pt-3 text-[11px] font-medium text-ink-2">{t('assistant.history')}</p>
-            <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-              {visibleChats.length === 0 ? (
-                <p className="px-3 py-4 text-xs text-ink-2/70">
-                  {(chats ?? []).length === 0 ? t('assistant.historyEmpty') : t('assistant.noSearchResult')}
-                </p>
-              ) : (
-                visibleChats.map((c) => (
-                  <div
-                    key={c.id}
-                    className={cn('rounded-xl', c.id === activeId && 'bg-accent/10')}
-                  >
-                    <div className="flex items-center gap-1 px-1.5">
-                      {renamingId === c.id ? (
-                        <input
-                          autoFocus
-                          value={renameDraft}
-                          onChange={(e) => setRenameDraft(e.target.value)}
-                          onBlur={() => commitRename(c.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              commitRename(c.id);
-                            } else if (e.key === 'Escape') {
-                              e.preventDefault();
-                              setRenamingId(null);
-                            }
-                          }}
-                          aria-label={t('assistant.renameChat')}
-                          placeholder={t('assistant.renamePlaceholder')}
-                          className="my-1.5 min-w-0 flex-1 rounded-lg bg-surface-hi px-2 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-2/60"
-                        />
-                      ) : (
-                        <button
-                          onClick={() => openChat(c.id)}
-                          className="min-w-0 flex-1 py-2.5 text-left"
-                        >
-                          <span className="block truncate text-[13px] text-ink">
-                            {c.title || t('assistant.newChat')}
-                          </span>
-                          <span className="block text-[10px] text-ink-2">
-                            {new Date(c.updatedAt).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setMenuId(menuId === c.id ? null : c.id);
-                          setDelId(null);
-                        }}
-                        aria-label={t('assistant.more')}
-                        aria-expanded={menuId === c.id}
-                        className="grid size-8 shrink-0 place-items-center rounded-full text-ink-2 transition-colors hover:text-ink"
-                      >
-                        <MoreHorizontal size={15} />
-                      </button>
-                    </div>
-                    {menuId === c.id && (
-                      <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
-                        <button onClick={() => startRename(c)} className={menuBtn}>
-                          <Pencil size={11} />
-                          {t('assistant.renameChat')}
-                        </button>
-                        <button onClick={() => exportChat(c)} className={menuBtn}>
-                          <Download size={11} />
-                          {t('assistant.exportChat')}
-                        </button>
-                        <button
-                          onClick={() => onDeleteChat(c.id)}
-                          className={cn(menuBtn, delId === c.id && 'bg-red-500/10 text-red-500')}
-                        >
-                          <Trash2 size={11} />
-                          {t('assistant.deleteChat')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-            {aiWorkspace && (
-              <div className="border-t border-line/60 p-3">
-                <button
-                  onClick={() => {
-                    setSidebarOpen(false);
-                    setTab('settings');
-                  }}
-                  className="flex w-full items-center gap-2 rounded-2xl bg-surface-hi/60 px-3 py-2.5 text-sm font-medium text-ink transition-transform active:scale-[0.98]"
-                >
-                  <Settings2 size={15} className="text-accent" />
-                  {t('nav.settings')}
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      )}
+      {sidebarDrawer}
     </div>
   );
 }

@@ -641,6 +641,7 @@ export const es = {
   'assistant.copied': 'Copiado',
   'assistant.retry': 'Reintentar',
   'assistant.needConfig': 'Aún no hay ningún endpoint disponible: crea o activa un perfil en «Perfiles» (con los tres campos completos)',
+  'assistant.goSettings': 'Abrir ajustes',
   'assistant.greeting': '¡Hola! Soy el asistente AI integrado. Pregúntame sobre entrenamiento vocal, tus métricas o cómo planificar tu práctica.',
   'assistant.chartMissing': 'No se encontró la grabación referenciada',
   'assistant.chartZoomed': 'ampliado - doble clic para restablecer',

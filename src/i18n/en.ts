@@ -641,6 +641,7 @@ export const en = {
   'assistant.copied': 'Copied',
   'assistant.retry': 'Retry',
   'assistant.needConfig': 'No usable endpoint yet — create or activate a profile under "Profiles" (all three fields filled)',
+  'assistant.goSettings': 'Open settings',
   'assistant.greeting': 'Hi! I\'m the built-in AI assistant. Ask about voice training, your metrics, or planning your practice.',
   'assistant.chartMissing': 'Referenced record not found',
   'assistant.chartZoomed': 'zoomed - double-click to reset',

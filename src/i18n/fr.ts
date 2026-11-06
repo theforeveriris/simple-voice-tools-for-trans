@@ -641,6 +641,7 @@ export const fr = {
   'assistant.copied': 'Copié',
   'assistant.retry': 'Réessayer',
   'assistant.needConfig': 'Aucun endpoint disponible — crée ou active un profil sous « Profils » (les trois champs remplis)',
+  'assistant.goSettings': 'Ouvrir les réglages',
   'assistant.greeting': 'Salut, je suis l\'assistant AI intégré. On peut parler d\'entraînement vocal, décrypter tes mesures ou planifier tes exercices.',
   'assistant.chartMissing': 'Enregistrement référencé introuvable',
   'assistant.chartZoomed': 'zoomé - double-clic pour réinitialiser',
