@@ -1,7 +1,7 @@
 /**
  * 空会话的快捷提问：根据本地历史记录生成 4 个问题。
- * 点一下只把问题填进输入框（不自动发送），用户可以改完再发。
- * 设计取向：单卡片内分隔行，长度可随 AI 生成的问题变化。
+ * 版式：胶囊（最轻，一眼扫完）；点一下只填入输入框，不自动发送。
+ * 后续接入 AI 生成时，问题长度需限制在 ~20 字以内以保持单行。
  */
 
 import { useMemo } from 'react';
@@ -16,20 +16,17 @@ export function QuickPrompts({ onPick }: { onPick: (text: string) => void }) {
   const items = useMemo(() => buildQuickPrompts(records, t), [records]);
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="grid grid-cols-2 gap-2">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => onPick(item.text)}
-            className="flex min-h-[3.6rem] flex-col items-start gap-1 rounded-2xl bg-card px-3 py-2 text-left text-[11px] leading-snug text-ink shadow-[0_2px_10px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.98]"
-          >
-            <span>{item.text}</span>
-            <span className="text-[9px] leading-snug text-ink-2">{item.hint}</span>
-          </button>
-        ))}
-      </div>
+    <div className="flex w-full max-w-sm flex-wrap justify-center gap-2">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onPick(item.text)}
+          className="max-w-full rounded-full border border-line/70 bg-ink/[0.04] px-3.5 py-1.5 text-left text-[11px] leading-snug text-ink transition-colors hover:border-line hover:bg-ink/[0.07] active:scale-[0.98]"
+        >
+          {item.text}
+        </button>
+      ))}
     </div>
   );
 }
