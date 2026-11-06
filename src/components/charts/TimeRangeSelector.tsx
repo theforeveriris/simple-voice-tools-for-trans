@@ -10,7 +10,6 @@ import { useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { RecordSeries } from '@/types';
 import { t } from '@/i18n';
-import { formatClock } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface TimeRangeSelectorProps {
@@ -158,22 +157,13 @@ export function TimeRangeSelector({ series, total, value, onChange, className }:
           />
         ))}
       </div>
-      <div className="mt-1 flex items-center justify-center gap-2 text-[10px] tabular-nums text-ink-2">
-        <span>
-          {isPartial ? t('trs.partial') : t('trs.full')}
-          {formatClock(value[0])} – {formatClock(value[1])}
-        </span>
-        {isPartial && (
-          <>
-            <span aria-hidden>·</span>
-            <button onClick={() => onChange([0, total])} className="font-medium text-accent transition-opacity hover:opacity-70">
-              {t('common.reset')}
-            </button>
-          </>
-        )}
-        <span aria-hidden>·</span>
-        <span>{t('trs.panHint')}</span>
-      </div>
+      {isPartial && (
+        <div className="mt-1 flex items-center justify-center text-[10px] tabular-nums">
+          <button onClick={() => onChange([0, total])} className="font-medium text-accent transition-opacity hover:opacity-70">
+            {t('common.reset')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,109 @@
+{
+  "sampleRate": 32000,
+  "fixtures": {
+    "sine_220.wav": {
+      "kind": "sine",
+      "f0": 220.0,
+      "dur": 1.0
+    },
+    "sine_110.wav": {
+      "kind": "sine",
+      "f0": 110.0,
+      "dur": 1.0
+    },
+    "pulse_f100_j0.wav": {
+      "kind": "pulse",
+      "f0": 100.0,
+      "jitter_injected": 0.0,
+      "shimmer_injected": 0.0,
+      "dur": 1.0
+    },
+    "pulse_f100_j02_seed5.wav": {
+      "kind": "pulse",
+      "f0": 100.0,
+      "jitter_injected": 0.02,
+      "shimmer_injected": 0.0,
+      "dur": 1.0
+    },
+    "pulse_f100_j02_seed7.wav": {
+      "kind": "pulse",
+      "f0": 100.0,
+      "jitter_injected": 0.02,
+      "shimmer_injected": 0.0,
+      "dur": 1.0
+    },
+    "pulse_f100_sh05_seed11.wav": {
+      "kind": "pulse",
+      "f0": 100.0,
+      "jitter_injected": 0.0,
+      "shimmer_injected": 0.05,
+      "dur": 1.0
+    },
+    "sine200_snr20.wav": {
+      "kind": "sine+noise",
+      "f0": 200.0,
+      "snr_db": 20.0,
+      "dur": 1.5
+    },
+    "sine200_snr6.wav": {
+      "kind": "sine+noise",
+      "f0": 200.0,
+      "snr_db": 6.0,
+      "dur": 1.5
+    },
+    "vowel_f120_f700_1220_2600.wav": {
+      "kind": "vowel",
+      "f0": 120.0,
+      "formants": [
+        [
+          700,
+          80
+        ],
+        [
+          1220,
+          90
+        ],
+        [
+          2600,
+          120
+        ]
+      ],
+      "dur": 1.0
+    },
+    "vowel_f200_f400_1700_2600.wav": {
+      "kind": "vowel",
+      "f0": 200.0,
+      "formants": [
+        [
+          400,
+          80
+        ],
+        [
+          1700,
+          90
+        ],
+        [
+          2600,
+          120
+        ]
+      ],
+      "dur": 1.0
+    },
+    "gliss_100_300.wav": {
+      "kind": "gliss",
+      "f0_start": 100.0,
+      "f0_end": 300.0,
+      "dur": 2.0
+    },
+    "decay_minus2.wav": {
+      "kind": "decay",
+      "f0": 150.0,
+      "decay_db_per_sec": -2.0,
+      "dur": 3.0
+    },
+    "silence.wav": {
+      "kind": "silence",
+      "dur": 0.5
+    }
+  }
+}

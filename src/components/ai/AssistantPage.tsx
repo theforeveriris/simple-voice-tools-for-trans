@@ -9,29 +9,34 @@
  * - 底部输入栏：随内容自动增高（上限后内部滚动），生成中变为停止按钮
  * - 输入框为空且无光标时，右侧按钮切换为语音输入：按一下录音、再按一下
  *   结束；录音落历史记录，并把记录 id 交给助手分析后再自动发送
- * - 右侧抽屉：新建对话 + 历史列表（点按切换、两步删除）
- * 生成中关闭页面不中断请求（跑完照常写入对话，避免丢回复）；中途取消用停止按钮。
+ * - 右侧抽屉：新建对话 + 搜索 + 历史列表（点按切换、重命名、导出 Markdown、
+ *   两步删除）
+ * 生成中关闭页面不中断请求（跑完照常写入对话，避免丢回复）；中途点停止会保留
+ * 已生成部分并标注「已中断」，切换/新建/删除对话时同样收尾当前流。
  * 对话存 IndexedDB（llm:chats，封顶 30 条）；生成走活动档案（协议/流式/上下文
  * 均由档案决定），系统提示附用户画像、训练靶标、历史聚合、基线 Δ 与最近记录
  * 明细，按上下文预算裁剪。
  */
 
-import { useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Brain, Copy, GitBranch, Loader2, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
+  ArrowUp, Brain, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight,
+  Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isAbortError, languageName, llmChatStreamMessages } from '@/lib/llm';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
+import { downloadBlob } from '@/lib/file';
 import {
-  addMessage, createChat, deleteChat, getChat, setMessages, setPinnedRecords, useChats, type ChatMessage,
+  addMessage, createChat, deleteChat, getChat, renameChat, saveAssistantDraft, setMessages,
+  setPinnedRecords, useChats, type ChatContextMeta, type ChatConversation, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
-import { retrieveDocs } from '@/lib/docKnowledge';
+import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
@@ -41,6 +46,8 @@ import {
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
+import { ContextPanel } from '@/components/ai/ContextPanel';
+import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { recorder } from '@/lib/audio/recorder';
@@ -49,8 +56,61 @@ import { estimateTokens } from '@/lib/llmUsage';
 import type { AnalysisRecord, TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 
-/** Token 粗估：中英混合按 2 字符 ≈ 1 token（量级参考，用于预算裁剪） */
-const estTokens = (s: string) => Math.ceil(s.length / 2);
+/** Token 粗估：CJK 1 字 ≈ 1 token，其余 4 字符 ≈ 1 token（与用量统计同一口径） */
+const estTokens = estimateTokens;
+
+/** 用户可读的错误分类：401/403=密钥、429=限流、超时、网络、5xx=服务端不可用 */
+type ErrorKind = 'auth' | 'rate' | 'timeout' | 'network' | 'server' | 'unknown';
+interface AssistantError {
+  kind: ErrorKind;
+  detail: string;
+  /** 本次请求实际使用的模型与主机（便于和别的客户端对比） */
+  model?: string;
+  host?: string;
+}
+
+function classifyError(err: unknown): AssistantError {
+  const detail = err instanceof Error ? err.message : String(err);
+  const s = detail.toLowerCase();
+  const kind: ErrorKind = /http (401|403)\b/.test(s)
+    || s.includes('invalid api key') || s.includes('unauthorized')
+    || s.includes('authentication') || s.includes('api-key')
+    ? 'auth'
+    : /http 429\b/.test(s) || s.includes('rate limit') || s.includes('quota')
+      || s.includes('insufficient_quota')
+      ? 'rate'
+      : s.includes('timeout') || /http (408|504)\b/.test(s)
+        ? 'timeout'
+        : s.includes('failed to fetch') || s.includes('networkerror')
+          || s.includes('network error') || s.includes('econnrefused')
+          || s.includes('load failed')
+          ? 'network'
+          // 5xx / 上游排队：服务端暂时不可用（503 queue is full 之类），重试即可
+          : /http 5\d\d\b/.test(s) || s.includes('serviceunavailable')
+            || s.includes('service unavailable') || s.includes('overloaded')
+            || s.includes('queue is full') || s.includes('bad gateway')
+            ? 'server'
+            : 'unknown';
+  return { kind, detail: detail.slice(0, 240) };
+}
+
+/** 触屏（粗指针）：Enter 保留换行，避免手机上误发 */
+function coarsePointer(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
+}
+
+/** 导出单条对话为 Markdown */
+function chatToMarkdown(c: ChatConversation): string {
+  const lines: string[] = [`# ${c.title || t('assistant.title')}`, ''];
+  for (const m of c.messages) {
+    if (m.draft) continue;
+    lines.push(m.role === 'user' ? `## ${t('assistant.you')}` : `## ${t('assistant.title')}`, '');
+    if (m.interrupted) lines.push(`> ${t('assistant.interrupted')}`, '');
+    if (m.think) lines.push('<details><summary>' + t('assistant.think') + '</summary>', '', m.think, '', '</details>', '');
+    lines.push(m.content, '');
+  }
+  return lines.join('\n');
+}
 
 /**
  * 读取全量历史记录并组装助手上下文：用户画像、聚合、基线 Δ 与最近明细。
@@ -93,10 +153,11 @@ const ASSISTANT_VISUAL_GUIDE = [
   '- 外层卡片、背景、圆角、阴影由站点提供：根节点直接写内容，不要再包卡片/背景/阴影。',
   '- 颜色只用 CSS 变量：文字 --c-ink / --c-ink-2，主色 --c-accent，浅底 --c-accent-soft，卡片 --c-card，次级底 --c-surface-hi，分隔线 --c-line；透明度用 rgb(var(--c-xxx-rgb) / 0.1)。不要写死黑白/亮色，不要渐变或多套强调色，不要外链图片/字体/图标。',
   '- 版式：宽度 100%，不要固定宽度或横向滚动；内边距 12–14px，元素间距 8–12px，圆角 12–16px；正文 13px/1.6，标题 14px/600，辅助 11px，数字 tabular-nums；标题最多两级。',
+  '- 尺寸自适应：高度由内容决定，不要写固定 height / min-height:100vh，也不要给内部容器 overflow:auto|scroll——组件内不允许出现任何滚动条；内容多就拆成分区或折叠，文字/表格用换行与收缩，绝不横向溢出。',
   '- 优先用站点类：.svt-title / .svt-muted / .svt-grid / .svt-metric / .svt-badge / .svt-row / .svt-row-between / .svt-bar；需要内部分区时才用 .svt-card。',
   '- 典型结构：.svt-row-between（标题 + 徽标）→ .svt-grid > .svt-metric（2–4 个指标）→ 控件 → .svt-muted（当前值/说明）；不要堆满整屏，信息密度留白。',
   '- 交互：按钮/输入继承主题色；触控区 ≥ 40px；状态不能只靠颜色，配文字或图标；动画 120–180ms，遵循 prefers-reduced-motion，不做无限动画。',
-  '- 可访问性：语义标签、aria-label、可见 focus；布局适配 320–640px，高度自适应，通常 120–320px，不要 100vh。',
+  '- 可访问性：语义标签、aria-label、可见 focus；布局适配 320–640px 任意宽度，越窄越紧凑（指标从 4 列自然降到 2 列），高度随内容自然增长，不要 100vh。',
   '- 数据必须来自历史记录，或明确标注「示例」；不要编造用户数据。',
   '【选择】单条记录的音高/共振峰/能量/元音优先用 record://；多记录对比、趋势、可调参数用 genui；纯文字能讲清就不用图表。',
 ].join('\n');
@@ -135,18 +196,33 @@ function ActionBtn({ icon: Icon, label, onClick }: { icon: typeof Copy; label: s
   );
 }
 
-/** 思考过程块 */
-function ThinkBlock({ text, live }: { text: string; live?: boolean }) {
+/** 思考过程块（可内嵌「本次注入」面板：上下文信息并入思考展开区） */
+function ThinkBlock({
+  text,
+  live,
+  children,
+}: {
+  text: string;
+  live?: boolean;
+  children?: ReactNode;
+}) {
   return (
-    <span className="mb-2 block max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/[0.04] px-2.5 py-2 text-left text-[11px] leading-relaxed text-ink-2">
-      {live && !text ? <span className="italic">{t('assistant.thinking')}</span> : text}
-    </span>
+    <div className="mb-2 rounded-xl bg-black/[0.04] px-2.5 py-2 text-left">
+      {text ? (
+        <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-ink-2">
+          {text}
+        </p>
+      ) : live ? (
+        <p className="text-[11px] italic leading-relaxed text-ink-2">{t('assistant.thinking')}</p>
+      ) : null}
+      {children}
+    </div>
   );
 }
 
-/** 消息正文：record:// 图表 / genui 组件独立成块，其余 Markdown */
-function MessageBody({ text }: { text: string }) {
-  const parts = renderAssistantMessage(text);
+/** 消息正文：record:// 图表 / genui 组件独立成块，其余 Markdown（解析结果随文本缓存） */
+const MessageBody = memo(function MessageBody({ text }: { text: string }) {
+  const parts = useMemo(() => renderAssistantMessage(text), [text]);
   return (
     <>
       {parts.map((p, i) => {
@@ -172,10 +248,10 @@ function MessageBody({ text }: { text: string }) {
       })}
     </>
   );
-}
+});
 
-/** 消息气泡（模块级，理由同上；交互状态与回调由 props 传入） */
-function Bubble({
+/** 消息气泡（模块级 + memo：流式时只有正在生成的那一条重渲染） */
+const Bubble = memo(function Bubble({
   m,
   idx,
   streaming = false,
@@ -202,30 +278,45 @@ function Bubble({
   onRedo: (idx: number) => void;
   onBranch: (idx: number) => void;
 }) {
+  useI18n();
   const mine = m.role === 'user';
   const think = streaming ? liveThink : m.think ?? '';
-  const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkOpen;
+  const hasMeta = !streaming && (!!m.think || !!m.context);
   const onBodyClick = () => onAction(streaming ? null : active ? null : idx);
   const body = (
     <>
-      {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
+      {!mine && streaming && think && <ThinkBlock text={think} live />}
+      {!mine && !streaming && thinkOpen && (!!m.think || !!m.context) && (
+        <ThinkBlock text={m.think ?? ''}>
+          {m.context && (
+            <div className={cn(m.think && 'mt-2 border-t border-line/60 pt-2')}>
+              <ContextPanel meta={m.context} />
+            </div>
+          )}
+        </ThinkBlock>
+      )}
       {mine
         ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
-      {!mine && !!m.think && !streaming && (
+      {hasMeta && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onToggleThink(idx);
           }}
-          className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-2"
+          aria-expanded={thinkOpen}
+          className="mt-2 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/60 hover:text-ink"
         >
           <Brain size={10} />
-          {t('assistant.think')}
+          {m.think ? t('assistant.think') : t('assistant.ctx.title')}
+          <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
         </button>
+      )}
+      {!mine && m.interrupted && (
+        <p className="mt-1 text-[10px] text-ink-2/70">{t('assistant.interrupted')}</p>
       )}
     </>
   );
@@ -268,12 +359,13 @@ function Bubble({
       )}
     </div>
   );
-}
+});
 
 export function AssistantPage() {
   useI18n();
   const settings = useStore((s) => s.settings);
   const aiWorkspace = settings.navStyle === 'ai';
+  const classicNav = settings.navStyle === 'classic';
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
   const setTab = useStore((s) => s.setTab);
   const lastTab = useStore((s) => s.lastTab);
@@ -289,14 +381,20 @@ export function AssistantPage() {
   const [streamThink, setStreamThink] = useState('');
   /** 展开思考过程的持久化消息下标 */
   const [thinkIdx, setThinkIdx] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AssistantError | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   /** 点按气泡浮出操作行的消息下标 */
   const [actionIdx, setActionIdx] = useState<number | null>(null);
   /** 侧边栏两步删除的待确认对话 id */
   const [delId, setDelId] = useState<string | null>(null);
+  /** 侧边栏：搜索词 / 展开操作菜单的对话 id / 重命名中的对话 id */
+  const [chatQuery, setChatQuery] = useState('');
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
   const taRef = useRef<HTMLTextAreaElement>(null);
   /** 输入框是否有光标：无光标且为空时，右侧按钮切换为语音输入 */
@@ -309,9 +407,38 @@ export function AssistantPage() {
   const historyRecords = useHistoryStore((s) => s.records);
 
   const conv = activeId ? chats?.find((c) => c.id === activeId) ?? null : null;
-  const messages = conv?.messages ?? [];
+  /** 末尾的流式草稿由「正在生成」气泡显示，列表里隐藏以免重复 */
+  const messages = useMemo(() => {
+    const all = conv?.messages ?? [];
+    return all.length && all[all.length - 1].draft ? all.slice(0, -1) : all;
+  }, [conv]);
   const busy = streamText !== null;
   const pinnedIds = conv?.pinnedRecordIds ?? [];
+
+  /** 侧边栏搜索：匹配标题或任意一条用户消息 */
+  const visibleChats = useMemo(() => {
+    const list = chats ?? [];
+    const q = chatQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((c) => c.title.toLowerCase().includes(q)
+      || c.messages.some((m) => m.role === 'user' && m.content.toLowerCase().includes(q)));
+  }, [chats, chatQuery]);
+
+  /**
+   * 气泡回调经 ref 转发：Bubble 用 memo 后只在内容变化时重渲染，
+   * 但回调闭包始终指向本次渲染的最新状态（避免 busy 等状态陈旧）。
+   */
+  const actionsRef = useRef<{
+    copy: (idx: number) => void;
+    redo: (idx: number) => void;
+    branch: (idx: number) => void;
+  }>({ copy: () => {}, redo: () => {}, branch: () => {} });
+  const onCopy = useCallback((idx: number) => actionsRef.current.copy(idx), []);
+  const onRedo = useCallback((idx: number) => actionsRef.current.redo(idx), []);
+  const onBranch = useCallback((idx: number) => actionsRef.current.branch(idx), []);
+  const onToggleThink = useCallback((idx: number) => {
+    setThinkIdx((cur) => (cur === idx ? null : idx));
+  }, []);
 
   // 自动滚底：仅当用户本来就贴近底部时跟随（上翻历史时不打扰）
   useEffect(() => {
@@ -319,12 +446,19 @@ export function AssistantPage() {
     if (el && stickRef.current) el.scrollTop = el.scrollHeight;
   }, [messages.length, streamText, streamThink]);
 
-  // 输入栏随内容增高（上限 120px，之后内部滚动）
+  // 输入栏随内容增高：上限约 35% 视口高（约 240px 封顶），
+  // 超过后内部滚动但隐藏滚动条——手机与桌面都不出现可见滚动条。
   useEffect(() => {
     const el = taRef.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    const fit = () => {
+      el.style.height = 'auto';
+      const cap = Math.max(96, Math.min(240, Math.round(window.innerHeight * 0.35)));
+      el.style.height = `${Math.min(el.scrollHeight, cap)}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
   }, [input]);
 
   // 语音输入计时（录音仍是全局音频管线，但这里不进入分析页）
@@ -343,6 +477,27 @@ export function AssistantPage() {
     void recorder.finishRecord(raw)
       .then(({ record, audio }) => useHistoryStore.getState().addRecord(record, audio ?? undefined))
       .catch(() => undefined);
+  }, []);
+
+  // 手机软键盘：visual viewport 会向上平移（offsetTop > 0），
+  // 固定外壳如果仍贴在布局视口 top:0，顶栏就会被推出可视区域。
+  // 始终跟随 offsetTop，只改 top，底栏让位仍交给 CSS。
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => {
+      const el = shellRef.current;
+      if (!el) return;
+      const offset = Math.max(0, vv.offsetTop);
+      el.style.top = offset > 0 ? `${offset}px` : '';
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
   }, []);
 
   const generate = async (convId: string, history: ChatMessage[], extraContext = '') => {
@@ -368,8 +523,17 @@ export function AssistantPage() {
     );
     // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
-    const docs = lastUser ? await retrieveDocs(lastUser.content) : '';
-    const sys = systemPrompt(hist.profile, hist.history, docs, extraContext);
+    const docHit = lastUser
+      ? await retrieveDocsDetailed(lastUser.content)
+      : { text: '', docs: [] };
+    const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraContext);
+    // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
+    const contextMeta: ChatContextMeta = {
+      recordIds: hist.meta.detailIds,
+      pinnedIds: hist.meta.pinnedIds,
+      totalRecords: hist.meta.totalRecords,
+      docs: docHit.docs,
+    };
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
     const maxTok = Math.max(1024, context - reserve);
@@ -386,28 +550,71 @@ export function AssistantPage() {
     setStreamThink('');
     stickRef.current = true;
     let thinkAcc = '';
+    let textAcc = '';
+    // 流式草稿节流落库（1.5s 或 200 字符）：切页 / 杀进程 / 崩溃也能留下已生成部分
+    let lastDraftAt = 0;
+    let savedLen = 0;
+    const persistDraft = () => {
+      if (!textAcc && !thinkAcc) return;
+      const now = Date.now();
+      if (now - lastDraftAt < 1500 && textAcc.length - savedLen < 200) return;
+      lastDraftAt = now;
+      savedLen = textAcc.length;
+      saveAssistantDraft(convId, {
+        content: textAcc,
+        think: thinkAcc,
+        draft: true,
+        context: contextMeta,
+      });
+    };
     try {
       const reply = await llmChatStreamMessages(cfg, turns, {
         feature: 'assistant',
         signal: controller.signal,
         system: sys,
-        onDelta: (acc) => setStreamText(acc),
+        onDelta: (acc) => {
+          textAcc = acc;
+          setStreamText(acc);
+          persistDraft();
+        },
         onThink: (acc) => {
           thinkAcc = acc;
           setStreamThink(acc);
+          persistDraft();
         },
       });
-      addMessage(convId, {
-        role: 'assistant',
+      saveAssistantDraft(convId, {
         content: reply,
-        ...(thinkAcc ? { think: thinkAcc } : {}),
+        think: thinkAcc,
+        draft: false,
+        context: contextMeta,
       });
     } catch (err: unknown) {
-      if (!isAbortError(err)) setError(err instanceof Error ? err.message : String(err));
+      // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
+      if (textAcc || thinkAcc) {
+        saveAssistantDraft(convId, {
+          content: textAcc,
+          think: thinkAcc,
+          draft: false,
+          interrupted: true,
+          context: contextMeta,
+        });
+      }
+      if (!isAbortError(err)) {
+        const info = classifyError(err);
+        let host = '';
+        try {
+          host = new URL(cfg.baseUrl).host;
+        } catch {
+          host = cfg.baseUrl;
+        }
+        setError({ ...info, model: cfg.modelId, host });
+      }
     } finally {
       setStreamText(null);
       setStreamThink('');
-      abortRef.current = null;
+      // 切换对话时可能已经开始了新的生成：只清自己这个 controller
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -724,7 +931,7 @@ export function AssistantPage() {
 
   /** 分支：以该消息为结尾复制出一个新对话并切换过去 */
   const branch = (idx: number) => {
-    if (!conv) return;
+    if (!conv || busy) return;
     const id = createChat(
       conv.title ? `${conv.title} · ${t('assistant.branch')}` : t('assistant.title'),
       conv.messages.slice(0, idx + 1),
@@ -754,9 +961,26 @@ export function AssistantPage() {
     setThinkIdx(null);
   };
 
+  /** 切换/新建/删除对话前先收尾当前流：中止并保留已生成部分 */
+  const stopStream = () => {
+    abortRef.current?.abort();
+  };
+
   const newChat = () => {
+    stopStream();
     setActiveId(null);
     setSidebarOpen(false);
+    setMenuId(null);
+    setRenamingId(null);
+    resetConversationView();
+  };
+
+  const openChat = (id: string) => {
+    if (id !== activeId) stopStream();
+    setActiveId(id);
+    setSidebarOpen(false);
+    setMenuId(null);
+    setRenamingId(null);
     resetConversationView();
   };
 
@@ -765,18 +989,57 @@ export function AssistantPage() {
       setDelId(id);
       return;
     }
+    if (activeId === id) stopStream();
     deleteChat(id);
     if (activeId === id) setActiveId(null);
     setDelId(null);
+    setMenuId(null);
   };
+
+  const startRename = (c: ChatConversation) => {
+    setRenamingId(c.id);
+    setRenameDraft(c.title);
+    setMenuId(null);
+    setDelId(null);
+  };
+
+  const commitRename = (id: string) => {
+    renameChat(id, renameDraft);
+    setRenamingId(null);
+    setRenameDraft('');
+  };
+
+  const exportChat = (c: ChatConversation) => {
+    const md = chatToMarkdown(c);
+    const safe = (c.title || t('assistant.title')).replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 40);
+    const day = new Date(c.updatedAt);
+    const stamp = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, '0')}${String(day.getDate()).padStart(2, '0')}`;
+    downloadBlob(`${safe || 'chat'}-${stamp}.md`, new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+    setMenuId(null);
+    toast.success(t('assistant.exported'));
+  };
+
+  // 气泡回调保持稳定引用（Bubble 已 memo），始终调用最新实现
+  useEffect(() => {
+    actionsRef.current = { copy, redo, branch };
+  });
 
   const retry = () => {
     if (!conv || busy) return;
-    void generate(conv.id, conv.messages);
+    const all = conv.messages;
+    // 重新生成最后一条回答：丢掉中断留下的半截内容，避免把它当历史再喂给模型
+    const last = all[all.length - 1];
+    const base = last?.role === 'assistant' ? all.slice(0, -1) : all;
+    if (base.length === 0) return;
+    if (base.length !== all.length) setMessages(conv.id, base);
+    setError(null);
+    void generate(conv.id, base);
   };
 
   const iconBtn =
     'grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90';
+  const menuBtn =
+    'flex items-center gap-1 rounded-full bg-surface-hi/70 px-2.5 py-1.5 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink';
 
   /** 输入栏右侧按钮：有文字/光标 → 发送；空且失焦 → 语音；录音中 → 停止 */
   const voiceTime = `${Math.floor(voiceSec / 60)}:${String(voiceSec % 60).padStart(2, '0')}`;
@@ -844,7 +1107,8 @@ export function AssistantPage() {
         return;
       }
     }
-    if (e.key === 'Enter' && !e.shiftKey && input.startsWith('/')) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (input.startsWith('/')) {
       if (input.trim() === '/') {
         e.preventDefault();
         return;
@@ -854,11 +1118,17 @@ export function AssistantPage() {
         e.preventDefault();
         void executeCommand(parsed);
       }
+      return;
     }
+    // 桌面端（精确指针）Enter 发送、Shift+Enter 换行；触屏保留换行，避免误发
+    if (busy || voicePending || coarsePointer()) return;
+    if (!input.trim()) return;
+    e.preventDefault();
+    send();
   };
 
   const topBar = (
-    <div className="flex items-center gap-2 px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
+    <div className="flex min-h-14 shrink-0 items-center gap-2 bg-surface px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
       {aiWorkspace ? (
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
           <Sparkles size={17} />
@@ -886,15 +1156,154 @@ export function AssistantPage() {
     </div>
   );
 
-  const shellClass = 'fixed inset-0 z-[60] flex flex-col bg-surface';
+  const shellClass = cn(
+    'fixed inset-x-0 top-0 z-[60] flex flex-col overflow-hidden bg-surface',
+    // 经典底栏包含 AI 页签：助手页让出底栏高度，保留导航；
+    // 悬浮胶囊 / AI 工作台没有可见页签，助手页占满全屏。
+    classicNav ? 'bottom-[calc(4.25rem+env(safe-area-inset-bottom))]' : 'bottom-0',
+  );
+
+  /** 右侧历史抽屉（未配置大模型时也要可用：顶栏的历史按钮在两个分支都在） */
+  const sidebarDrawer = sidebarOpen ? (
+    <div className="absolute inset-0 z-20">
+      <div className="absolute inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
+        className="absolute inset-y-0 right-0 flex w-72 flex-col bg-surface shadow-[-8px_0_30px_rgba(28,25,45,0.12)]"
+      >
+        <button
+          onClick={newChat}
+          className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-2xl bg-accent/15 py-2.5 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
+        >
+          <Plus size={15} />
+          {t('assistant.newChat')}
+        </button>
+        <div className="mx-3 mt-2">
+          <input
+            value={chatQuery}
+            onChange={(e) => setChatQuery(e.target.value)}
+            placeholder={t('assistant.searchChats')}
+            aria-label={t('assistant.searchChats')}
+            className="w-full rounded-xl bg-surface-hi/60 px-3 py-2 text-[12px] text-ink outline-none placeholder:text-ink-2/60"
+          />
+        </div>
+        <p className="px-4 pb-1 pt-3 text-[11px] font-medium text-ink-2">{t('assistant.history')}</p>
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+          {visibleChats.length === 0 ? (
+            <p className="px-3 py-4 text-xs text-ink-2/70">
+              {(chats ?? []).length === 0 ? t('assistant.historyEmpty') : t('assistant.noSearchResult')}
+            </p>
+          ) : (
+            visibleChats.map((c) => (
+              <div
+                key={c.id}
+                className={cn('rounded-xl', c.id === activeId && 'bg-accent/10')}
+              >
+                <div className="flex items-center gap-1 px-1.5">
+                  {renamingId === c.id ? (
+                    <input
+                      autoFocus
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onBlur={() => commitRename(c.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitRename(c.id);
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          setRenamingId(null);
+                        }
+                      }}
+                      aria-label={t('assistant.renameChat')}
+                      placeholder={t('assistant.renamePlaceholder')}
+                      className="my-1.5 min-w-0 flex-1 rounded-lg bg-surface-hi px-2 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-2/60"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => openChat(c.id)}
+                      className="min-w-0 flex-1 py-2.5 text-left"
+                    >
+                      <span className="block truncate text-[13px] text-ink">
+                        {c.title || t('assistant.newChat')}
+                      </span>
+                      <span className="block text-[10px] text-ink-2">
+                        {new Date(c.updatedAt).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setMenuId(menuId === c.id ? null : c.id);
+                      setDelId(null);
+                    }}
+                    aria-label={t('assistant.more')}
+                    aria-expanded={menuId === c.id}
+                    className="grid size-8 shrink-0 place-items-center rounded-full text-ink-2 transition-colors hover:text-ink"
+                  >
+                    <MoreHorizontal size={15} />
+                  </button>
+                </div>
+                {menuId === c.id && (
+                  <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+                    <button onClick={() => startRename(c)} className={menuBtn}>
+                      <Pencil size={11} />
+                      {t('assistant.renameChat')}
+                    </button>
+                    <button onClick={() => exportChat(c)} className={menuBtn}>
+                      <Download size={11} />
+                      {t('assistant.exportChat')}
+                    </button>
+                    <button
+                      onClick={() => onDeleteChat(c.id)}
+                      className={cn(menuBtn, delId === c.id && 'bg-red-500/10 text-red-500')}
+                    >
+                      <Trash2 size={11} />
+                      {t('assistant.deleteChat')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+        {aiWorkspace && (
+          <div className="border-t border-line/60 p-3">
+            <button
+              onClick={() => {
+                setSidebarOpen(false);
+                setTab('settings');
+              }}
+              className="flex w-full items-center gap-2 rounded-2xl bg-surface-hi/60 px-3 py-2.5 text-sm font-medium text-ink transition-transform active:scale-[0.98]"
+            >
+              <Settings2 size={15} className="text-accent" />
+              {t('nav.settings')}
+            </button>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  ) : null;
 
   if (!cfg) {
     return (
-      <div className={shellClass}>
+      <div ref={shellRef} className={shellClass}>
         {topBar}
         <div className="flex flex-1 items-center justify-center p-6">
-          <p className="max-w-xs text-center text-sm leading-relaxed text-ink-2">{t('assistant.needConfig')}</p>
+          <div className="flex max-w-xs flex-col items-center gap-3 text-center">
+            <p className="text-sm leading-relaxed text-ink-2">{t('assistant.needConfig')}</p>
+            <button
+              onClick={() => setTab('settings')}
+              className="flex items-center gap-1.5 rounded-2xl bg-accent/15 px-4 py-2 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
+            >
+              <Settings2 size={15} />
+              {t('assistant.goSettings')}
+            </button>
+          </div>
         </div>
+        {sidebarDrawer}
       </div>
     );
   }
@@ -907,13 +1316,19 @@ export function AssistantPage() {
       <div ref={scrollRef} onScroll={() => {
         const el = scrollRef.current;
         if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-      }} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      }} className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {messages.length === 0 && !busy ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
             <span className="grid size-14 place-items-center rounded-full bg-accent/15 text-accent">
               <Sparkles size={26} />
             </span>
             <p className="max-w-[17rem] text-[13px] leading-relaxed text-ink-2">{t('assistant.greeting')}</p>
+            <QuickPrompts
+              onPick={(text) => {
+                setInput(text);
+                requestAnimationFrame(() => taRef.current?.focus());
+              }}
+            />
           </div>
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col gap-3 pb-2">
@@ -925,10 +1340,10 @@ export function AssistantPage() {
                 active={actionIdx === i}
                 thinkOpen={thinkIdx === i}
                 onAction={setActionIdx}
-                onToggleThink={(idx) => setThinkIdx(thinkIdx === idx ? null : idx)}
-                onCopy={copy}
-                onRedo={redo}
-                onBranch={branch}
+                onToggleThink={onToggleThink}
+                onCopy={onCopy}
+                onRedo={onRedo}
+                onBranch={onBranch}
               />
             ))}
             {busy && (
@@ -947,11 +1362,28 @@ export function AssistantPage() {
               />
             )}
             {error && (
-              <div className="mx-auto flex flex-col items-center gap-1.5">
-                <p className="max-w-md text-center text-[11px] leading-relaxed text-red-500">{error}</p>
-                <button onClick={retry} className="text-[11px] font-medium text-accent">
-                  {t('assistant.retry')}
-                </button>
+              <div className="mx-auto flex max-w-md flex-col items-center gap-1.5 rounded-2xl bg-card px-3 py-2.5 text-center">
+                <p className="text-[12px] font-medium leading-relaxed text-red-500">
+                  {error.kind === 'unknown' ? error.detail : t(`assistant.err.${error.kind}`)}
+                </p>
+                {error.kind !== 'unknown' && (
+                  <p className="text-[10px] leading-relaxed text-ink-2/80">{error.detail}</p>
+                )}
+                {(error.model || error.host) && (
+                  <p className="select-all text-[9px] leading-relaxed text-ink-2/60">
+                    {[error.model, error.host].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+                <div className="mt-0.5 flex items-center gap-3">
+                  {error.kind === 'auth' && (
+                    <button onClick={() => setTab('settings')} className="text-[11px] font-medium text-accent">
+                      {t('assistant.errSettings')}
+                    </button>
+                  )}
+                  <button onClick={retry} className="text-[11px] font-medium text-accent">
+                    {t('assistant.retry')}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -959,7 +1391,7 @@ export function AssistantPage() {
       </div>
 
       {/* 输入栏 */}
-      <div className="px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
+      <div className="shrink-0 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
         <div className="relative mx-auto max-w-2xl">
           {pinnedIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 pb-1.5">
@@ -989,7 +1421,7 @@ export function AssistantPage() {
               id={commandListId}
               role="listbox"
               aria-label={t('assistant.cmd.help')}
-              className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]"
+              className="no-scrollbar absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 overflow-y-auto rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]"
             >
               {commandItems.map((c, i) => (
                 <button
@@ -1046,7 +1478,7 @@ export function AssistantPage() {
                 placeholder={voiceState === 'recording'
                   ? t('assistant.voiceRecording', { time: voiceTime })
                   : t('assistant.ph')}
-                className="max-h-[120px] w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-2/60"
+                className="no-scrollbar w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-2/60"
               />
             </div>
             <button
@@ -1075,75 +1507,7 @@ export function AssistantPage() {
         </div>
       </div>
 
-      {/* 右侧历史抽屉 */}
-      {sidebarOpen && (
-        <div className="absolute inset-0 z-20">
-          <div className="absolute inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
-            className="absolute inset-y-0 right-0 flex w-72 flex-col bg-surface shadow-[-8px_0_30px_rgba(28,25,45,0.12)]"
-          >
-            <button
-              onClick={newChat}
-              className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-2xl bg-accent/15 py-2.5 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
-            >
-              <Plus size={15} />
-              {t('assistant.newChat')}
-            </button>
-            <p className="px-4 pb-1 pt-3 text-[11px] font-medium text-ink-2">{t('assistant.history')}</p>
-            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-              {(chats ?? []).length === 0 ? (
-                <p className="px-3 py-4 text-xs text-ink-2/70">{t('assistant.historyEmpty')}</p>
-              ) : (
-                (chats ?? []).map((c) => (
-                  <div
-                    key={c.id}
-                    className={cn('flex items-center gap-1 rounded-xl px-1.5', c.id === activeId && 'bg-accent/10')}
-                  >
-                    <button
-                      onClick={() => { setActiveId(c.id); setSidebarOpen(false); resetConversationView(); }}
-                      className="min-w-0 flex-1 py-2.5 text-left"
-                    >
-                      <span className="block truncate text-[13px] text-ink">
-                        {c.title || t('assistant.newChat')}
-                      </span>
-                      <span className="block text-[10px] text-ink-2">
-                        {new Date(c.updatedAt).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => onDeleteChat(c.id)}
-                      aria-label={t('assistant.deleteChat')}
-                      className={cn(
-                        'grid size-8 shrink-0 place-items-center rounded-full text-ink-2 transition-colors',
-                        delId === c.id && 'bg-red-500/10 text-red-500',
-                      )}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-            {aiWorkspace && (
-              <div className="border-t border-line/60 p-3">
-                <button
-                  onClick={() => {
-                    setSidebarOpen(false);
-                    setTab('settings');
-                  }}
-                  className="flex w-full items-center gap-2 rounded-2xl bg-surface-hi/60 px-3 py-2.5 text-sm font-medium text-ink transition-transform active:scale-[0.98]"
-                >
-                  <Settings2 size={15} className="text-accent" />
-                  {t('nav.settings')}
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      )}
+      {sidebarDrawer}
     </div>
   );
 }

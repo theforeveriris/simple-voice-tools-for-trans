@@ -49,7 +49,7 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
-            className="absolute left-0 top-6 z-20 block w-64 rounded-2xl bg-card px-3.5 py-2.5 text-left text-[11px] font-normal leading-relaxed text-ink-2 shadow-[0_6px_24px_rgba(28,25,45,0.10),0_2px_6px_rgba(28,25,45,0.06)]"
+            className="absolute left-0 top-6 z-20 block w-64 whitespace-pre-line rounded-2xl bg-card px-3.5 py-2.5 text-left text-[11px] font-normal leading-relaxed text-ink-2 shadow-[0_6px_24px_rgba(28,25,45,0.10),0_2px_6px_rgba(28,25,45,0.06)]"
           >
             {text}
           </motion.span>

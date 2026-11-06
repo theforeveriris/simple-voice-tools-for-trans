@@ -54,7 +54,6 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
           <Lightbulb size={13} className="text-accent" />
           {t('analysis.adviceTitle')}
         </span>
-        <span className="text-[10px] text-ink-2">{t('settings.labs')}</span>
       </div>
       {adviceMode === 'llm'
         ? (

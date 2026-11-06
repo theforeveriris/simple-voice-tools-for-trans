@@ -17,8 +17,8 @@
  * 各卡片子组件位于 src/components/analysis/，回放引擎见 usePlayback.ts。
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { FileCode2, FileSpreadsheet, Pencil, RefreshCw, Share2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FileSpreadsheet, Pencil, RefreshCw, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -36,7 +36,7 @@ import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord, RecordSeries } from '@/types';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
 import { useDeferredMount } from '@/hooks/useDeferredMount';
 import { HeroSummary } from '@/components/analysis/HeroCard';
 import { VoiceExpressionCard } from '@/components/analysis/VoiceExpressionCard';
@@ -50,7 +50,6 @@ import { PitchAlgorithmCard } from '@/components/analysis/PitchAlgorithmCard';
 import { ReanalyzeDialog } from '@/components/analysis/ReanalyzeDialog';
 import { AnalysisChart, FormantCard, SpecCard, VrpCard } from '@/components/analysis/ChartCards';
 import { NoteDialog } from '@/components/analysis/NoteDialog';
-import { TemplateManager } from '@/components/analysis/TemplateManager';
 import { EmptyState } from '@/components/analysis/EmptyState';
 import { usePlayback } from '@/components/analysis/usePlayback';
 
@@ -92,10 +91,11 @@ export function AnalysisPage() {
   // 用当前算法参数重算（先预览新旧对比，确认后才覆盖）
   const [reanalyzeOpen, setReanalyzeOpen] = useState(false);
   // 交互 HTML 报告：含音频与否的选择弹窗（无音频记录直接导出）
-  const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
-  // 帧数据导出（CSV / Praat PitchTier / Praat Formant / Lua 自定义格式）弹窗
+  // 帧数据/报告导出弹窗（两页：帧格式 / 报告）
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportPage, setExportPage] = useState(0);
+  const swipeX = useRef<number | null>(null);
   // Lua 自定义格式导出（脚本中心 export 脚本；入口可用性由探测 state 控制）
   const [luaExportAvailable, setLuaExportAvailable] = useState(false);
   const [luaExportBusy, setLuaExportBusy] = useState(false);
@@ -170,10 +170,18 @@ export function AnalysisPage() {
     const r = syncChartRange ? sharedRange : (ownRanges.pitch ?? fullRange);
     return {
       ...computeStats(sliceSeries(record.series, r[0], r[1]), record.sampleHz),
+      // 以下来自整段录音的离线分析（或整段临床指标），不随查看区间变化：
+      // 必须原样带过来，否则表格会显示成「—」
       jitterPct: record.stats.jitterPct,
       shimmerPct: record.stats.shimmerPct,
       hnrDb: record.stats.hnrDb,
       cppsDb: record.stats.cppsDb,
+      h1h2Db: record.stats.h1h2Db,
+      h2h4Db: record.stats.h2h4Db,
+      h1a3Db: record.stats.h1a3Db,
+      breathiness: record.stats.breathiness,
+      nasalityDb: record.stats.nasalityDb,
+      spectralTiltDbOct: record.stats.spectralTiltDbOct,
       inTargetPct: record.stats.inTargetPct,
     };
   }, [record, syncChartRange, sharedRange, ownRanges, fullRange]);
@@ -226,11 +234,10 @@ export function AnalysisPage() {
     }
   };
 
-  /** 交互 HTML 报告导出（withAudio 决定是否内嵌录音） */
+  /** 交互 HTML 报告导出（withAudio 决定是否内嵌录音；已合并进导出数据对话框） */
   const onExportHtml = async (withAudio: boolean) => {
     if (htmlBusy) return;
     setHtmlBusy(true);
-    setHtmlDialogOpen(false);
     try {
       const audio = withAudio ? await useHistoryStore.getState().getAudio(record.id) : null;
       await exportInteractiveHtml(record, { audio });
@@ -240,14 +247,6 @@ export function AnalysisPage() {
     } finally {
       setHtmlBusy(false);
     }
-  };
-
-  /** 入口：有录音音频先弹选择，无音频直接导出纯数据版 */
-  const onHtmlClick = async () => {
-    if (htmlBusy) return;
-    const audio = await useHistoryStore.getState().getAudio(record.id);
-    if (audio) setHtmlDialogOpen(true);
-    else void onExportHtml(false);
   };
 
   /** 用当前参数重算：无录音音频直接提示；有则打开重算对话框（内部跑管线出对比） */
@@ -282,15 +281,6 @@ export function AnalysisPage() {
               title={t('analysis.exportDataTitle')}
             >
               <FileSpreadsheet size={16} />
-            </button>
-            <button
-              onClick={() => void onHtmlClick()}
-              disabled={htmlBusy}
-              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent disabled:opacity-60"
-              aria-label={t('analysis.htmlAria')}
-              title={t('analysis.htmlTitle')}
-            >
-              <FileCode2 size={16} />
             </button>
             <button
               onClick={() => void onReanalyzeClick()}
@@ -328,10 +318,9 @@ export function AnalysisPage() {
         onSeek={playback.seekPlay}
       />
       {record.mode === 'sustained' && <SustainedCard record={record} />}
-      <SibilanceCard record={record} />
+      {settings.analysisCards.sibilance !== false && <SibilanceCard record={record} />}
       {settings.pitchCompareEnabled && <PitchAlgorithmCard record={record} />}
       <StatsTable record={recordWithStats} />
-      <AdviceCard records={[record]} />
 
       {/* 图表卡显隐跟随设置（analysisCards）；语谱图另需实验性开关，声域图仅滑音记录 */}
       {settings.analysisCards.pitch && (
@@ -383,6 +372,9 @@ export function AnalysisPage() {
         />
       )}
 
+      {/* 训练建议：放在全部图表之后 */}
+      <AdviceCard records={[record]} />
+
       </>)}
 
       <NoteDialog record={record} open={noteOpen} onOpenChange={setNoteOpen} />
@@ -390,93 +382,124 @@ export function AnalysisPage() {
       {/* 用当前参数重算：新旧统计对比后确认覆盖 */}
       <ReanalyzeDialog record={record} open={reanalyzeOpen} onOpenChange={setReanalyzeOpen} />
 
-      {/* 交互 HTML 报告：是否内嵌录音音频 */}
-      <Dialog open={htmlDialogOpen} onOpenChange={setHtmlDialogOpen}>
+      {/* 导出为：两页（帧数据格式 / 报告），支持左右滑动与圆点切换 */}
+      <Dialog
+        open={exportOpen}
+        onOpenChange={(open) => {
+          setExportOpen(open);
+          if (open) setExportPage(0);
+        }}
+      >
         <DialogContent className="max-w-sm rounded-3xl">
           <DialogHeader>
-            <DialogTitle>{t('html.dialogTitle')}</DialogTitle>
-            <DialogDescription>{t('html.dialogDesc')}</DialogDescription>
+            <DialogTitle>{t('analysis.exportAs')}</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => void onExportHtml(true)}
-              disabled={htmlBusy}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
-            >
-              <span className="block text-sm font-medium text-ink">{t('html.withAudio')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('html.withAudioDesc')}</span>
-            </button>
-            <button
-              onClick={() => void onExportHtml(false)}
-              disabled={htmlBusy}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
-            >
-              <span className="block text-sm font-medium text-ink">{t('html.withoutAudio')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('html.withoutAudioDesc')}</span>
-            </button>
-            {/* 临床报告：静态排版（打印为 PDF），面向医生 / 言语治疗师的存档格式 */}
-            <button
-              onClick={() => {
-                setHtmlDialogOpen(false);
-                exportClinicalReport(record);
-                toast.success(t('toast.clinicalExported'));
-              }}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
-            >
-              <span className="block text-sm font-medium text-ink">{t('html.clinical')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('html.clinicalDesc')}</span>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* 帧数据导出：CSV / Praat PitchTier / Praat Formant /（Lua 自定义格式，有启用脚本时出现） */}
-      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
-        <DialogContent className="max-w-sm rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>{t('analysis.exportDataTitle')}</DialogTitle>
-            <DialogDescription>{t('analysis.exportDataDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={onExportCsv}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
-            >
-              <span className="block text-sm font-medium text-ink">{t('analysis.exportCsv')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportCsvDesc')}</span>
-            </button>
-            <button
-              onClick={onExportMidi}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
-            >
-              <span className="block text-sm font-medium text-ink">{t('analysis.exportMidi')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportMidiDesc')}</span>
-            </button>
-            <button
-              onClick={() => onExportPraat('pitchTier')}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
-            >
-              <span className="block text-sm font-medium text-ink">{t('analysis.exportPitchTier')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportPitchTierDesc')}</span>
-            </button>
-            <button
-              onClick={() => onExportPraat('formant')}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
-            >
-              <span className="block text-sm font-medium text-ink">{t('analysis.exportFormant')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportFormantDesc')}</span>
-            </button>
-            {luaExportAvailable && (
+          {/* 翻页提示：当前页为横向胶囊，另一页为暗色圆点 */}
+          <div className="flex items-center justify-center gap-1.5">
+            {[0, 1].map((p) => (
               <button
-                onClick={() => void onExportLua()}
-                disabled={luaExportBusy}
-                className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-50"
-              >
-                <span className="block text-sm font-medium text-ink">{t('analysis.exportLua')}</span>
-                <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportLuaDesc')}</span>
-              </button>
-            )}
-            <TemplateManager record={record} onDone={() => setExportOpen(false)} />
+                key={p}
+                type="button"
+                onClick={() => setExportPage(p)}
+                aria-label={t('analysis.exportPage', { n: p + 1 })}
+                aria-current={exportPage === p}
+                className={cn(
+                  'h-1.5 rounded-full transition-all duration-200',
+                  exportPage === p ? 'w-5 bg-accent' : 'w-1.5 bg-ink-2/30 hover:bg-ink-2/50',
+                )}
+              />
+            ))}
+          </div>
+
+          <div
+            className="touch-pan-y overflow-hidden"
+            onPointerDown={(e) => { swipeX.current = e.clientX; }}
+            onPointerUp={(e) => {
+              if (swipeX.current == null) return;
+              const dx = e.clientX - swipeX.current;
+              swipeX.current = null;
+              if (Math.abs(dx) < 40) return;
+              setExportPage((p) => (dx < 0 ? Math.min(1, p + 1) : Math.max(0, p - 1)));
+            }}
+          >
+            <div
+              className="flex transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(-${exportPage * 100}%)` }}
+            >
+              {/* 第 1 页：帧数据格式 */}
+              <div className="flex w-full shrink-0 flex-col gap-2">
+                <button
+                  onClick={onExportCsv}
+                  className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+                >
+                  <span className="block text-sm font-medium text-ink">{t('analysis.exportCsv')}</span>
+                  <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportCsvDesc')}</span>
+                </button>
+                <button
+                  onClick={onExportMidi}
+                  className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+                >
+                  <span className="block text-sm font-medium text-ink">{t('analysis.exportMidi')}</span>
+                  <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportMidiDesc')}</span>
+                </button>
+                <button
+                  onClick={() => onExportPraat('pitchTier')}
+                  className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+                >
+                  <span className="block text-sm font-medium text-ink">{t('analysis.exportPitchTier')}</span>
+                  <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportPitchTierDesc')}</span>
+                </button>
+                <button
+                  onClick={() => onExportPraat('formant')}
+                  className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+                >
+                  <span className="block text-sm font-medium text-ink">{t('analysis.exportFormant')}</span>
+                  <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportFormantDesc')}</span>
+                </button>
+                {luaExportAvailable && (
+                  <button
+                    onClick={() => void onExportLua()}
+                    disabled={luaExportBusy}
+                    className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-50"
+                  >
+                    <span className="block text-sm font-medium text-ink">{t('analysis.exportLua')}</span>
+                    <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportLuaDesc')}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* 第 2 页：报告 */}
+              <div className="flex w-full shrink-0 flex-col gap-2">
+                <button
+                  onClick={() => void onExportHtml(true)}
+                  disabled={htmlBusy}
+                  className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
+                >
+                  <span className="block text-sm font-medium text-ink">{t('html.withAudio')}</span>
+                  <span className="mt-0.5 block text-xs text-ink-2">{t('html.withAudioDesc')}</span>
+                </button>
+                <button
+                  onClick={() => void onExportHtml(false)}
+                  disabled={htmlBusy}
+                  className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
+                >
+                  <span className="block text-sm font-medium text-ink">{t('html.withoutAudio')}</span>
+                  <span className="mt-0.5 block text-xs text-ink-2">{t('html.withoutAudioDesc')}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setExportOpen(false);
+                    exportClinicalReport(record);
+                    toast.success(t('toast.clinicalExported'));
+                  }}
+                  className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+                >
+                  <span className="block text-sm font-medium text-ink">{t('html.clinical')}</span>
+                  <span className="mt-0.5 block text-xs text-ink-2">{t('html.clinicalDesc')}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

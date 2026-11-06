@@ -77,6 +77,7 @@ export interface AnalysisCards {
   energy: boolean;
   spec: boolean;
   vrp: boolean;
+  sibilance: boolean;
 }
 
 /**
@@ -444,10 +445,12 @@ export interface AppSettings {
   showSpectrogram: boolean;
   /** 实验性：把界面里所有「AI」显示为「SI」（纯显示层替换，提示词与日志不变） */
   siRenameEnabled: boolean;
-  /** 花园视图：每行花数（2–5，响应式上限不变——窄屏自动减半） */
+  /** 花园视图：每行花数（2–5，移动端与桌面端一致） */
   gardenColumns: number;
   /** 花园视图：是否按月分节（关闭 = 纯平铺行） */
   gardenMonthSections: boolean;
+  /** 是否在历史页显示花园视图（默认关闭） */
+  showGarden: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */
   liveSpectrum: boolean;
   /** 训练建议生成方式：无 / 规则判断 / 基于大模型判断 */

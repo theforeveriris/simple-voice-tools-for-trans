@@ -10,11 +10,31 @@ import {
   mixdown, resample as resamplePcm, decodeBlob, IMPORT_MAX_SEC,
 } from './importAudio';
 import { runPitchOnly } from './analysisClient';
-import { PIPELINE_HZ } from './analysisPipeline';
+import { PIPELINE_HZ, FRAME_SAMPLES } from './analysisPipeline';
 import type { PitchAlgorithm, AnalysisRecord, RecordSeries } from '@/types';
 
 /** 备选算法集合（与原始 YIN 相对） */
 export const ALT_ALGOS: PitchAlgorithm[] = ['pyin', 'mpm'];
+
+/**
+ * 两条曲线的时间轴补偿（秒）。
+ *
+ * 记录曲线（实时录音）与备选曲线（离线重算）的时间戳语义不同：
+ *   - 记录曲线：时间戳 = 采样时刻 now，帧覆盖「now 之前的 4096 样本」（85ms @48k）
+ *   - 备选曲线：时间戳 = (start + 2048) / 32000，即该帧窗的**末尾**
+ *
+ * 两者帧间隔几乎相同（约 33.4ms），但离线时间戳整体比记录曲线晚
+ * **整整一个分析窗长**（64ms）——实测最近帧匹配会稳定地选中基准曲线的
+ * 后两帧（女声 92%、男声 83% 的帧偏移 +2）。
+ *
+ * 错开两帧对不同嗓音的影响天差地别（±50 cents 一致阈值下）：
+ *   - 语调平缓的嗓音（女声）相邻帧仅差几 cents → 错开两帧仍在阈值内
+ *   - 音高起伏大的嗓音（男声）相邻帧常差 20–80 cents → 错开两帧即判不一致
+ * 于是同一处系统性错位，让女声看起来「一致率 78%」、男声「只有 20–30%」。
+ *
+ * 补偿：把备选帧的时间戳减去一个窗长，回到与记录曲线相同的语义。
+ */
+const ALT_TIMESTAMP_COMPENSATION_SEC = FRAME_SAMPLES / PIPELINE_HZ;
 
 /** 备选算法的音高序列（时间轴与记录序列对齐，null = 未检出） */
 export interface AltPitchSeries {
@@ -69,8 +89,10 @@ export async function recomputePitch(
 }
 
 /**
- * 与记录原始曲线的一致性：逐备选帧找记录序列中最近时间的帧，
- * 双方同时有声时计入 cents 偏差（±50 cents 内视为一致）
+ * 与记录原始曲线的一致性。
+ *
+ * 按补偿后的时间戳做最近帧匹配（见 ALT_TIMESTAMP_COMPENSATION_SEC 的说明）。
+ * 只统计双方同时有声的帧；cents 偏差 ≤ ±50 记为一致。
  */
 export function compareWithRecord(
   record: AnalysisRecord,
@@ -79,9 +101,10 @@ export function compareWithRecord(
   const base = record.series;
   const devs: number[] = [];
   for (let i = 0; i < alt.t.length; i++) {
-    const b = nearestF0(base, alt.t[i]);
     const a = alt.f0[i];
-    if (b == null || a == null) continue;
+    if (a == null) continue;
+    const b = nearestF0(base, alt.t[i] - ALT_TIMESTAMP_COMPENSATION_SEC);
+    if (b == null) continue;
     devs.push(1200 * Math.log2(a / b));
   }
   if (devs.length === 0) return { agreePct: 0, medAbsCents: 0, compared: 0 };
@@ -95,7 +118,7 @@ export function compareWithRecord(
   };
 }
 
-/** 最近帧查找：记录序列约 30Hz 均匀采样，备选帧与记录帧偏差至多约 1 帧 */
+/** 最近帧查找：记录序列约 30Hz 均匀采样 */
 function nearestF0(series: RecordSeries, t: number): number | null {
   const ts = series.t;
   if (ts.length === 0) return null;

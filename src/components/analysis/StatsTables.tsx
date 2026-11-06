@@ -8,13 +8,17 @@ import { freqToNote } from '@/constants';
 import { t } from '@/i18n';
 import { useStore } from '@/store/useStore';
 import type { AnalysisRecord } from '@/types';
+import { InfoTip } from '../settings/InfoTip';
 
 /* -------------------------------- 统计表格 -------------------------------- */
 
-function StatGroup({ title, rows }: { title: string; rows: [string, ReactNode][] }) {
+function StatGroup({ title, rows, info }: { title: string; rows: [string, ReactNode][]; info?: string }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs font-semibold text-ink">{title}</p>
+      <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink">
+        {title}
+        {info && <InfoTip label="" text={info} />}
+      </p>
       <table className="w-full">
         <tbody>
           {rows.map(([label, value]) => (
@@ -39,6 +43,12 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
   // SPL 校准后：录音电平(dBFS) + 偏移 → 真实声压级；未校准只显示 dBFS
   const dbLabel = (db: number) => (splOffset != null ? `${db.toFixed(1)} dB（≈ ${(db + splOffset).toFixed(0)} dB SPL）` : `${db.toFixed(1)} dB`);
   const voicedPct = s.totalSamples ? Math.round((s.voicedSamples / s.totalSamples) * 100) : 0;
+  // 谱类指标（H1−H2 / H2−H4 / H1−A3 / 气声度 / 鼻化）需要完整录音音频离线计算；
+  // 旧记录或未保存音频时为 null，这里给出可操作的说明（有音频时重算可补齐）
+  const vqMissing = s.jitterPct == null && s.hnrDb == null && s.cppsDb == null;
+  const spectralMissing = s.h1h2Db == null || s.h2h4Db == null || s.h1a3Db == null
+    || s.breathiness == null || s.nasalityDb == null;
+  const vqHint = vqMissing || spectralMissing ? t('analysis.vqHintMissing') : t('analysis.vqHint');
   return (
     <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatGroup
@@ -86,6 +96,7 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
       />
       <StatGroup
         title={t('analysis.groupVq')}
+        info={vqHint}
         rows={[
           [t('analysis.rowJitter'), s.jitterPct != null ? `${s.jitterPct.toFixed(2)} %` : '—'],
           [t('analysis.rowShimmer'), s.shimmerPct != null ? `${s.shimmerPct.toFixed(2)} %` : '—'],
@@ -96,7 +107,6 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
           [t('analysis.rowH1A3'), s.h1a3Db != null ? `${s.h1a3Db.toFixed(1)} dB` : '—'],
           [t('analysis.rowBreathiness'), s.breathiness != null ? `${(s.breathiness * 100).toFixed(0)} %` : '—'],
           [t('analysis.rowNasality'), s.nasalityDb != null ? `${s.nasalityDb.toFixed(1)} dB` : '—'],
-          [t('analysis.rowNote'), <span key="hint" className="text-[10px] font-normal text-ink-2">{t('analysis.vqHint')}</span>],
         ]}
       />
     </div>

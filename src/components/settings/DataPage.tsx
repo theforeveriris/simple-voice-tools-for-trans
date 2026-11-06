@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Download, Upload, Trash2, Eraser, Archive, FileSpreadsheet,
   DatabaseBackup, HardDrive, FolderOpen, ShieldCheck, CloudUpload,
-  Cloud, CloudDownload, PlugZap,
+  Cloud, CloudDownload, PlugZap, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
@@ -22,6 +22,7 @@ import { buildSettingsPayload, parseSettingsPayload } from '@/lib/export/setting
 import { downloadBlob } from '@/lib/file';
 import { RestorePreviewDialog } from './RestorePreviewDialog';
 import { buildRestorePreview, type RestorePreview } from './restorePreview';
+import { batchRecomputeRecords, algoParamsFingerprint, type BatchRecomputeItem } from '@/lib/audio/reanalyze';
 import {
   pickAutoBackupFolder, getAutoBackupState,
   requestAutoBackupPermission, runAutoBackupNow,
@@ -80,6 +81,11 @@ export function DataPage({
   const zipInputRef = useRef<HTMLInputElement>(null);
   const settingsInputRef = useRef<HTMLInputElement>(null);
   const [zipBusy, setZipBusy] = useState(false);
+  // 批量重算：算法版本变更后旧记录的 VQ 指标需重算
+  const [staleCount, setStaleCount] = useState(0);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchDone, setBatchDone] = useState(0);
+  const [batchTotal, setBatchTotal] = useState(0);
   // 本地自动备份（File System Access API）
   const [autoBackup, setAutoBackup] = useState<AutoBackupState | null>(null);
   // WebDAV 同步：凭据存 IndexedDB kv，输入完成后在测试/上传/恢复时一并保存
@@ -180,6 +186,16 @@ export function DataPage({
     refreshAutoBackup();
   }, [refreshAutoBackup]);
 
+  // 页面加载时检查有多少旧口径记录
+  useEffect(() => {
+    void (async () => {
+      const all = await useHistoryStore.getState().getAllRecords();
+      const fp = algoParamsFingerprint();
+      const stale = all.filter((r) => r.paramsFp !== fp);
+      setStaleCount(stale.length);
+    })();
+  }, []);
+
   /** 导出全部记录的统计摘要 CSV（IndexedDB 全量，不受界面截断影响） */
   const exportSummaryCsv = async () => {
     const all = await useHistoryStore.getState().getAllRecords();
@@ -192,6 +208,58 @@ export function DataPage({
       recordsToSummaryCsv(all),
     );
     toast.success(t('toast.csvExported', { n: all.length }));
+  };
+
+  /** 检查有多少记录的算法指纹与当前版本不匹配（旧口径） */
+  const refreshStaleCount = useCallback(async () => {
+    const all = await useHistoryStore.getState().getAllRecords();
+    const fp = algoParamsFingerprint();
+    const stale = all.filter((r) => r.paramsFp !== fp);
+    setStaleCount(stale.length);
+  }, []);
+
+  /** 批量重算旧记录的 VQ 指标（Shimmer/HNR/CPPS 等） */
+  const runBatchReanalyze = async () => {
+    const all = await useHistoryStore.getState().getAllRecords();
+    const fp = algoParamsFingerprint();
+    const stale = all.filter((r) => r.paramsFp !== fp);
+    if (stale.length === 0) {
+      toast.info(t('toast.noStaleRecords'));
+      return;
+    }
+    // 需要录音音频才能重算 VQ 指标
+    const items: BatchRecomputeItem[] = [];
+    for (const r of stale) {
+      const audio = await useHistoryStore.getState().getAudio(r.id);
+      if (audio) items.push({ record: r, audio });
+    }
+    if (items.length === 0) {
+      toast.info(t('toast.noAudioForReanalyze'));
+      return;
+    }
+    setBatchBusy(true);
+    setBatchDone(0);
+    setBatchTotal(items.length);
+    try {
+      const result = await batchRecomputeRecords(items, (frac) => {
+        setBatchDone(Math.round(frac * items.length));
+      });
+      // 更新重算成功的记录
+      for (const updated of result.updated) {
+        useHistoryStore.getState().updateRecord(updated);
+      }
+      const errCount = Object.keys(result.errors).length;
+      if (errCount > 0) {
+        toast.warning(t('toast.reanalyzeBatchDoneWithErrors', { ok: result.updated.length, err: errCount }));
+      } else {
+        toast.success(t('toast.reanalyzeBatchDone', { n: result.updated.length }));
+      }
+      await refreshStaleCount();
+    } catch {
+      toast.error(t('toast.reanalyzeBatchFailed'));
+    } finally {
+      setBatchBusy(false);
+    }
   };
 
   /** 导出全部记录为 JSON（IndexedDB 全量，不受界面截断影响；与 ZIP/GitHub 备份同一 v2 格式） */
@@ -516,6 +584,17 @@ export function DataPage({
 
         {/* 数据操作 */}
         <SettingsSection icon={DatabaseBackup} title={t('settings.dataOps')}>
+          {/* 批量重算：算法版本变更后旧记录需重算 VQ 指标 */}
+          <SettingRow label={t('settings.reanalyzeBatch')}>
+            <button
+              onClick={runBatchReanalyze}
+              disabled={batchBusy || staleCount === 0}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
+            >
+              <RefreshCw size={14} />
+              {batchBusy ? t('settings.reanalyzeProgress', { done: batchDone, total: batchTotal }) : `${t('common.reanalyze')} (${staleCount})`}
+            </button>
+          </SettingRow>
           <SettingRow label={t('settings.exportJson')}>
             <button
               onClick={exportData}

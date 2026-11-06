@@ -5,7 +5,8 @@
  *   Jitter(local)  相邻基音周期长度波动率均值 ×100%，正常嗓音约 0.2–2%
  *   Shimmer(local) 相邻基音周期幅度波动率均值 ×100%，正常嗓音约 1–8%
  *   HNR            谐波能量 / 噪声能量（dB），正常嗓音约 10–25dB
- * HNR 由 YIN 的周期性置信度（1 − CMND 最小值）换算：HNR ≈ 10·log10(p/(1−p))。
+ * HNR 由归一化自相关峰值换算：HNR = 10·log10(r/(1−r))，r 为周期处自相关。
+ * （对齐 Praat Harmonicity 口径；旧实现用 YIN 置信度换算，干净信号下饱和于 23dB）
  *
  * 周期检测：128ms 分析窗内做峰检测（抛物线插值细化峰位），
  * 帧内相邻峰距即周期序列；跨帧用基频连续性（±25%）防护八度跳变。
@@ -60,7 +61,9 @@ function extractPeriods(frame: Float32Array, sampleRate: number, f0: number): Pe
       const denom = y0 - 2 * y1 + y2;
       const shift = Math.abs(denom) > 1e-12 ? (0.5 * (y0 - y2)) / denom : 0;
       pos.push(i + shift);
-      amp.push(y1);
+      // 抛物线顶点处的幅度（周期峰值强度）：段扫描会把下一峰也扫进来，
+      // 相邻幅度互相污染导致 shimmer 系统性偏低（验证设施抓出的口径 bug）
+      amp.push(Math.abs(denom) > 1e-12 ? y1 - (0.125 * (y0 - y2) * (y0 - y2)) / denom : y1);
       lastPeak = i;
     }
   }
@@ -72,13 +75,8 @@ function extractPeriods(frame: Float32Array, sampleRate: number, f0: number): Pe
     const d = pos[k] - pos[k - 1];
     if (d >= expect * 0.6 && d <= expect * 1.7) {
       periods.push(d);
-      // 该周期的幅度：两峰间的最大绝对值
-      let seg = 0;
-      for (let i = Math.ceil(pos[k - 1]); i <= Math.floor(pos[k]); i++) {
-        const a = Math.abs(frame[i]);
-        if (a > seg) seg = a;
-      }
-      amps.push(seg);
+      // 该周期的幅度 = 左峰的峰值强度（插值细化，Praat 的 period strength 同语义）
+      amps.push(amp[k - 1]);
     }
   }
   return periods.length >= 2 ? { periods, amps } : null;
@@ -86,6 +84,37 @@ function extractPeriods(frame: Float32Array, sampleRate: number, f0: number): Pe
 
 function mean(a: number[]): number {
   return a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
+}
+
+/**
+ * 由归一化自相关峰值估算 HNR（dB）
+ * HNR = 10·log10(r / (1−r))，r = 周期处归一化自相关
+ * 对齐 Praat Harmonicity (cc/ac) 口径；干净信号 r→1 时钳制在 40dB
+ */
+function hnrFromAcf(frame: Float32Array, sampleRate: number, f0: number): number | null {
+  const tau0 = Math.round(sampleRate / f0);
+  const n = frame.length;
+  // 分段归一化（不能用全长能量——尾部长度不同会系统性压低 r）
+  let bestR = 0;
+  for (let d = -5; d <= 5; d++) {
+    const tau = tau0 + d;
+    if (tau < 1 || tau >= n) continue;
+    let corr = 0;
+    let sum1 = 0;
+    let tailEnergy = 0;
+    for (let i = 0; i < n - tau; i++) {
+      corr += frame[i] * frame[i + tau];
+      sum1 += frame[i] * frame[i];
+      tailEnergy += frame[i + tau] * frame[i + tau];
+    }
+    if (sum1 <= 0 || tailEnergy <= 0) continue;
+    const r = corr / Math.sqrt(sum1 * tailEnergy);
+    if (r > bestR) bestR = r;
+  }
+  if (bestR <= 0.05) return null; // 无周期性
+  // 干净信号 r→1 时 HNR→∞，Praat 因窗相关给 37–43dB；这里钳制在 40dB
+  if (bestR >= 0.999) return 40;
+  return 10 * Math.log10(bestR / (1 - bestR));
 }
 
 /**
@@ -130,9 +159,10 @@ export function computeVoiceQuality(samples: Float32Array, sampleRate: number): 
     }
     prevF0 = pitch.freq;
 
-    // HNR：由 YIN 周期性置信度换算
-    const p = Math.min(0.995, Math.max(0.05, pitch.prob));
-    hnrs.push(10 * Math.log10(p / (1 - p)));
+    // HNR：归一化自相关峰值换算（对齐 Praat Harmonicity 口径，
+    // 替代旧的 YIN 置信度换算——后者在干净信号下饱和于 23dB）
+    const hnr = hnrFromAcf(frame.subarray(0, yinWindow), sampleRate, pitch.freq);
+    if (hnr != null) hnrs.push(hnr);
 
     // Jitter / Shimmer：帧内周期序列
     const info = extractPeriods(frame, sampleRate, pitch.freq);
