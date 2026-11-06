@@ -9,11 +9,16 @@
  * 评分实现见 src/lib/voiceExpression.ts（纯函数、可单测）。
  */
 
+import { useMemo } from 'react';
 import { Scale } from 'lucide-react';
 import { BAND_COLORS } from '@/constants';
 import { t, type DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { computeVoiceExpression, type VoiceExpressionZone } from '@/lib/voiceExpression';
+import {
+  computeVoiceExpression,
+  type VoiceExpressionFrame,
+  type VoiceExpressionZone,
+} from '@/lib/voiceExpression';
 import type { AnalysisRecord } from '@/types';
 import { InfoTip } from '../settings/InfoTip';
 
@@ -39,12 +44,25 @@ const REFERENCE_ROWS: [VoiceExpressionZone, DictKey][] = [
 export function VoiceExpressionCard({ record }: { record: AnalysisRecord }) {
   useI18n();
   const { stats } = record;
+  // 逐帧共振峰（有声帧且 F1/F2 同帧检出）→ 元音归一
+  const frames = useMemo(() => {
+    const out: VoiceExpressionFrame[] = [];
+    const s = record.series;
+    const step = s.t.length > 1 ? s.t[1] - s.t[0] : 1 / 30;
+    for (let i = 0; i < s.t.length; i++) {
+      const f1 = s.f1[i];
+      const f2 = s.f2[i];
+      if (s.f0[i] == null || f1 == null || f2 == null) continue;
+      out.push({ f1, f2, durationSec: step > 0 ? step : 1 / 30 });
+    }
+    return out;
+  }, [record.series]);
+
   const result = computeVoiceExpression({
     medianF0: stats.medianF0,
-    f2f1GapHz: stats.f2f1GapHz,
-    avgF2: stats.avgF2,
     voicedSamples: stats.voicedSamples,
     sampleHz: stats.sampleHz,
+    frames,
   });
   if (!result) return null;
 
@@ -53,11 +71,10 @@ export function VoiceExpressionCard({ record }: { record: AnalysisRecord }) {
   const voicedLabel = result.voicedSeconds >= 10
     ? result.voicedSeconds.toFixed(0)
     : result.voicedSeconds.toFixed(1);
-  const resonanceDetail = result.resonanceBasis === 'gap'
-    ? t('analysis.expressionGapValue', { n: Math.round(stats.f2f1GapHz ?? 0) })
-    : result.resonanceBasis === 'f2'
-      ? t('analysis.expressionF2Value', { n: Math.round(stats.avgF2 ?? 0) })
-      : null;
+  const hasNormalized = result.normalizedFrames > 0;
+  const resonanceDetail = hasNormalized
+    ? t('analysis.expressionNormalizedDetail', { n: result.normalizedFrames })
+    : null;
 
   return (
     <div className="card-surface p-4">
@@ -123,6 +140,29 @@ export function VoiceExpressionCard({ record }: { record: AnalysisRecord }) {
           <p className="text-[10px] text-ink-2">{t('analysis.expressionVoiced')}</p>
         </div>
       </div>
+
+      {result.breakdown.length > 0 && (
+        <details className="mt-2 px-0.5">
+          <summary className="cursor-pointer text-[10px] text-ink-2">
+            {t('analysis.expressionVowelBreakdown')}
+          </summary>
+          <div className="mt-1 space-y-0.5">
+            {result.breakdown.map((b) => (
+              <div key={b.code} className="flex items-center gap-1.5 text-[10px] text-ink-2">
+                <span className="w-8 shrink-0 font-medium text-ink">{b.code}</span>
+                <span className="min-w-0 flex-1 truncate">{b.label}</span>
+                <span className="tabular-nums">{b.seconds.toFixed(1)} s</span>
+                <span className="tabular-nums">
+                  {b.position > 0.15 ? `+${b.position.toFixed(2)}` : b.position.toFixed(2)}
+                </span>
+              </div>
+            ))}
+            <p className="pt-0.5 text-[9px] leading-relaxed text-ink-2/70">
+              {t('analysis.expressionVowelBreakdownHint')}
+            </p>
+          </div>
+        </details>
+      )}
 
       {result.confidence !== 'high' && (
         <p className="mt-2 px-0.5 text-[10px] leading-relaxed text-[#B0532F]">
