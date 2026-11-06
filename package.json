@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "cap:sync": "npm run build && npx cap sync android",
+    "cap:sync": "npm run build && npx cap sync android && node scripts/prune-android-assets.mjs",
     "cap:open": "npx cap open android",
     "tauri": "tauri"
   },

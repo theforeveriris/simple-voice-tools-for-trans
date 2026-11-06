@@ -54,6 +54,11 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
+      # 原生壳不用 Service Worker / PWA 清单 / 社交卡片图标，
+      # 删掉可省约 550 KB APK 体积（只动 assets/public，不影响 Web 发布）
+      - name: Prune web-only assets from Android bundle
+        run: node scripts/prune-android-assets.mjs
+
       # runner 每次全新，debug keystore 若随机生成则每次签名都不同——
       # 覆盖安装会因签名冲突失败。固定用仓库内的 ci-debug.keystore（仅 debug 用途）。
       - name: Use stable debug keystore
