@@ -61,7 +61,13 @@ const estTokens = estimateTokens;
 
 /** 用户可读的错误分类：401/403=密钥、429=限流、超时、网络、5xx=服务端不可用 */
 type ErrorKind = 'auth' | 'rate' | 'timeout' | 'network' | 'server' | 'unknown';
-interface AssistantError { kind: ErrorKind; detail: string }
+interface AssistantError {
+  kind: ErrorKind;
+  detail: string;
+  /** 本次请求实际使用的模型与主机（便于和别的客户端对比） */
+  model?: string;
+  host?: string;
+}
 
 function classifyError(err: unknown): AssistantError {
   const detail = err instanceof Error ? err.message : String(err);
@@ -594,7 +600,16 @@ export function AssistantPage() {
           context: contextMeta,
         });
       }
-      if (!isAbortError(err)) setError(classifyError(err));
+      if (!isAbortError(err)) {
+        const info = classifyError(err);
+        let host = '';
+        try {
+          host = new URL(cfg.baseUrl).host;
+        } catch {
+          host = cfg.baseUrl;
+        }
+        setError({ ...info, model: cfg.modelId, host });
+      }
     } finally {
       setStreamText(null);
       setStreamThink('');
@@ -1219,6 +1234,11 @@ export function AssistantPage() {
                 </p>
                 {error.kind !== 'unknown' && (
                   <p className="text-[10px] leading-relaxed text-ink-2/80">{error.detail}</p>
+                )}
+                {(error.model || error.host) && (
+                  <p className="select-all text-[9px] leading-relaxed text-ink-2/60">
+                    {[error.model, error.host].filter(Boolean).join(' · ')}
+                  </p>
                 )}
                 <div className="mt-0.5 flex items-center gap-3">
                   {error.kind === 'auth' && (
