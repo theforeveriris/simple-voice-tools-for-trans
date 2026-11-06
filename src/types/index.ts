@@ -77,6 +77,7 @@ export interface AnalysisCards {
   energy: boolean;
   spec: boolean;
   vrp: boolean;
+  sibilance: boolean;
 }
 
 /**

@@ -68,11 +68,15 @@ const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   ageGroup: ['child', 'adolescent', 'adult', 'senior'],
 };
 
-/** 对象字段校验：analysisCards 五个布尔齐全才接受 */
-function validAnalysisCards(v: unknown): boolean {
+/** 对象字段校验：analysisCards 前五个布尔必填，sibilance 缺省时补 true（兼容旧导出） */
+function normalizeAnalysisCards(v: unknown): Record<string, boolean> | null {
   const o = v as Record<string, unknown> | null;
-  return !!o && typeof o === 'object'
-    && ['pitch', 'formant', 'energy', 'spec', 'vrp'].every((k) => typeof o[k] === 'boolean');
+  if (!o || typeof o !== 'object') return null;
+  if (!['pitch', 'formant', 'energy', 'spec', 'vrp'].every((k) => typeof o[k] === 'boolean')) return null;
+  const out: Record<string, boolean> = {};
+  for (const k of ['pitch', 'formant', 'energy', 'spec', 'vrp']) out[k] = o[k] as boolean;
+  out.sibilance = typeof o.sibilance === 'boolean' ? o.sibilance : true;
+  return out;
 }
 
 /** 数值字段允许范围（越界夹取，防止脏文件写入极端值） */
@@ -143,7 +147,12 @@ export function parseSettingsPayload(json: string): Partial<AppSettings> {
     if (v === undefined || typeof v !== typeof def) continue;
     const enums = STRING_ENUMS[key as keyof AppSettings];
     if (enums && !enums.includes(v as string)) continue;
-    if (key === 'analysisCards' && !validAnalysisCards(v)) continue;
+    if (key === 'analysisCards') {
+      const cards = normalizeAnalysisCards(v);
+      if (!cards) continue;
+      out[key] = cards;
+      continue;
+    }
     if (typeof v === 'number') {
       const range = NUMBER_RANGE[key as keyof AppSettings];
       out[key] = range ? Math.min(range[1], Math.max(range[0], v)) : v;

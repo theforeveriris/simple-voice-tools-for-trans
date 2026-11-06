@@ -157,7 +157,18 @@ export function PitchAlgorithmCard({ record }: { record: AnalysisRecord }) {
   };
 
   if (hasAudio === null) return null; // 音频检查中
-  if (!hasAudio) return null; // 无录音音频：不占版面（卡片语义见设置内说明）
+  if (!hasAudio) {
+    // 无录音音频：保留卡片占位（与咝音卡一致，可在设置中关闭）
+    return (
+      <div className="card-surface p-4">
+        <div className="mb-1.5 flex items-center gap-1.5 px-0.5">
+          <FlaskConical size={13} />
+          <span className="text-xs font-medium tracking-wide text-ink-2">{t('ab.title')}</span>
+        </div>
+        <p className="px-0.5 text-xs text-ink-2">{t('ab.needAudio')}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="card-surface p-4">

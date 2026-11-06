@@ -56,11 +56,16 @@ function RangeRuler({ record }: { record: AnalysisRecord }) {
           style={{ left: `${posPct(Math.min(RULER_MAX, Math.max(RULER_MIN, avgF0)))}%`, ['--tw-ring-color' as string]: 'rgb(var(--c-card-rgb))' }}
         />
       </div>
-      <div className="mt-1 flex items-center justify-between text-[11px]">
+      <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
         <span className="text-ink-2">{t('analysis.rangeP10P90', { a: p10F0.toFixed(0), b: p90F0.toFixed(0) })}</span>
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
-          <span className="size-1.5 rounded-full" style={{ background: BAND_COLORS[band] }} />
-          {t(`band.${band}`)}
+        <span className="flex items-center gap-2 text-ink-2">
+          <span className="tabular-nums">
+            {new Date(record.createdAt).toLocaleString(localeTag(), { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+            <span className="size-1.5 rounded-full" style={{ background: BAND_COLORS[band] }} />
+            {t(`band.${band}`)}
+          </span>
         </span>
       </div>
     </div>
@@ -97,24 +102,24 @@ export function HeroSummary({
       transition={{ duration: 0.35, ease: 'easeOut' }}
       className="card-surface p-5"
     >
-      {/* 标签行：平均基频，右侧为分享 / 导出 / 备注操作；区间与模式徽标单独一行 */}
-      <div className="flex items-center justify-between gap-2">
+      {/* 标签行：平均基频；区间/模式徽标桌面端同行、移动端换行；右侧为操作按钮 */}
+      <div className="flex flex-wrap items-center gap-2">
         <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-2">
           <Sparkles size={12} className="shrink-0 text-accent" />
           {t('analysis.avgF0')}
         </p>
-        {actions && <div className="flex shrink-0 items-center gap-0.5">{actions}</div>}
-      </div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-          {isPartial ? t('analysis.chipRange', { a: formatClock(range[0]), b: formatClock(range[1]) }) : t('analysis.chipFull')}
-        </span>
-        {record.mode && (
-          <span className="flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-            <Music2 size={9} />
-            {t(`mode.${record.mode}`)}
+        <div className="order-3 mt-1.5 flex w-full flex-wrap items-center gap-1.5 sm:order-none sm:mt-0 sm:w-auto">
+          <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+            {isPartial ? t('analysis.chipRange', { a: formatClock(range[0]), b: formatClock(range[1]) }) : t('analysis.chipFull')}
           </span>
-        )}
+          {record.mode && (
+            <span className="flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+              <Music2 size={9} />
+              {t(`mode.${record.mode}`)}
+            </span>
+          )}
+        </div>
+        {actions && <div className="ml-auto flex shrink-0 items-center gap-0.5">{actions}</div>}
       </div>
       <div className="mt-2 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
         <div className="min-w-40">
@@ -125,12 +130,6 @@ export function HeroSummary({
             <span className="text-sm text-ink-2">Hz</span>
             <span className="text-sm font-semibold text-accent">{note.name}</span>
           </div>
-          <p className="mt-1 text-[11px] text-ink-2">
-            {t('analysis.pitchDev', { cents: note.cents >= 0 ? `+${note.cents}` : String(note.cents) })}
-          </p>
-          <p className="mt-0.5 text-[11px] tabular-nums text-ink-2">
-            {new Date(record.createdAt).toLocaleString(localeTag(), { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </p>
         </div>
         <div className="min-w-[280px] flex-1 lg:max-w-md">
           <RangeRuler record={record} />

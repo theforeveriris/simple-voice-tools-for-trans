@@ -98,6 +98,12 @@ export function AdvancedPage({
               onCheckedChange={(v) => update({ pitchCompareEnabled: v })}
             />
           </SettingRow>
+          <SettingRow label={<InfoTip label={t('sibilance.title')} text={t('sibilance.explain')} />}>
+            <Switch
+              checked={settings.analysisCards.sibilance !== false}
+              onCheckedChange={(v) => update({ analysisCards: { ...settings.analysisCards, sibilance: v } })}
+            />
+          </SettingRow>
         </SettingsSection>
 
         {/* 算法参数：改动即时生效于实时曲线；下次录音/导入用新参数重算 */}
