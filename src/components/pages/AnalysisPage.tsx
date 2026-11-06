@@ -26,7 +26,8 @@ import { computeStats } from '@/lib/audio/recorder';
 import { downloadText, recordToFrameCsv } from '@/lib/export/csv';
 import { downloadBlob } from '@/lib/file';
 import { recordToPitchTier, recordToFormant } from '@/lib/export/praat';
-import { luaExportEnabled, luaExportOf } from '@/lib/lua/export';
+import { luaExportOf } from '@/lib/lua/export';
+import { activeScriptOf, subscribeScripts } from '@/lib/lua/scripts';
 import { midiBlob } from '@/lib/export/midi';
 import { ShareCardSheet } from '@/components/share/ShareCardSheet';
 import { renderShareCard, shareImageFilename } from '@/lib/export/shareCard';
@@ -98,14 +99,24 @@ export function AnalysisPage() {
   const swipeX = useRef<number | null>(null);
   // Lua 自定义格式导出（脚本中心 export 脚本；入口可用性由探测 state 控制）
   const [luaExportAvailable, setLuaExportAvailable] = useState(false);
+  const [luaExportName, setLuaExportName] = useState('');
   const [luaExportBusy, setLuaExportBusy] = useState(false);
   const recordId = record?.id ?? null;
   useEffect(() => {
     let alive = true;
-    void luaExportEnabled().then((v) => {
-      if (alive) setLuaExportAvailable(v);
-    }).catch(() => setLuaExportAvailable(false));
-    return () => { alive = false; };
+    // 探测 + 订阅脚本中心变更：脚本启停/替换后入口与名称即时更新
+    const probe = () => {
+      void activeScriptOf('export').then((s) => {
+        if (!alive) return;
+        setLuaExportAvailable(s !== null);
+        setLuaExportName(s?.name ?? '');
+      }).catch(() => {
+        if (alive) { setLuaExportAvailable(false); setLuaExportName(''); }
+      });
+    };
+    probe();
+    const unsubscribe = subscribeScripts(probe);
+    return () => { alive = false; unsubscribe(); };
   }, [recordId]);
 
   const fullRange = useMemo<[number, number]>(() => [0, record?.durationSec ?? 0], [record?.durationSec]);
@@ -463,7 +474,9 @@ export function AnalysisPage() {
                     disabled={luaExportBusy}
                     className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-50"
                   >
-                    <span className="block text-sm font-medium text-ink">{t('analysis.exportLua')}</span>
+                    <span className="block text-sm font-medium text-ink">
+                      {luaExportName ? t('analysis.exportLuaNamed', { name: luaExportName }) : t('analysis.exportLua')}
+                    </span>
                     <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportLuaDesc')}</span>
                   </button>
                 )}

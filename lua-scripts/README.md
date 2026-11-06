@@ -7,6 +7,37 @@
 用户也可以在 **设置 → 高级 → 脚本中心** 直接导入单个 `.lua` 文件，
 或把这里整个目录的脚本分享给他人。
 
+## 生效规则（同一方向有多个脚本怎么办）
+
+脚本按**方向**分组，同一方向的脚本采用以下规则：
+
+- **advice（建议）**：可同时启用多个，运行时逐脚本执行后**合并**（每脚本至多 3 条、总计至多 3 条，
+  按脚本顺序轮转取用，避免默认脚本一次塞满而其他脚本永远排不上）。
+- **card / flower / export（分享卡 / 声之花 / 导出桥）**：单一消费方，**同一时间只允许一个脚本生效**。
+  启用新脚本会自动停用该方向的其他脚本（界面会提示被停用者），避免「启用了却没跑」的静默忽略。
+
+内置脚本的默认启用策略：advice 保留「默认建议规则」开箱即用；card / export 保留各自的默认模板开启；
+其余示例（含全部 flower）默认关闭，避免悄悄改变既有输出。
+
+## 内置示例一览
+
+| 方向 | 脚本 | 说明 |
+| --- | --- | --- |
+| advice | `default` | 靶标偏离 / Jitter / 基频波动 / 有效发声 / 共鸣间距综合体检 |
+| advice | `strict-resonance` | 按 F2−F1 间距逐档给共鸣训练反馈 |
+| advice | `voice-rest` | Jitter / Shimmer / HNR 组合看嗓音疲劳 |
+| advice | `sustained-smooth` | CV 基频波动与微扰，波动大练慢速长音 |
+| advice | `breath-support` | HNR / CPPS / Jitter 看气声与声带闭合 |
+| advice | `vowel-shape` | F1 / F2 / 间距给元音共鸣定位练习 |
+| card | `dark-minimal` | 深色渐变底 + 大字基频 + 音高曲线面板 |
+| card | `light-minimal` | 浅色纸感，适合打印与日间分享 |
+| card | `aurora-glow` | 极光紫渐变 + 荧光大字 + 四格统计 |
+| flower | `bloom-radiant` | 频带能量做花瓣长度（频谱指纹） |
+| flower | `bloom-soft` | 无频谱数据也可用，12 瓣正弦模版花 |
+| export | `praat-bundle` | 导出可在 Praat 中 Run 的重建脚本 |
+| export | `csv-frames` | 每帧一行 t/f0/rmsDb/f1/f2 的通用 CSV |
+| export | `praat-textgrid` | 导出短文本 TextGrid（Pitch tier） |
+
 ## 通用约定
 
 - 每个脚本定义若干**全局函数**，应用按功能类型调用对应函数
@@ -114,11 +145,15 @@ end
 ## export/ — 自定义格式导出脚本（数据格式桥）
 
 定义全局函数 `export(record)` 返回 `{ filename = "...", content = "..." }`，
-导出菜单出现「Lua 自定义格式」入口，一键下载脚本产出的任意文本格式。
+导出菜单出现「Lua 自定义格式」入口（标注当前生效脚本名），一键下载脚本产出的任意文本格式。
 `record.series.frames` 是帧数组：`{ t, f0, rmsDb, f1, f2 }`（null = 未检出），
-`record.stats` 同 advice 表。内容上限 4MB。内置示例 `praat-bundle.lua`
-生成「在 Praat 中 Run 即重建 PitchTier 并出图」的脚本——其他生态
-（Emu/MOR/CHAT/自定义 CSV 方言）同理接入。
+`record.stats` 同 advice 表。内容上限 4MB。内置示例：
+
+- `praat-bundle.lua`：生成「在 Praat 中 Run 即重建 PitchTier 并出图」的脚本；
+- `csv-frames.lua`：每帧一行 t/f0/rmsDb/f1/f2 的通用 CSV；
+- `praat-textgrid.lua`：导出短文本 TextGrid（Pitch tier），Praat 直接可读。
+
+其他生态（Emu/MOR/CHAT/自定义方言）同理接入：贴一段脚本即成自定义导出格式。
 
 ## History 过滤器表达式
 
@@ -137,5 +172,6 @@ lua:stats.jitterPct ~= nil and stats.jitterPct > 1.0
 - 开头注释写清：脚本的用途、适配人群（训练方向）、阈值依据
 - 缺失字段用 `if stats.cppsDb and ...` 守卫，别假设一定存在
 - 文案给出**可执行的动作**（怎么练），而不是只报数字
-- 每条建议独立成立：用户可能同时启用多个脚本，应用合并取前 3 条
+- advice 脚本会被合并：每脚本至多 3 条，应用按脚本顺序轮转取用总计 3 条，所以别重复写同一件事
+- card / flower / export 是单一生效方向：同时只跑一个脚本，启用新脚本会自动停用旧的
 

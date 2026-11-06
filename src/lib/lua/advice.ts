@@ -8,7 +8,7 @@
 import type { AdviceTarget } from '@/lib/advice';
 import type { AnalysisRecord } from '@/types';
 import { runLuaFn } from './engine';
-import { listScripts } from './scripts';
+import { enabledScriptsOf } from './scripts';
 
 /** Lua 建议条目（自由文案，不进 i18n） */
 export interface LuaAdviceItem {
@@ -70,27 +70,44 @@ function normalizeTips(value: unknown): LuaAdviceItem[] {
 
 /**
  * 跑全部启用的 advice 脚本，合并结果（每脚本至多 3 条、总计至多 3 条）。
+ * 多脚本时「逐脚本轮流取一条」再截断——避免默认脚本一次塞满 3 条、其他脚本永远排不上。
  * 脚本失败返回错误列表供调试（UI 可折叠展示），不影响其他脚本。
  */
 export async function buildLuaAdvice(
   rec: AnalysisRecord,
   target: AdviceTarget,
 ): Promise<{ tips: LuaAdviceItem[]; errors: string[] }> {
-  const scripts = (await listScripts()).filter((s) => s.kind === 'advice' && s.enabled);
-  const tips: LuaAdviceItem[] = [];
+  const scripts = await enabledScriptsOf('advice');
   const errors: string[] = [];
+  if (scripts.length === 0) return { tips: [], errors };
   const stats = { ...statsView(rec), target };
+
+  /** 逐脚本结果（保序），再轮转合并 */
+  const byScript: LuaAdviceItem[][] = [];
   for (const script of scripts) {
     // 每脚本独立 code：同名函数互不覆盖（doString 重新定义全局 advise）
     const res = await runLuaFn<unknown>(script.code, 'advise', [stats]);
     if (res.ok) {
-      tips.push(...normalizeTips(res.value));
+      byScript.push(normalizeTips(res.value));
     } else {
       errors.push(`${script.name}: ${res.error}`);
     }
-    if (tips.length >= 3) break;
   }
-  return { tips: tips.slice(0, 3), errors };
+
+  const seen = new Set<string>();
+  const tips: LuaAdviceItem[] = [];
+  const maxLen = byScript.reduce((m, g) => Math.max(m, g.length), 0);
+  for (let i = 0; i < maxLen && tips.length < 3; i++) {
+    for (const group of byScript) {
+      if (tips.length >= 3) break;
+      const tip = group[i];
+      if (!tip) continue;
+      if (seen.has(tip.text)) continue;
+      seen.add(tip.text);
+      tips.push(tip);
+    }
+  }
+  return { tips, errors };
 }
 
 /** 任意记录能否走 Lua 建议（有启用的 advice 脚本即 true；同步不可知，调用方容错） */

@@ -19,7 +19,7 @@
 
 import type { AnalysisRecord } from '@/types';
 import { runLuaFn } from './engine';
-import { listScripts } from './scripts';
+import { activeScriptOf } from './scripts';
 import { recordView } from './filter';
 
 export const CARD_W = 1080;
@@ -61,14 +61,14 @@ export function safeColor(c: string | undefined, fallback: string): string {
 }
 
 /**
- * 跑启用的 card 类脚本中第一个（现阶段单模板；多模板待样式选择器扩展），
+ * 跑启用的 card 类脚本中生效的那个（单一消费方：同一方向只允许一个脚本生效）；
  * 返回绘制指令数组；无脚本/出错返回 null（调用方回退内置样式）。
  */
 export async function luaCardOps(record: AnalysisRecord): Promise<CardOp[] | null> {
-  const scripts = (await listScripts()).filter((s) => s.kind === 'card' && s.enabled);
-  if (scripts.length === 0) return null;
+  const script = await activeScriptOf('card');
+  if (!script) return null;
   const v = recordView(record);
-  const res = await runLuaFn<unknown>(scripts[0].code, 'template', [v]);
+  const res = await runLuaFn<unknown>(script.code, 'template', [v]);
   if (!res.ok) return null;
   const ops = normalizeOps(res.value);
   return ops.length > 0 ? ops : null;
@@ -76,6 +76,5 @@ export async function luaCardOps(record: AnalysisRecord): Promise<CardOp[] | nul
 
 /** 是否有启用的 card 脚本（分享弹层决定是否展示「Lua 模板」样式项） */
 export async function luaCardEnabled(): Promise<boolean> {
-  const scripts = await listScripts();
-  return scripts.some((s) => s.kind === 'card' && s.enabled);
+  return (await activeScriptOf('card')) !== null;
 }
