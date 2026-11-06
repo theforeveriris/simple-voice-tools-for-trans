@@ -40,6 +40,8 @@ Thumbs.db
 # Playwright E2E
 test-results/
 playwright-report/
+# Playwright MCP 调试产物（截图 / 快照 / 控制台日志）
+.playwright-mcp/
 
 # 参数验证缓存（音频不入仓，只存脚本与预期值）
 validation-cache/
