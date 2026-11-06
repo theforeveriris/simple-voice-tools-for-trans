@@ -49,9 +49,31 @@ describe('computeVoiceQuality', () => {
     const b = computeVoiceQuality(noisy, SR);
     expect(a.hnrDb).not.toBeNull();
     expect(a.hnrDb!).toBeGreaterThan(15);
-    // 强噪声下 HNR 大幅下降（噪声极大时可能直接判为不可用，见源码 MIN_PROB 门限）
+    // 强噪声下 HNR 大幅下降
     if (b.hnrDb != null) {
       expect(a.hnrDb! - b.hnrDb!).toBeGreaterThan(3);
     }
+  });
+
+  it('回归：干净信号 HNR 不再被 YIN 置信度钳制在 23dB（ACF 法）', () => {
+    // 旧实现: p=min(0.995,prob) → HNR 上限 23dB
+    // 新实现: 归一化自相关 r→1 时钳制 40dB
+    const clean = makeSine(220, SR, 1);
+    const { hnrDb } = computeVoiceQuality(clean, SR);
+    expect(hnrDb).not.toBeNull();
+    expect(hnrDb!).toBeGreaterThan(30); // 旧实现只能给 23
+  });
+
+  it('回归：shimmer 周期幅度用峰值插值而非段扫描（不再被相邻峰污染）', () => {
+    // 注入 ±5% 幅度扰动 → shimmer(local) 理论值 ≈3.33%
+    // 旧实现段扫描会压低到 ~1.9%；新实现应接近理论值
+    const sig = makePulseTrain({
+      f0: 100, sampleRate: SR, durSec: 1, amp: 0.5,
+      shimmerPct: 0.05, pulseWidth: 96, seed: 11,
+    });
+    const { shimmerPct } = computeVoiceQuality(sig, SR);
+    expect(shimmerPct).not.toBeNull();
+    expect(shimmerPct!).toBeGreaterThan(2.4); // 旧实现 ~1.9
+    expect(shimmerPct!).toBeLessThan(4.4);
   });
 });

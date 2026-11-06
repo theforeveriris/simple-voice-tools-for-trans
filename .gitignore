@@ -34,12 +34,15 @@ Thumbs.db
 *.sln
 *.sw?
 
-# OpenChamber ���������ͼ�ȣ�
+# OpenChamber ���������ͼ�ȣ�
 .openchamber/
 
 # Playwright E2E
 test-results/
 playwright-report/
+
+# 参数验证缓存（音频不入仓，只存脚本与预期值）
+validation-cache/
 
 
 .esbuild-tmp/

@@ -31,10 +31,17 @@ function hashStr(s: string): string {
   return (h >>> 0).toString(36);
 }
 
+/**
+ * 算法版本（公式变更时递增）：旧记录的 paramsFp 不匹配当前指纹时标为「旧口径」，
+ * 用户可在设置页批量重算。v2 变更：Shimmer 段幅度→周期峰值插值、HNR YIN 置信度→ACF、
+ * CPPS mean−SD→mean。
+ */
+export const ALGO_VERSION = '2026-11-06-v2';
+
 /** 当前算法参数的指纹（记录落库时随行标记，用于判断「参数已变，可重算」）。
- *  含音高算法：离线管线也随之切换检测器（与实时录音同口径），算法变了结果就会变。 */
+ *  含音高算法与算法版本：离线管线也随之切换检测器（与实时录音同口径），算法变了结果就会变。 */
 export function algoParamsFingerprint(): string {
-  return hashStr(JSON.stringify({ ...getAlgoParams(), pitchAlgorithm: getPitchAlgorithm() }));
+  return hashStr(JSON.stringify({ version: ALGO_VERSION, ...getAlgoParams(), pitchAlgorithm: getPitchAlgorithm() }));
 }
 
 export interface ReanalyzeOptions {
@@ -122,4 +129,63 @@ export async function reanalyzeRecord(
   if (frames < 4) throw new Error('tooShort');
   const out = await reanalyzePcm(pcm, original, opts);
   return { record: out.record, truncated: truncated || out.truncated };
+}
+
+/* --------------------------- 批量重算（旧口径 → 新口径） --------------------------- */
+
+export interface BatchRecomputeItem {
+  record: AnalysisRecord;
+  audio: Blob | null;
+}
+
+export interface BatchRecomputeResult {
+  /** 重算成功的记录（含新 stats） */
+  updated: AnalysisRecord[];
+  /** 跳过的记录（指纹匹配 / 无音频 / 解码失败） */
+  skipped: AnalysisRecord[];
+  /** 错误信息（按记录 id 映射） */
+  errors: Record<string, string>;
+}
+
+/**
+ * 批量重算：对 paramsFp 与当前算法版本不匹配的记录，用新口径重算 VQ 指标。
+ * 只重算嗓音质量四项（jitter/shimmer/HNR/CPPS）+ 谐波谱指标，
+ * F0/共振峰/响度等管线指标不变（管线本身未变）。
+ *
+ * @param items 待重算的记录 + 音频
+ * @param onProgress 进度回调（0-1，done/total）
+ */
+export async function batchRecomputeRecords(
+  items: BatchRecomputeItem[],
+  onProgress?: (frac: number) => void,
+): Promise<BatchRecomputeResult> {
+  const updated: AnalysisRecord[] = [];
+  const skipped: AnalysisRecord[] = [];
+  const errors: Record<string, string> = {};
+  const currentFp = algoParamsFingerprint();
+
+  for (let i = 0; i < items.length; i++) {
+    const { record, audio } = items[i];
+    try {
+      // 指纹匹配则无需重算
+      if (record.paramsFp === currentFp) {
+        skipped.push(record);
+        continue;
+      }
+      if (!audio) {
+        skipped.push(record);
+        continue;
+      }
+      const { record: next } = await reanalyzeRecord(record, audio);
+      updated.push(next);
+    } catch (e) {
+      errors[record.id] = e instanceof Error ? e.message : String(e);
+      skipped.push(record);
+    }
+    if (onProgress && items.length > 0) {
+      onProgress((i + 1) / items.length);
+    }
+  }
+
+  return { updated, skipped, errors };
 }

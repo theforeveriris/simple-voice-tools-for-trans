@@ -3,12 +3,17 @@
  *
  * 与 Jitter / Shimmer / HNR 互补的嗓音质量指标，最大优势是对连续语音
  * （朗读模式）同样稳健——J/S 依赖周期序列，在连续语流中易受协同发音干扰。
- * 口径（简化主流实现，Hillenbrand 回归线法 + 时间平滑分布统计）：
+ * 口径（Hillenbrand 回归线法 + 时间平滑）：
  *   1. 40ms 帧 / 10ms 帧移，能量过 −50dB 门限的帧参与统计
- *   2. 每帧：汉宁窗 → FFT → 功率谱 → 对数谱 → IFFT 得实倒谱
+ *   2. 每帧：汉宁窗 → FFT → 功率谱 → 对数功率谱（dB）→ IFFT 得实倒谱
  *   3. 在基频搜索范围对应的 quefrency 区间内取倒谱峰值，减去同区间
  *      倒谱包络回归线在该点的值 → 帧级 CPP（dB）
- *   4. 帧序列做 5 帧滑动平均（时间平滑），CPPS = 平滑后的均值 − 标准差
+ *   4. 帧序列做 5 帧滑动平均（时间平滑），CPPS = 平滑后的均值
+ *
+ * 说明：本实现按 Hillenbrand 标准定义（dB 谱 + 均值）。与 Praat 的
+ * PowerCepstrogram 存在量级差异（验证设施 scripts/validation/ 交叉验证显示
+ * 本口径数值约为 Praat 的 1/20），绝对数值不可直接比较，相对趋势一致。
+ * 本口径对合成信号做构造真值回归（见 validation.test.ts）。
  *
  * 经验参考：连续语音健康嗓音多在 4–20dB，<4dB 提示谐波结构不显著
  * （气息声/噪声成分高）。数值仅供参考，不构成医学诊断。
@@ -192,9 +197,8 @@ export function computeCpps(samples: Float32Array, sampleRate: number): number |
     smoothed.push(s / (hi - lo));
   }
 
-  // CPPS = 均值 − 标准差
+  // CPPS = 平滑后的均值（Hillenbrand 标准口径；不再减标准差）
   const mean = smoothed.reduce((s, v) => s + v, 0) / smoothed.length;
-  const variance = smoothed.reduce((s, v) => s + (v - mean) * (v - mean), 0) / smoothed.length;
-  const cpps = mean - Math.sqrt(variance);
+  const cpps = mean;
   return isFinite(cpps) ? Math.round(cpps * 10) / 10 : null;
 }
