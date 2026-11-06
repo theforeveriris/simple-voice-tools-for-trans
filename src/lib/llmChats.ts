@@ -7,6 +7,18 @@
 import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 
+/** 一次生成实际注入的上下文（供气泡下方的「本轮上下文」面板展示） */
+export interface ChatContextMeta {
+  /** 明细与固定记录里真正写进提示词的记录 id */
+  recordIds: string[];
+  /** /attach 固定且已注入的记录 id */
+  pinnedIds: string[];
+  /** 历史记录总条数（其余只参与聚合与趋势统计，不逐条注入） */
+  totalRecords: number;
+  /** 注入的内置文档摘录 */
+  docs: { title: string; chars: number }[];
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -16,6 +28,8 @@ export interface ChatMessage {
   draft?: boolean;
   /** 生成被用户中止（或异常中断），content 为已输出的部分内容 */
   interrupted?: boolean;
+  /** 本轮注入的记录与文档（仅助手消息） */
+  context?: ChatContextMeta;
 }
 
 export interface ChatConversation {
@@ -57,7 +71,8 @@ function validConversation(c: unknown): c is ChatConversation {
     && o.messages.every((m) => !!m
       && typeof m.content === 'string'
       && (m.role === 'user' || m.role === 'assistant')
-      && (m.think === undefined || typeof m.think === 'string'))
+      && (m.think === undefined || typeof m.think === 'string')
+      && (m.context === undefined || (typeof m.context === 'object' && m.context !== null)))
     && (o.pinnedRecordIds === undefined
       || (Array.isArray(o.pinnedRecordIds) && o.pinnedRecordIds.every((id) => typeof id === 'string')));
 }
@@ -188,7 +203,13 @@ export function setMessages(id: string, messages: ChatMessage[]): void {
  */
 export function saveAssistantDraft(
   id: string,
-  patch: { content: string; think?: string; draft: boolean; interrupted?: boolean },
+  patch: {
+    content: string;
+    think?: string;
+    draft: boolean;
+    interrupted?: boolean;
+    context?: ChatContextMeta;
+  },
 ): void {
   if (!chats) return;
   const conv = chats.find((c) => c.id === id);
@@ -200,6 +221,7 @@ export function saveAssistantDraft(
     ...(patch.think ? { think: patch.think } : {}),
     ...(patch.draft ? { draft: true } : {}),
     ...(patch.interrupted ? { interrupted: true } : {}),
+    ...(patch.context ? { context: patch.context } : {}),
   };
   const messages = last?.role === 'assistant' && last.draft
     ? [...conv.messages.slice(0, -1), msg]

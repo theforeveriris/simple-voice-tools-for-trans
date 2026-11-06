@@ -32,11 +32,22 @@ export type AssistantContextSettings = Pick<
   | 'baselineRecordId'
 >;
 
+export interface AssistantContextMeta {
+  /** 明细里逐条列出的记录 id（旧→新） */
+  detailIds: string[];
+  /** /attach 固定且实际注入的记录 id */
+  pinnedIds: string[];
+  /** 历史记录总条数（其余只进入聚合与趋势统计） */
+  totalRecords: number;
+}
+
 export interface AssistantContext {
   /** 用户画像与训练靶标（无记录时也注入） */
   profile: string;
   /** 历史聚合、基线 Δ 与最近记录明细 */
   history: string;
+  /** 本轮实际注入的记录 id（供「本轮上下文」面板展示） */
+  meta: AssistantContextMeta;
 }
 
 const GOAL_LABELS: Record<AppSettings['userGoal'], string> = {
@@ -438,9 +449,22 @@ export function buildRawSection(
   sustained: Map<string, SustainedMetrics | null>,
   budgetTokens: number,
 ): string {
-  if (records.length === 0 || budgetTokens <= 0) return '';
+  return buildRawSectionDetailed(records, sustained, budgetTokens).text;
+}
+
+/**
+ * 最近记录明细（带 meta）：返回文本与被逐条写入的记录 id。
+ * 预算不足时从最旧开始截断，其余记录仍会出现在聚合统计里。
+ */
+export function buildRawSectionDetailed(
+  records: AnalysisRecord[],
+  sustained: Map<string, SustainedMetrics | null>,
+  budgetTokens: number,
+): { text: string; keptIds: string[] } {
+  if (records.length === 0 || budgetTokens <= 0) return { text: '', keptIds: [] };
   const sorted = [...records].sort((a, b) => a.createdAt - b.createdAt);
   const kept: string[] = [];
+  const keptIds: string[] = [];
   let used = 0;
   for (let i = sorted.length - 1; i >= 0 && kept.length < MAX_RAW_RECORDS; i -= 1) {
     const rec = sorted[i];
@@ -449,11 +473,12 @@ export function buildRawSection(
     if (used + cost > budgetTokens) break;
     used += cost;
     kept.unshift(line);
+    keptIds.unshift(rec.id);
   }
-  if (!kept.length) return '';
+  if (!kept.length) return { text: '', keptIds: [] };
   const omitted = sorted.length - kept.length;
   const header = `## 最近记录明细（共 ${sorted.length} 条${omitted > 0 ? `，以下为最近 ${kept.length} 条，其余见上方聚合` : ''}，时间从旧到新）`;
-  return `${header}\n${kept.join('\n')}`;
+  return { text: `${header}\n${kept.join('\n')}`, keptIds };
 }
 
 /** 当前会话固定记录：/attach 指定的记录优先完整展示，按预算从最新开始装入 */
@@ -463,15 +488,26 @@ export function buildPinnedSection(
   sustained: Map<string, SustainedMetrics | null>,
   budgetTokens = Number.POSITIVE_INFINITY,
 ): string {
-  if (!pinnedIds.length) return '';
+  return buildPinnedSectionDetailed(records, pinnedIds, sustained, budgetTokens).text;
+}
+
+/** 固定记录（带 meta）：返回文本与真正写进提示词的记录 id */
+export function buildPinnedSectionDetailed(
+  records: AnalysisRecord[],
+  pinnedIds: string[],
+  sustained: Map<string, SustainedMetrics | null>,
+  budgetTokens = Number.POSITIVE_INFINITY,
+): { text: string; keptIds: string[] } {
+  if (!pinnedIds.length) return { text: '', keptIds: [] };
   const byId = new Map(records.map((r) => [r.id, r]));
   const pinned = pinnedIds
     .map((id) => byId.get(id))
     .filter((r): r is AnalysisRecord => r != null)
     .sort((a, b) => b.createdAt - a.createdAt);
-  if (!pinned.length) return '';
+  if (!pinned.length) return { text: '', keptIds: [] };
 
   const lines: string[] = [];
+  const keptIds: string[] = [];
   let used = 0;
   for (const rec of pinned) {
     const line = formatRecordLine(rec, sustained.get(rec.id) ?? null);
@@ -479,10 +515,14 @@ export function buildPinnedSection(
     if (used + cost > budgetTokens) break;
     used += cost;
     lines.push(line);
+    keptIds.push(rec.id);
   }
-  if (!lines.length) return '';
+  if (!lines.length) return { text: '', keptIds: [] };
   const omitted = pinned.length - lines.length;
-  return `## 当前会话固定记录（用户通过 /attach 指定，共 ${pinned.length} 条${omitted > 0 ? `，以下为最近 ${lines.length} 条` : ''}）\n${lines.join('\n')}`;
+  return {
+    text: `## 当前会话固定记录（用户通过 /attach 指定，共 ${pinned.length} 条${omitted > 0 ? `，以下为最近 ${lines.length} 条` : ''}）\n${lines.join('\n')}`,
+    keptIds,
+  };
 }
 
 /**
@@ -496,24 +536,26 @@ export function buildAssistantContext(
   pinnedIds: string[] = [],
 ): AssistantContext {
   const profile = buildAssistantProfile(settings);
-  if (records.length === 0) return { profile, history: '' };
+  const meta: AssistantContextMeta = { detailIds: [], pinnedIds: [], totalRecords: records.length };
+  if (records.length === 0) return { profile, history: '', meta };
 
   const sustained = new Map<string, SustainedMetrics | null>(
     records.map((r) => [r.id, sustainedOf(r)]),
   );
   let remaining = budgetTokens - estimateTokens(profile);
-  if (remaining <= 40) return { profile, history: '' };
+  if (remaining <= 40) return { profile, history: '', meta };
 
   const parts: string[] = [];
-  const pinned = buildPinnedSection(
+  const pinned = buildPinnedSectionDetailed(
     records,
     pinnedIds,
     sustained,
     Math.max(120, remaining * 0.6),
   );
-  if (pinned) {
-    const cost = estimateTokens(pinned);
-    parts.push(pinned);
+  if (pinned.text) {
+    const cost = estimateTokens(pinned.text);
+    parts.push(pinned.text);
+    meta.pinnedIds = pinned.keptIds;
     remaining -= cost;
   }
 
@@ -535,9 +577,12 @@ export function buildAssistantContext(
   }
 
   if (remaining > 60) {
-    const raw = buildRawSection(records, sustained, remaining);
-    if (raw) parts.push(raw);
+    const raw = buildRawSectionDetailed(records, sustained, remaining);
+    if (raw.text) {
+      parts.push(raw.text);
+      meta.detailIds = raw.keptIds;
+    }
   }
 
-  return { profile, history: parts.join('\n\n') };
+  return { profile, history: parts.join('\n\n'), meta };
 }

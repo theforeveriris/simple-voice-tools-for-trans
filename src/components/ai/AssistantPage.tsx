@@ -33,10 +33,10 @@ import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
   addMessage, createChat, deleteChat, getChat, renameChat, saveAssistantDraft, setMessages,
-  setPinnedRecords, useChats, type ChatConversation, type ChatMessage,
+  setPinnedRecords, useChats, type ChatContextMeta, type ChatConversation, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
-import { retrieveDocs } from '@/lib/docKnowledge';
+import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
@@ -46,6 +46,8 @@ import {
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
+import { ContextChip } from '@/components/ai/ContextChip';
+import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { recorder } from '@/lib/audio/recorder';
@@ -263,6 +265,7 @@ const Bubble = memo(function Bubble({
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
+      {!mine && !streaming && m.context && <ContextChip meta={m.context} />}
       {!mine && !!m.think && !streaming && (
         <button
           type="button"
@@ -484,8 +487,17 @@ export function AssistantPage() {
     );
     // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
-    const docs = lastUser ? await retrieveDocs(lastUser.content) : '';
-    const sys = systemPrompt(hist.profile, hist.history, docs, extraContext);
+    const docHit = lastUser
+      ? await retrieveDocsDetailed(lastUser.content)
+      : { text: '', docs: [] };
+    const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraContext);
+    // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
+    const contextMeta: ChatContextMeta = {
+      recordIds: hist.meta.detailIds,
+      pinnedIds: hist.meta.pinnedIds,
+      totalRecords: hist.meta.totalRecords,
+      docs: docHit.docs,
+    };
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
     const maxTok = Math.max(1024, context - reserve);
@@ -512,7 +524,12 @@ export function AssistantPage() {
       if (now - lastDraftAt < 1500 && textAcc.length - savedLen < 200) return;
       lastDraftAt = now;
       savedLen = textAcc.length;
-      saveAssistantDraft(convId, { content: textAcc, think: thinkAcc, draft: true });
+      saveAssistantDraft(convId, {
+        content: textAcc,
+        think: thinkAcc,
+        draft: true,
+        context: contextMeta,
+      });
     };
     try {
       const reply = await llmChatStreamMessages(cfg, turns, {
@@ -530,11 +547,22 @@ export function AssistantPage() {
           persistDraft();
         },
       });
-      saveAssistantDraft(convId, { content: reply, think: thinkAcc, draft: false });
+      saveAssistantDraft(convId, {
+        content: reply,
+        think: thinkAcc,
+        draft: false,
+        context: contextMeta,
+      });
     } catch (err: unknown) {
       // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
       if (textAcc || thinkAcc) {
-        saveAssistantDraft(convId, { content: textAcc, think: thinkAcc, draft: false, interrupted: true });
+        saveAssistantDraft(convId, {
+          content: textAcc,
+          think: thinkAcc,
+          draft: false,
+          interrupted: true,
+          context: contextMeta,
+        });
       }
       if (!isAbortError(err)) setError(classifyError(err));
     } finally {
@@ -1111,11 +1139,17 @@ export function AssistantPage() {
         if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
       }} className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {messages.length === 0 && !busy ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
             <span className="grid size-14 place-items-center rounded-full bg-accent/15 text-accent">
               <Sparkles size={26} />
             </span>
             <p className="max-w-[17rem] text-[13px] leading-relaxed text-ink-2">{t('assistant.greeting')}</p>
+            <QuickPrompts
+              onPick={(text) => {
+                setInput(text);
+                requestAnimationFrame(() => taRef.current?.focus());
+              }}
+            />
           </div>
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col gap-3 pb-2">

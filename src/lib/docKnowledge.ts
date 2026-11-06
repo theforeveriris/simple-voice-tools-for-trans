@@ -128,30 +128,44 @@ function chunkScore(chunk: DocChunk, terms: string[]): number {
   return score;
 }
 
+/** 检索结果的元信息（供「本轮上下文」面板展示） */
+export interface RetrievedDocsMeta {
+  text: string;
+  docs: { title: string; chars: number }[];
+}
+
 /**
  * 检索与查询最相关的文档块（0–4 块，总分 > 0 才返回）。
- * 返回格式化好的系统提示注入段（含来源标注）。
- * 文档按需加载：加载失败时返回空串，静默跳过注入。
+ * 返回格式化好的系统提示注入段（含来源标注）与命中标题，供 UI 展示。
+ * 文档按需加载：加载失败时返回空结果，静默跳过注入。
  */
-export async function retrieveDocs(query: string, maxChunks = 4): Promise<string> {
+export async function retrieveDocsDetailed(query: string, maxChunks = 4): Promise<RetrievedDocsMeta> {
   const terms = queryTerms(query);
-  if (terms.length === 0) return '';
+  if (terms.length === 0) return { text: '', docs: [] };
   let chunks: DocChunk[];
   try {
     chunks = await loadChunks();
   } catch {
-    return '';
+    return { text: '', docs: [] };
   }
   const scored = chunks
     .map((c) => ({ c, s: chunkScore(c, terms) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s)
     .slice(0, maxChunks);
-  if (scored.length === 0) return '';
+  if (scored.length === 0) return { text: '', docs: [] };
   const sections = scored
     .map(({ c }) => `### ${c.doc}｜${c.title}\n${c.content}`)
     .join('\n\n');
-  return `\n\n## 应用内置文档摘录（与问题相关时引用；这是本应用的官方文档，可信度高于你的先验知识；无关时忽略）\n${sections}`;
+  return {
+    text: `\n\n## 应用内置文档摘录（与问题相关时引用；这是本应用的官方文档，可信度高于你的先验知识；无关时忽略）\n${sections}`,
+    docs: scored.map(({ c }) => ({ title: c.title, chars: c.content.length })),
+  };
+}
+
+/** 只要注入文本（旧接口，等价于 retrieveDocsDetailed().text） */
+export async function retrieveDocs(query: string, maxChunks = 4): Promise<string> {
+  return (await retrieveDocsDetailed(query, maxChunks)).text;
 }
 
 /** 知识库是否可用（文档加载失败时返回 false，注入端静默跳过） */
