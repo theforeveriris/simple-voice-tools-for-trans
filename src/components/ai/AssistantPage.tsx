@@ -19,7 +19,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowUp, Brain, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight,
@@ -46,7 +46,7 @@ import {
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
-import { ContextChipButton, ContextPanel } from '@/components/ai/ContextChip';
+import { ContextPanel } from '@/components/ai/ContextPanel';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -185,12 +185,27 @@ function ActionBtn({ icon: Icon, label, onClick }: { icon: typeof Copy; label: s
   );
 }
 
-/** 思考过程块 */
-function ThinkBlock({ text, live }: { text: string; live?: boolean }) {
+/** 思考过程块（可内嵌「本次注入」面板：上下文信息并入思考展开区） */
+function ThinkBlock({
+  text,
+  live,
+  children,
+}: {
+  text: string;
+  live?: boolean;
+  children?: ReactNode;
+}) {
   return (
-    <span className="mb-2 block max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/[0.04] px-2.5 py-2 text-left text-[11px] leading-relaxed text-ink-2">
-      {live && !text ? <span className="italic">{t('assistant.thinking')}</span> : text}
-    </span>
+    <div className="mb-2 rounded-xl bg-black/[0.04] px-2.5 py-2 text-left">
+      {text ? (
+        <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-ink-2">
+          {text}
+        </p>
+      ) : live ? (
+        <p className="text-[11px] italic leading-relaxed text-ink-2">{t('assistant.thinking')}</p>
+      ) : null}
+      {children}
+    </div>
   );
 }
 
@@ -253,47 +268,41 @@ const Bubble = memo(function Bubble({
   onBranch: (idx: number) => void;
 }) {
   useI18n();
-  const [ctxOpen, setCtxOpen] = useState(false);
   const mine = m.role === 'user';
   const think = streaming ? liveThink : m.think ?? '';
-  const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkOpen;
+  const hasMeta = !streaming && (!!m.think || !!m.context);
   const onBodyClick = () => onAction(streaming ? null : active ? null : idx);
   const body = (
     <>
-      {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
+      {!mine && streaming && think && <ThinkBlock text={think} live />}
+      {!mine && !streaming && thinkOpen && (!!m.think || !!m.context) && (
+        <ThinkBlock text={m.think ?? ''}>
+          {m.context && (
+            <div className={cn(m.think && 'mt-2 border-t border-line/60 pt-2')}>
+              <ContextPanel meta={m.context} />
+            </div>
+          )}
+        </ThinkBlock>
+      )}
       {mine
         ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
-      {!mine && !streaming && (!!m.think || !!m.context) && (
-        <>
-          <div className={cn('mt-2 flex items-center gap-2', m.think ? 'justify-between' : 'justify-end')}>
-            {m.think ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleThink(idx);
-                }}
-                aria-expanded={thinkOpen}
-                className="inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/60 hover:text-ink"
-              >
-                <Brain size={10} />
-                {t('assistant.think')}
-                <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
-              </button>
-            ) : null}
-            {m.context ? (
-              <ContextChipButton
-                meta={m.context}
-                open={ctxOpen}
-                onToggle={() => setCtxOpen((v) => !v)}
-              />
-            ) : null}
-          </div>
-          {ctxOpen && m.context ? <ContextPanel meta={m.context} /> : null}
-        </>
+      {hasMeta && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleThink(idx);
+          }}
+          aria-expanded={thinkOpen}
+          className="mt-2 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/60 hover:text-ink"
+        >
+          <Brain size={10} />
+          {m.think ? t('assistant.think') : t('assistant.ctx.title')}
+          <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
+        </button>
       )}
       {!mine && m.interrupted && (
         <p className="mt-1 text-[10px] text-ink-2/70">{t('assistant.interrupted')}</p>

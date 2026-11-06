@@ -1,19 +1,16 @@
 /**
- * 「本轮上下文」chip：显示这条回答实际注入了哪些记录与内置文档。
- * 拆成按钮与面板两部分：按钮和「思考过程」同排（右侧），面板展开占满整行。
+ * 「本次注入」面板：列出这条回答实际带进提示词的记录与内置文档。
+ * 现在并入「思考过程」的展开区域，不再单独占一行 chip。
  * 数据来自生成时写入消息的 ChatContextMeta，不重新计算提示词。
  */
 
 import { useMemo } from 'react';
-import type { MouseEvent } from 'react';
-import { ChevronDown, Info } from 'lucide-react';
 import type { ChatContextMeta } from '@/lib/llmChats';
 import type { AnalysisRecord } from '@/types';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { cn } from '@/lib/utils';
 
 /** 面板里最多逐条列出多少条记录（其余只给计数） */
 const MAX_ROWS = 8;
@@ -31,47 +28,6 @@ function contextIds(meta: ChatContextMeta): string[] {
   return [...new Set([...pinned, ...detail])];
 }
 
-export function ContextChipButton({
-  meta,
-  open,
-  onToggle,
-}: {
-  meta: ChatContextMeta;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  useI18n();
-  const ids = useMemo(() => contextIds(meta), [meta]);
-  const docs = Array.isArray(meta.docs) ? meta.docs : [];
-  if (ids.length === 0 && docs.length === 0) return null;
-
-  const summary = [
-    ids.length ? t('assistant.ctx.records', { n: ids.length }) : null,
-    docs.length ? t('assistant.ctx.docs', { n: docs.length }) : null,
-  ].filter(Boolean).join(' · ') || t('assistant.ctx.aggregate');
-
-  const onClick = (e: MouseEvent) => {
-    e.stopPropagation();
-    onToggle();
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-expanded={open}
-      aria-label={t('assistant.ctx.title')}
-      className="inline-flex min-w-0 max-w-full shrink items-center gap-1 rounded-full border border-line/60 bg-surface-hi/40 px-2 py-0.5 text-[10px] text-ink-2 transition-colors hover:text-ink"
-    >
-      <Info size={10} className="shrink-0" />
-      <span className="shrink-0">{t('assistant.ctx.title')}</span>
-      <span className="shrink-0 text-ink-2/50">·</span>
-      <span className="truncate">{summary}</span>
-      <ChevronDown size={10} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
-    </button>
-  );
-}
-
 export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
   useI18n();
   const records = useHistoryStore((s) => s.records);
@@ -86,10 +42,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
   if (ids.length === 0 && docs.length === 0) return null;
 
   return (
-    <div
-      className="mt-1.5 rounded-2xl bg-card p-2.5 text-left shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div onClick={(e) => e.stopPropagation()}>
       <p className="mb-1 text-[9px] font-medium uppercase tracking-wide text-ink-2/70">
         {t('assistant.ctx.injected')}
       </p>
