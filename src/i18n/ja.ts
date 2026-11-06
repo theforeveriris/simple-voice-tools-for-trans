@@ -559,6 +559,7 @@ export const ja = {
   'assistant.err.rate': 'リクエストが多すぎるか上限に達しました。しばらくしてからお試しください',
   'assistant.err.timeout': 'リクエストがタイムアウトしました。通信を確認して再試行してください',
   'assistant.err.network': '通信に失敗しました。ネットワークまたは接続先を確認してください',
+  'assistant.err.server': 'サーバーが一時的に利用できません（待ち行列が満杯か過負荷）。しばらくしてから再試行してください',
   'assistant.errSettings': '設定を開く',
   'assistant.ctx.title': '今回のコンテキスト',
   'assistant.ctx.records': '記録 {n} 件',

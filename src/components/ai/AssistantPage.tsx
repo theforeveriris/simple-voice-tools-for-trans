@@ -59,8 +59,8 @@ import { cn } from '@/lib/utils';
 /** Token 粗估：CJK 1 字 ≈ 1 token，其余 4 字符 ≈ 1 token（与用量统计同一口径） */
 const estTokens = estimateTokens;
 
-/** 用户可读的错误分类：401/403=密钥、429=限流、超时、网络 */
-type ErrorKind = 'auth' | 'rate' | 'timeout' | 'network' | 'unknown';
+/** 用户可读的错误分类：401/403=密钥、429=限流、超时、网络、5xx=服务端不可用 */
+type ErrorKind = 'auth' | 'rate' | 'timeout' | 'network' | 'server' | 'unknown';
 interface AssistantError { kind: ErrorKind; detail: string }
 
 function classifyError(err: unknown): AssistantError {
@@ -79,7 +79,12 @@ function classifyError(err: unknown): AssistantError {
           || s.includes('network error') || s.includes('econnrefused')
           || s.includes('load failed')
           ? 'network'
-          : 'unknown';
+          // 5xx / 上游排队：服务端暂时不可用（503 queue is full 之类），重试即可
+          : /http 5\d\d\b/.test(s) || s.includes('serviceunavailable')
+            || s.includes('service unavailable') || s.includes('overloaded')
+            || s.includes('queue is full') || s.includes('bad gateway')
+            ? 'server'
+            : 'unknown';
   return { kind, detail: detail.slice(0, 240) };
 }
 

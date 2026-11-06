@@ -559,6 +559,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.err.rate': '請之過頻或數盡，少頃再試',
   'assistant.err.timeout': '請逾時，察網而後試',
   'assistant.err.network': '網不通，察其連或所向',
+  'assistant.err.server': '伺服暫不可用（隊滿或過負）· 少頃再試',
   'assistant.errSettings': '往設置',
   'assistant.ctx.title': '本輪之據',
   'assistant.ctx.records': '{n} 錄',

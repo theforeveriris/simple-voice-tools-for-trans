@@ -558,6 +558,7 @@ export const zhTW = {
   'assistant.err.rate': '請求過於頻繁或額度不足，請稍後再試',
   'assistant.err.timeout': '請求逾時，請檢查網路後重試',
   'assistant.err.network': '網路連線失敗，請檢查網路或介面位址',
+  'assistant.err.server': '伺服器暫時無法使用（排隊已滿或過載），稍後重試即可',
   'assistant.errSettings': '前往設定',
   'assistant.ctx.title': '本輪上下文',
   'assistant.ctx.records': '{n} 條記錄',

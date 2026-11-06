@@ -558,6 +558,7 @@ export const fr = {
   'assistant.err.rate': 'Trop de requêtes ou quota épuisé - réessayez plus tard',
   'assistant.err.timeout': 'Délai dépassé - vérifiez le réseau puis réessayez',
   'assistant.err.network': 'Échec du réseau - vérifiez la connexion ou l’adresse du service',
+  'assistant.err.server': 'Service temporairement indisponible (file d’attente pleine ou surcharge) - réessayez bientôt',
   'assistant.errSettings': 'Ouvrir les réglages',
   'assistant.ctx.title': 'Contexte',
   'assistant.ctx.records': '{n} enregistrements',

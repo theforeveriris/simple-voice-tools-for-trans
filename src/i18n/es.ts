@@ -558,6 +558,7 @@ export const es = {
   'assistant.err.rate': 'Demasiadas solicitudes o sin cuota: inténtalo más tarde',
   'assistant.err.timeout': 'La solicitud agotó el tiempo: revisa la red y reintenta',
   'assistant.err.network': 'Error de red: revisa la conexión o la dirección del servicio',
+  'assistant.err.server': 'El servicio no está disponible temporalmente (cola llena o sobrecarga): reintenta en un momento',
   'assistant.errSettings': 'Abrir ajustes',
   'assistant.ctx.title': 'Contexto',
   'assistant.ctx.records': '{n} registros',

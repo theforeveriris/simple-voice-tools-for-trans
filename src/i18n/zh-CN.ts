@@ -559,6 +559,7 @@ export const zhCN = {
   'assistant.err.rate': '请求过于频繁或额度不足，请稍后再试',
   'assistant.err.timeout': '请求超时，请检查网络后重试',
   'assistant.err.network': '网络连接失败，请检查网络或接口地址',
+  'assistant.err.server': '服务端暂时不可用（排队已满或过载），稍后重试即可',
   'assistant.errSettings': '去设置',
   'assistant.ctx.title': '本轮上下文',
   'assistant.ctx.records': '{n} 条记录',

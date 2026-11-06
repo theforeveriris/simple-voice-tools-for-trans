@@ -558,6 +558,7 @@ export const en = {
   'assistant.err.rate': 'Rate limited or out of quota - try again later',
   'assistant.err.timeout': 'The request timed out - check your network and retry',
   'assistant.err.network': 'Network request failed - check your connection or endpoint',
+  'assistant.err.server': 'The service is temporarily unavailable (queue full or overloaded) - try again shortly',
   'assistant.errSettings': 'Open settings',
   'assistant.ctx.title': 'Context',
   'assistant.ctx.records': '{n} records',
