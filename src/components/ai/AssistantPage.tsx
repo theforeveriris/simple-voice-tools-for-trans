@@ -22,8 +22,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Brain, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight, Pencil,
-  Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
+  ArrowUp, Brain, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight,
+  Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -259,13 +259,6 @@ const Bubble = memo(function Bubble({
   const onBodyClick = () => onAction(streaming ? null : active ? null : idx);
   const body = (
     <>
-      {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
-      {mine
-        ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
-        : (m.content
-          ? <MessageBody text={m.content} />
-          : (streaming ? (liveThink ? '' : '…') : ''))}
-      {!mine && !streaming && m.context && <ContextChip meta={m.context} />}
       {!mine && !!m.think && !streaming && (
         <button
           type="button"
@@ -273,12 +266,21 @@ const Bubble = memo(function Bubble({
             e.stopPropagation();
             onToggleThink(idx);
           }}
-          className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-2"
+          aria-expanded={thinkOpen}
+          className="mb-1.5 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/60 hover:text-ink"
         >
           <Brain size={10} />
           {t('assistant.think')}
+          <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
         </button>
       )}
+      {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
+      {mine
+        ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
+        : (m.content
+          ? <MessageBody text={m.content} />
+          : (streaming ? (liveThink ? '' : '…') : ''))}
+      {!mine && !streaming && m.context && <ContextChip meta={m.context} />}
       {!mine && m.interrupted && (
         <p className="mt-1 text-[10px] text-ink-2/70">{t('assistant.interrupted')}</p>
       )}
