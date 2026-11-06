@@ -106,7 +106,7 @@ function analyzeFixture(name: string): FixtureMetrics {
 
 afterAll(() => {
   if (!hasFixtures || Object.keys(analyzed).length === 0) return;
-  const dump: Record<string, any> = {};
+  const dump: Record<string, Record<string, number | null>> = {};
   for (const [name, r] of Object.entries(analyzed)) {
     dump[name] = { ...r.raw };
   }

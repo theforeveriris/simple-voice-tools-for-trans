@@ -8,13 +8,17 @@ import { freqToNote } from '@/constants';
 import { t } from '@/i18n';
 import { useStore } from '@/store/useStore';
 import type { AnalysisRecord } from '@/types';
+import { InfoTip } from '../settings/InfoTip';
 
 /* -------------------------------- 统计表格 -------------------------------- */
 
-function StatGroup({ title, rows }: { title: string; rows: [string, ReactNode][] }) {
+function StatGroup({ title, rows, info }: { title: string; rows: [string, ReactNode][]; info?: string }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs font-semibold text-ink">{title}</p>
+      <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink">
+        {title}
+        {info && <InfoTip label="" text={info} />}
+      </p>
       <table className="w-full">
         <tbody>
           {rows.map(([label, value]) => (
@@ -92,6 +96,7 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
       />
       <StatGroup
         title={t('analysis.groupVq')}
+        info={vqHint}
         rows={[
           [t('analysis.rowJitter'), s.jitterPct != null ? `${s.jitterPct.toFixed(2)} %` : '—'],
           [t('analysis.rowShimmer'), s.shimmerPct != null ? `${s.shimmerPct.toFixed(2)} %` : '—'],
@@ -102,7 +107,6 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
           [t('analysis.rowH1A3'), s.h1a3Db != null ? `${s.h1a3Db.toFixed(1)} dB` : '—'],
           [t('analysis.rowBreathiness'), s.breathiness != null ? `${(s.breathiness * 100).toFixed(0)} %` : '—'],
           [t('analysis.rowNasality'), s.nasalityDb != null ? `${s.nasalityDb.toFixed(1)} dB` : '—'],
-          [t('analysis.rowNote'), <span key="hint" className="text-[10px] font-normal text-ink-2">{vqHint}</span>],
         ]}
       />
     </div>

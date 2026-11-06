@@ -4,13 +4,13 @@
  * 验证缓存音频不入仓（见 .gitignore），脚本与预期值入仓。
  */
 
+import fs from 'node:fs';
+
 const text = (buf: Uint8Array, off: number, len: number): string =>
   String.fromCharCode(...buf.subarray(off, off + len));
 
 /** 16bit PCM mono WAV → Float32 [-1, 1]（管线口径） */
 export function readWavMono16(path: string): { pcm: Float32Array; sampleRate: number } {
-  // Node 环境读文件（vitest node 模式）
-  const fs = require('node:fs') as typeof import('node:fs');
   const buf = fs.readFileSync(path);
   const u8 = new Uint8Array(buf);
   if (text(u8, 0, 4) !== 'RIFF' || text(u8, 8, 4) !== 'WAVE') {

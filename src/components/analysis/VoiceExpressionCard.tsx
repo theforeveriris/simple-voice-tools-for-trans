@@ -81,13 +81,15 @@ export function VoiceExpressionCard({ record }: { record: AnalysisRecord }) {
       <div className="mb-2 flex items-center gap-1.5 px-0.5">
         <Scale size={13} className="text-accent" />
         <span className="text-xs font-semibold text-ink">{t('analysis.expressionTitle')}</span>
-        <InfoTip label="" text={t('analysis.expressionTip')} />
+        <InfoTip
+          label=""
+          text={`${t('analysis.expressionTip')}\n\n${t('analysis.expressionNote')}`}
+        />
         <span className="ml-auto rounded-full bg-surface-hi px-2 py-0.5 text-[10px] font-medium text-ink-2">
           {zoneLabel}
         </span>
       </div>
 
-      <p className="px-0.5 text-[10px] text-ink-2">{t('analysis.expressionScore')}</p>
       <div className="flex items-end gap-1.5 px-0.5">
         <span className="text-3xl font-semibold leading-none tabular-nums text-ink">{result.score}</span>
         <span className="pb-0.5 text-[11px] text-ink-2">/ 100</span>
@@ -113,11 +115,6 @@ export function VoiceExpressionCard({ record }: { record: AnalysisRecord }) {
             className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80 shadow-sm"
             style={{ left: `${result.score}%`, background: ZONE_DOT[result.zone] }}
           />
-        </div>
-        <div className="mt-1 grid grid-cols-3 text-[10px] text-ink-2">
-          <span>{t('analysis.expressionZoneMasculine')}</span>
-          <span className="text-center">{t('analysis.expressionZoneNeutral')}</span>
-          <span className="text-right">{t('analysis.expressionZoneFeminine')}</span>
         </div>
       </div>
 
@@ -186,8 +183,6 @@ export function VoiceExpressionCard({ record }: { record: AnalysisRecord }) {
           </div>
         ))}
       </div>
-
-      <p className="mt-2 text-[10px] leading-relaxed text-ink-2/80">{t('analysis.expressionNote')}</p>
     </div>
   );
 }

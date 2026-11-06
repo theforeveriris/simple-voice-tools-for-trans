@@ -255,7 +255,7 @@ export function DataPage({
         toast.success(t('toast.reanalyzeBatchDone', { n: result.updated.length }));
       }
       await refreshStaleCount();
-    } catch (e) {
+    } catch {
       toast.error(t('toast.reanalyzeBatchFailed'));
     } finally {
       setBatchBusy(false);

@@ -56,14 +56,6 @@ function RangeRuler({ record }: { record: AnalysisRecord }) {
           style={{ left: `${posPct(Math.min(RULER_MAX, Math.max(RULER_MIN, avgF0)))}%`, ['--tw-ring-color' as string]: 'rgb(var(--c-card-rgb))' }}
         />
       </div>
-      {/* 刻度 */}
-      <div className="relative mt-1 h-3 text-[9px] tabular-nums text-ink-2">
-        {[100, 200, 300, 400, 500].map((f) => (
-          <span key={f} className="absolute -translate-x-1/2" style={{ left: `${posPct(f)}%` }}>
-            {f}
-          </span>
-        ))}
-      </div>
       <div className="mt-1 flex items-center justify-between text-[11px]">
         <span className="text-ink-2">{t('analysis.rangeP10P90', { a: p10F0.toFixed(0), b: p90F0.toFixed(0) })}</span>
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
@@ -105,22 +97,24 @@ export function HeroSummary({
       transition={{ duration: 0.35, ease: 'easeOut' }}
       className="card-surface p-5"
     >
-      {/* 标签行：平均基频 + 区间/模式徽标，右侧为分享 / CSV / 备注操作 */}
+      {/* 标签行：平均基频，右侧为分享 / 导出 / 备注操作；区间与模式徽标单独一行 */}
       <div className="flex items-center justify-between gap-2">
-        <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-ink-2">
+        <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-2">
           <Sparkles size={12} className="shrink-0 text-accent" />
           {t('analysis.avgF0')}
-          <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-            {isPartial ? t('analysis.chipRange', { a: formatClock(range[0]), b: formatClock(range[1]) }) : t('analysis.chipFull')}
-          </span>
-          {record.mode && (
-            <span className="flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-              <Music2 size={9} />
-              {t(`mode.${record.mode}`)}
-            </span>
-          )}
         </p>
         {actions && <div className="flex shrink-0 items-center gap-0.5">{actions}</div>}
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+          {isPartial ? t('analysis.chipRange', { a: formatClock(range[0]), b: formatClock(range[1]) }) : t('analysis.chipFull')}
+        </span>
+        {record.mode && (
+          <span className="flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+            <Music2 size={9} />
+            {t(`mode.${record.mode}`)}
+          </span>
+        )}
       </div>
       <div className="mt-2 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
         <div className="min-w-40">

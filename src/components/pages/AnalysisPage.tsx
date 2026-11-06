@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { FileCode2, FileSpreadsheet, Pencil, RefreshCw, Share2 } from 'lucide-react';
+import { FileSpreadsheet, Pencil, RefreshCw, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -92,7 +92,6 @@ export function AnalysisPage() {
   // 用当前算法参数重算（先预览新旧对比，确认后才覆盖）
   const [reanalyzeOpen, setReanalyzeOpen] = useState(false);
   // 交互 HTML 报告：含音频与否的选择弹窗（无音频记录直接导出）
-  const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
   // 帧数据导出（CSV / Praat PitchTier / Praat Formant / Lua 自定义格式）弹窗
   const [exportOpen, setExportOpen] = useState(false);
@@ -234,11 +233,10 @@ export function AnalysisPage() {
     }
   };
 
-  /** 交互 HTML 报告导出（withAudio 决定是否内嵌录音） */
+  /** 交互 HTML 报告导出（withAudio 决定是否内嵌录音；已合并进导出数据对话框） */
   const onExportHtml = async (withAudio: boolean) => {
     if (htmlBusy) return;
     setHtmlBusy(true);
-    setHtmlDialogOpen(false);
     try {
       const audio = withAudio ? await useHistoryStore.getState().getAudio(record.id) : null;
       await exportInteractiveHtml(record, { audio });
@@ -248,14 +246,6 @@ export function AnalysisPage() {
     } finally {
       setHtmlBusy(false);
     }
-  };
-
-  /** 入口：有录音音频先弹选择，无音频直接导出纯数据版 */
-  const onHtmlClick = async () => {
-    if (htmlBusy) return;
-    const audio = await useHistoryStore.getState().getAudio(record.id);
-    if (audio) setHtmlDialogOpen(true);
-    else void onExportHtml(false);
   };
 
   /** 用当前参数重算：无录音音频直接提示；有则打开重算对话框（内部跑管线出对比） */
@@ -290,15 +280,6 @@ export function AnalysisPage() {
               title={t('analysis.exportDataTitle')}
             >
               <FileSpreadsheet size={16} />
-            </button>
-            <button
-              onClick={() => void onHtmlClick()}
-              disabled={htmlBusy}
-              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent disabled:opacity-60"
-              aria-label={t('analysis.htmlAria')}
-              title={t('analysis.htmlTitle')}
-            >
-              <FileCode2 size={16} />
             </button>
             <button
               onClick={() => void onReanalyzeClick()}
@@ -339,7 +320,6 @@ export function AnalysisPage() {
       <SibilanceCard record={record} />
       {settings.pitchCompareEnabled && <PitchAlgorithmCard record={record} />}
       <StatsTable record={recordWithStats} />
-      <AdviceCard records={[record]} />
 
       {/* 图表卡显隐跟随设置（analysisCards）；语谱图另需实验性开关，声域图仅滑音记录 */}
       {settings.analysisCards.pitch && (
@@ -391,52 +371,15 @@ export function AnalysisPage() {
         />
       )}
 
+      {/* 训练建议：放在全部图表之后 */}
+      <AdviceCard records={[record]} />
+
       </>)}
 
       <NoteDialog record={record} open={noteOpen} onOpenChange={setNoteOpen} />
 
       {/* 用当前参数重算：新旧统计对比后确认覆盖 */}
       <ReanalyzeDialog record={record} open={reanalyzeOpen} onOpenChange={setReanalyzeOpen} />
-
-      {/* 交互 HTML 报告：是否内嵌录音音频 */}
-      <Dialog open={htmlDialogOpen} onOpenChange={setHtmlDialogOpen}>
-        <DialogContent className="max-w-sm rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>{t('html.dialogTitle')}</DialogTitle>
-            <DialogDescription>{t('html.dialogDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => void onExportHtml(true)}
-              disabled={htmlBusy}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
-            >
-              <span className="block text-sm font-medium text-ink">{t('html.withAudio')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('html.withAudioDesc')}</span>
-            </button>
-            <button
-              onClick={() => void onExportHtml(false)}
-              disabled={htmlBusy}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
-            >
-              <span className="block text-sm font-medium text-ink">{t('html.withoutAudio')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('html.withoutAudioDesc')}</span>
-            </button>
-            {/* 临床报告：静态排版（打印为 PDF），面向医生 / 言语治疗师的存档格式 */}
-            <button
-              onClick={() => {
-                setHtmlDialogOpen(false);
-                exportClinicalReport(record);
-                toast.success(t('toast.clinicalExported'));
-              }}
-              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
-            >
-              <span className="block text-sm font-medium text-ink">{t('html.clinical')}</span>
-              <span className="mt-0.5 block text-xs text-ink-2">{t('html.clinicalDesc')}</span>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* 帧数据导出：CSV / Praat PitchTier / Praat Formant /（Lua 自定义格式，有启用脚本时出现） */}
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
@@ -485,6 +428,37 @@ export function AnalysisPage() {
               </button>
             )}
             <TemplateManager record={record} onDone={() => setExportOpen(false)} />
+
+            <div className="mt-1 border-t border-black/[0.06] pt-2">
+              <p className="mb-1 px-1 text-[10px] font-medium text-ink-2">{t('html.dialogTitle')}</p>
+              <button
+                onClick={() => void onExportHtml(true)}
+                disabled={htmlBusy}
+                className="mt-1 w-full rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
+              >
+                <span className="block text-sm font-medium text-ink">{t('html.withAudio')}</span>
+                <span className="mt-0.5 block text-xs text-ink-2">{t('html.withAudioDesc')}</span>
+              </button>
+              <button
+                onClick={() => void onExportHtml(false)}
+                disabled={htmlBusy}
+                className="mt-2 w-full rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
+              >
+                <span className="block text-sm font-medium text-ink">{t('html.withoutAudio')}</span>
+                <span className="mt-0.5 block text-xs text-ink-2">{t('html.withoutAudioDesc')}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setExportOpen(false);
+                  exportClinicalReport(record);
+                  toast.success(t('toast.clinicalExported'));
+                }}
+                className="mt-2 w-full rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+              >
+                <span className="block text-sm font-medium text-ink">{t('html.clinical')}</span>
+                <span className="mt-0.5 block text-xs text-ink-2">{t('html.clinicalDesc')}</span>
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
