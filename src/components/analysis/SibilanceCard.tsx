@@ -48,7 +48,7 @@ export function SibilanceCard({ record }: { record: AnalysisRecord }) {
       <div className="mb-2.5 flex items-center gap-1.5 px-0.5">
         <Waves size={13} className="text-accent" />
         <span className="text-xs font-semibold text-ink">{t('sibilance.title')}</span>
-        <InfoTip label="" text={t('sibilance.explain')} />
+        <InfoTip label="" text={`${t('sibilance.explain')}\n${t('sibilance.needAudio')}`} />
       </div>
       {stats === 'unavailable' ? (
         <p className="px-0.5 text-xs text-ink-2">{t('sibilance.needAudio')}</p>
