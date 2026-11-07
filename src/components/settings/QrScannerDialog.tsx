@@ -1,8 +1,9 @@
 /**
  * 扫码弹窗（局域网同步用）
- * 用 getUserMedia 打开后置摄像头，配合 BarcodeDetector 逐帧识别二维码，
+ * 打开后置摄像头逐帧识别二维码：
+ * - 支持 BarcodeDetector 的浏览器（Android Chrome / ChromeOS）走原生识别
+ * - 其余浏览器动态加载 jsQR 做纯 JS 解码（桌面 Chrome / Firefox / Safari、iOS）
  * 识别成功后把文本交给调用方（调用方再解压成 SDP）。
- * BarcodeDetector 不可用的浏览器不显示扫码入口，退回粘贴文本。
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -13,6 +14,13 @@ import { useI18n } from '@/i18n/hook';
 interface BarcodeDetectorLike {
   detect(source: CanvasImageSource): Promise<{ rawValue?: string }[]>;
 }
+
+type JsQrFn = (data: Uint8ClampedArray, width: number, height: number) => { data: string } | null;
+
+/** 解码时的最大边长：太小认不出，太大拖慢逐帧解码 */
+const MAX_SCAN_EDGE = 640;
+/** 每帧解码间隔（约 8 帧/秒，扫静态二维码足够） */
+const FRAME_INTERVAL_MS = 120;
 
 export function QrScannerDialog({
   onResult,
@@ -37,18 +45,54 @@ export function QrScannerDialog({
   useEffect(() => {
     let cancelled = false;
     let raf = 0;
-    let detector: BarcodeDetectorLike | null = null;
-    /** 识别成功即置位，避免同一帧重复回调 */
     let done = false;
+    /** 上一帧解码时间（jsQR 限流；原生识别同样复用） */
+    let lastScan = 0;
+    let detector: BarcodeDetectorLike | null = null;
+    let jsqr: JsQrFn | null = null;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    /** 解码一帧；失败或未识别返回 undefined */
+    const detectFrame = async (video: HTMLVideoElement): Promise<string | undefined> => {
+      if (detector) {
+        try {
+          const codes = await detector.detect(video);
+          return codes.find((c) => c.rawValue)?.rawValue;
+        } catch {
+          return undefined;
+        }
+      }
+      if (!jsqr || !ctx || video.videoWidth === 0 || video.videoHeight === 0) return undefined;
+      const scale = Math.min(1, MAX_SCAN_EDGE / Math.max(video.videoWidth, video.videoHeight));
+      const w = Math.max(1, Math.round(video.videoWidth * scale));
+      const h = Math.max(1, Math.round(video.videoHeight * scale));
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+      ctx.drawImage(video, 0, 0, w, h);
+      const img = ctx.getImageData(0, 0, w, h);
+      return jsqr(img.data, w, h)?.data || undefined;
+    };
 
     void (async () => {
       try {
         const Detector = (window as unknown as {
-          BarcodeDetector: new (o: { formats: string[] }) => BarcodeDetectorLike;
+          BarcodeDetector?: new (o: { formats: string[] }) => BarcodeDetectorLike;
         }).BarcodeDetector;
-        detector = new Detector({ formats: ['qr_code'] });
+        if (typeof Detector === 'function') {
+          detector = new Detector({ formats: ['qr_code'] });
+        } else {
+          // 按需加载：不支持原生识别的浏览器才付出这份解码器体积
+          const mod = await import('jsqr');
+          jsqr = mod.default as JsQrFn;
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
           audio: false,
         });
         if (cancelled) {
@@ -61,25 +105,21 @@ export function QrScannerDialog({
         video.srcObject = stream;
         await video.play().catch(() => {});
 
-        const tick = async () => {
+        const tick = async (now: number) => {
           if (cancelled || done) return;
           const v = videoRef.current;
-          if (v && v.readyState >= 2 && detector) {
-            try {
-              const codes = await detector.detect(v);
-              const text = codes.find((c) => c.rawValue)?.rawValue;
-              if (text) {
-                done = true;
-                onResultRef.current(text);
-                return;
-              }
-            } catch {
-              /* 单帧识别失败继续下一帧 */
+          if (v && v.readyState >= 2 && now - lastScan >= FRAME_INTERVAL_MS) {
+            lastScan = now;
+            const text = await detectFrame(v);
+            if (text) {
+              done = true;
+              onResultRef.current(text);
+              return;
             }
           }
-          raf = window.requestAnimationFrame(() => void tick());
+          raf = window.requestAnimationFrame((ts) => void tick(ts));
         };
-        raf = window.requestAnimationFrame(() => void tick());
+        raf = window.requestAnimationFrame((ts) => void tick(ts));
       } catch (err) {
         if (!cancelled) setError(String(err));
       }
