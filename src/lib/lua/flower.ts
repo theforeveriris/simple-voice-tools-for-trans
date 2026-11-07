@@ -21,6 +21,7 @@ import { activeScriptOf } from './scripts';
 /** 花瓣数与数值范围的安全钳制 */
 const MAX_PETALS = 96;
 
+/** 数值钳制：非有限值取兜底，其余夹在 [lo, hi] */
 function clamp(v: unknown, lo: number, hi: number, fallback: number): number {
   const n = typeof v === 'number' && isFinite(v) ? v : fallback;
   return Math.max(lo, Math.min(hi, n));

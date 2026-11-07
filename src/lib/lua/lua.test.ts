@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { runLuaFn, getLuaEngine } from './engine';
-import { buildLuaAdvice } from './advice';
+import { buildLuaAdvice, normalizeTips } from './advice';
 import type { AnalysisRecord } from '@/types';
 
 describe('lua engine', () => {
@@ -151,5 +151,25 @@ describe('lua advice', () => {
     // 直接调用引擎层验证容错（不污染用户存储）
     const res = await runLuaFn('function advise(s) error("boom") end', 'advise', [{}]);
     expect(res.ok).toBe(false);
+  });
+});
+
+describe('normalizeTips', () => {
+  it('接受 { text, level } 表（脚本中心预览据此显示文案而非 [object Object]）', () => {
+    const tips = normalizeTips([{ text: '抬高音高', level: 'warn' }]);
+    expect(tips).toEqual([{ text: '抬高音高', level: 'warn' }]);
+  });
+
+  it('接受纯字符串建议', () => {
+    const tips = normalizeTips(['保持练习']);
+    expect(tips).toEqual([{ text: '保持练习', level: 'info' }]);
+  });
+
+  it('丢弃非法条目，最多 3 条', () => {
+    const tips = normalizeTips([
+      { text: 'a' }, { text: 'b' }, { text: 'c' }, { text: 'd' }, { nope: 1 },
+    ]);
+    expect(tips).toHaveLength(3);
+    expect(tips.map((t) => t.text)).toEqual(['a', 'b', 'c']);
   });
 });

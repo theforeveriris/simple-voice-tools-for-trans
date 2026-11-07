@@ -27,6 +27,7 @@ import {
   putUserScript, setScriptEnabled, type LuaScriptView, type ScriptKind,
 } from '@/lib/lua/scripts';
 import { runLuaFn } from '@/lib/lua/engine';
+import { normalizeTips } from '@/lib/lua/advice';
 import { normalizeOps } from '@/lib/lua/card';
 import { renderCardOps } from '@/lib/lua/cardRender';
 import { normalizeFlower } from '@/lib/lua/flower';
@@ -247,7 +248,8 @@ export function ScriptHubSection() {
       if (script.kind === 'advice') {
         const res = await runLuaFn<unknown>(script.code, 'advise', [demoArgs(script.kind, demo)]);
         if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
-        const list = Array.isArray(res.value) ? res.value.map((x) => String(x)) : [];
+        // 与运行时同一套规范化：脚本返回 { text, level } 表时不能显示成 [object Object]
+        const list = normalizeTips(res.value).map((tip) => tip.text);
         setPreview({ ...base, status: 'ok', advice: list });
         return;
       }

@@ -53,7 +53,11 @@ interface RawTip {
   level?: unknown;
 }
 
-function normalizeTips(value: unknown): LuaAdviceItem[] {
+/**
+ * 脚本返回的建议数组 → 规范化条目
+ * （接受字符串或 { text, level } 表；两者都支持，与运行时一致）
+ */
+export function normalizeTips(value: unknown): LuaAdviceItem[] {
   if (!Array.isArray(value)) return [];
   const out: LuaAdviceItem[] = [];
   for (const v of value) {

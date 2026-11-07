@@ -182,12 +182,46 @@ describe('内置脚本可执行', () => {
       } else {
         args = {
           ...recordView(rec),
-          series: { frames: [{ t: 0, f0: 180, rmsDb: -30, f1: 600, f2: 1800 }] },
+          // 含缺失值的帧：生产数据里 f0/f1/f2 常为 null，导出脚本必须容错
+          series: {
+            frames: [
+              { t: 0, f0: 180, rmsDb: -30, f1: 600, f2: 1800 },
+              { t: 1, f0: null, rmsDb: null, f1: null, f2: null },
+            ],
+          },
         };
         fn = 'export';
       }
       const res = await runLuaFn<unknown>(b.code, fn, [args]);
       expect(res.ok, `${b.name}（${b.kind}）运行失败：${res.ok ? '' : res.error}`).toBe(true);
     }
+  });
+
+  it('导出脚本对缺失值产出空字段而非报错或 nil', async () => {
+    const rec = fakeRecord();
+    const res = await runLuaFn<{ filename?: unknown; content?: unknown }>(
+      BUILTIN_SCRIPTS.find((b) => b.id === 'builtin-export-csv-frames')!.code,
+      'export',
+      [{
+        ...recordView(rec),
+        series: {
+          frames: [
+            { t: 0, f0: 180, rmsDb: -30, f1: 600, f2: 1800 },
+            { t: 1, f0: null, rmsDb: null, f1: null, f2: null },
+          ],
+        },
+      }],
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const content = String(res.value.content ?? '');
+    // 表头 + 两行数据
+    const lines = content.trim().split('\n');
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toBe('t,f0_hz,rms_db,f1_hz,f2_hz');
+    // 完整帧：各字段都有值（f0 / rms 保留一位小数，f1 / f2 取整）
+    expect(lines[1]).toBe('0.000,180.0,-30.0,600,1800');
+    // 缺失帧：t 之后的 4 个字段全部留空（不是 nil / 字符串 "nil"）
+    expect(lines[2]).toBe('1.000,,,,');
   });
 });

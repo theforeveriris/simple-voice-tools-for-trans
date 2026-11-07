@@ -16,6 +16,7 @@ import { recordView } from './filter';
 
 const MAX_CONTENT = 4 * 1024 * 1024;
 
+/** 导出桥的产出：建议文件名 + 文本内容 */
 export interface LuaExportResult {
   filename: string;
   content: string;
@@ -37,6 +38,7 @@ function seriesView(rec: AnalysisRecord): Record<string, unknown> {
   return { frames: rows };
 }
 
+/** 校验并清洗脚本产出：文件名安全化、内容上限 4MB、非法返回 null */
 export function normalizeResult(value: unknown): LuaExportResult | null {
   if (!value || typeof value !== 'object') return null;
   const o = value as Record<string, unknown>;

@@ -24,6 +24,7 @@ export const SCRIPT_KINDS: readonly ScriptKind[] = ['advice', 'card', 'flower', 
  * advice 为多脚本合并方向，不在此列。
  */
 const SINGLE_KINDS: readonly ScriptKind[] = ['card', 'flower', 'export'];
+/** 该方向是否单一生效（同一时间只允许一个脚本） */
 export function isSingleKind(kind: ScriptKind): boolean {
   return SINGLE_KINDS.includes(kind);
 }
@@ -73,6 +74,7 @@ async function kvGet<T>(key: string): Promise<T | undefined> {
   }
 }
 
+/** kv 写入：先写内存副本（读立刻可见），再尝试落盘（失败下次写操作重试） */
 async function kvPut(key: string, value: unknown): Promise<void> {
   memoryStore.set(key, value);
   try {
@@ -99,6 +101,7 @@ export function getScriptsVersion(): number {
   return scriptsVersion;
 }
 
+/** 脚本清单变更：递增版本号并通知订阅者（分析页 / 分享弹层据此刷新可用性） */
 function bumpScripts(): void {
   scriptsVersion += 1;
   for (const cb of listeners) {
@@ -137,10 +140,12 @@ export async function deleteUserScript(id: string): Promise<void> {
 
 /* ------------------------- 启用态（内置 + 用户共用） ------------------------- */
 
+/** 读启用态映射（脚本 id → 是否启用） */
 async function getEnabledMap(): Promise<Record<string, boolean>> {
   return (await kvGet<Record<string, boolean>>(ENABLED_KEY)) ?? {};
 }
 
+/** 写启用态映射 */
 async function setEnabledMap(map: Record<string, boolean>): Promise<void> {
   await kvPut(ENABLED_KEY, map);
 }
@@ -270,6 +275,7 @@ function newId(): string {
   return `lua-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** 导入 JSON 打包的脚本（分享格式）；坏条目逐条丢弃，返回导入条数 */
 export async function importScripts(raw: string): Promise<number> {
   const parsed = JSON.parse(raw) as LuaScriptExport;
   if (parsed?.version !== 1 || !Array.isArray(parsed.scripts)) {
@@ -325,6 +331,7 @@ export async function importAny(fileName: string, content: string): Promise<numb
   return importScripts(content);
 }
 
+/** 导出脚本为 JSON 打包字符串（可分享） */
 export function exportScripts(scripts: LuaScriptView[]): string {
   const payload: LuaScriptExport = {
     version: 1,

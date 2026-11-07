@@ -24,6 +24,7 @@ import bloomRadiant from '../../../lua-scripts/flower/bloom-radiant.lua?raw';
 import bloomSoft from '../../../lua-scripts/flower/bloom-soft.lua?raw';
 import type { ScriptKind } from './scripts';
 
+/** 一条内置脚本的元信息（id / 名称 / 方向 / 说明 / 源码 / 默认启用态） */
 export interface BuiltinScriptMeta {
   id: string;
   name: string;
