@@ -11,11 +11,12 @@
 
 import type { AnalysisRecord } from '@/types';
 import { runLuaFn } from './engine';
-import { listScripts } from './scripts';
+import { activeScriptOf } from './scripts';
 import { recordView } from './filter';
 
 const MAX_CONTENT = 4 * 1024 * 1024;
 
+/** 导出桥的产出：建议文件名 + 文本内容 */
 export interface LuaExportResult {
   filename: string;
   content: string;
@@ -37,6 +38,7 @@ function seriesView(rec: AnalysisRecord): Record<string, unknown> {
   return { frames: rows };
 }
 
+/** 校验并清洗脚本产出：文件名安全化、内容上限 4MB、非法返回 null */
 export function normalizeResult(value: unknown): LuaExportResult | null {
   if (!value || typeof value !== 'object') return null;
   const o = value as Record<string, unknown>;
@@ -50,21 +52,21 @@ export function normalizeResult(value: unknown): LuaExportResult | null {
 }
 
 /**
- * 跑启用的 export 类脚本中第一个；无脚本/出错/产出非法 → null（调用方隐藏入口）。
+ * 跑启用的 export 类脚本中生效的那个（单一消费方：同一方向只允许一个脚本生效）；
+ * 无脚本/出错/产出非法 → null（调用方隐藏入口）。
  */
 export async function luaExportOf(rec: AnalysisRecord): Promise<LuaExportResult | null> {
-  const scripts = (await listScripts()).filter((s) => s.kind === 'export' && s.enabled);
-  if (scripts.length === 0) return null;
+  const script = await activeScriptOf('export');
+  if (!script) return null;
   const base = recordView(rec);
   // record 上补 series（帧级序列）——建议/过滤场景不需要，导出场景核心
   const view = { ...base, series: seriesView(rec) };
-  const res = await runLuaFn<unknown>(scripts[0].code, 'export', [view]);
+  const res = await runLuaFn<unknown>(script.code, 'export', [view]);
   if (!res.ok) return null;
   return normalizeResult(res.value);
 }
 
 /** 是否有启用的 export 脚本（导出菜单决定是否显示入口） */
 export async function luaExportEnabled(): Promise<boolean> {
-  const scripts = await listScripts();
-  return scripts.some((s) => s.kind === 'export' && s.enabled);
+  return (await activeScriptOf('export')) !== null;
 }

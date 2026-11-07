@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { runLuaFn, getLuaEngine } from './engine';
-import { buildLuaAdvice } from './advice';
+import { buildLuaAdvice, normalizeTips } from './advice';
 import type { AnalysisRecord } from '@/types';
 
 describe('lua engine', () => {
@@ -94,6 +94,29 @@ describe('lua engine', () => {
       expect(res.value.b).toBe('hi');
     }
   });
+
+  it('返回 nil / 无 return 时值为 null（调用方需判空）', async () => {
+    const nilRes = await runLuaFn('function f() return nil end', 'f', []);
+    expect(nilRes.ok).toBe(true);
+    if (nilRes.ok) expect(nilRes.value).toBeNull();
+
+    const noRes = await runLuaFn('function f() end', 'f', []);
+    expect(noRes.ok).toBe(true);
+    if (noRes.ok) expect(noRes.value).toBeNull();
+  });
+
+  it('表里的 nil 字段被丢弃（不是 null 键）', async () => {
+    const res = await runLuaFn<Record<string, unknown>>(
+      'function f() return { a = 1, b = nil, c = "x" } end',
+      'f',
+      [],
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value.a).toBe(1);
+      expect('b' in res.value).toBe(false);
+    }
+  });
 });
 
 /** 最小可用记录（仅 Lua 建议用到的字段） */
@@ -151,5 +174,25 @@ describe('lua advice', () => {
     // 直接调用引擎层验证容错（不污染用户存储）
     const res = await runLuaFn('function advise(s) error("boom") end', 'advise', [{}]);
     expect(res.ok).toBe(false);
+  });
+});
+
+describe('normalizeTips', () => {
+  it('接受 { text, level } 表（脚本中心预览据此显示文案而非 [object Object]）', () => {
+    const tips = normalizeTips([{ text: '抬高音高', level: 'warn' }]);
+    expect(tips).toEqual([{ text: '抬高音高', level: 'warn' }]);
+  });
+
+  it('接受纯字符串建议', () => {
+    const tips = normalizeTips(['保持练习']);
+    expect(tips).toEqual([{ text: '保持练习', level: 'info' }]);
+  });
+
+  it('丢弃非法条目，最多 3 条', () => {
+    const tips = normalizeTips([
+      { text: 'a' }, { text: 'b' }, { text: 'c' }, { text: 'd' }, { nope: 1 },
+    ]);
+    expect(tips).toHaveLength(3);
+    expect(tips.map((t) => t.text)).toEqual(['a', 'b', 'c']);
   });
 });

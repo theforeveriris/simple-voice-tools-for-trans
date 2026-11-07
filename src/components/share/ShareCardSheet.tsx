@@ -12,7 +12,7 @@ import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { shareOrDownload, type ShareCardStyle } from '@/lib/export/shareCard';
 import { renderLuaCard } from '@/lib/lua/cardRender';
-import { luaCardEnabled } from '@/lib/lua/card';
+import { activeScriptOf, subscribeScripts } from '@/lib/lua/scripts';
 import { cn } from '@/lib/utils';
 
 const STYLE_OPTIONS: { id: ShareCardStyle; labelKey: 'share.styleThemed' | 'share.styleDark' | 'share.styleLight' | 'share.styleAurora' | 'share.styleFlower' }[] = [
@@ -42,8 +42,9 @@ export function ShareCardSheet({
   const [style, setStyle] = useState<ShareCardStyle>('themed');
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /** Lua 模板可用性：弹层打开时探测一次（有启用的 card 脚本才出现该选项） */
+  /** Lua 模板可用性 + 生效脚本名：弹层打开时探测并订阅脚本中心变更 */
   const [luaAvailable, setLuaAvailable] = useState(false);
+  const [luaName, setLuaName] = useState('');
   /** 异步渲染的 Lua 预览图（与内置样式的同步预览分轨） */
   const [luaPreview, setLuaPreview] = useState<string | null>(null);
   /** 触发本次 Lua 渲染的 style 快照（style 切换后丢弃过期结果） */
@@ -52,11 +53,23 @@ export function ShareCardSheet({
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    // 探测：有启用的 card 脚本才显示「Lua 模板」项
-    void luaCardEnabled().then((v) => {
-      if (alive) setLuaAvailable(v);
-    }).catch(() => setLuaAvailable(false));
-    return () => { alive = false; };
+    // 探测 + 订阅：有生效的 card 脚本才显示「Lua 模板」项；脚本失效时若停在 Lua 样式则回退
+    const probe = () => {
+      void activeScriptOf('card').then((s) => {
+        if (!alive) return;
+        setLuaAvailable(s !== null);
+        setLuaName(s?.name ?? '');
+        if (s === null) setStyle((prev) => (prev === 'lua' ? 'themed' : prev));
+      }).catch(() => {
+        if (!alive) return;
+        setLuaAvailable(false);
+        setLuaName('');
+        setStyle((prev) => (prev === 'lua' ? 'themed' : prev));
+      });
+    };
+    probe();
+    const unsubscribe = subscribeScripts(probe);
+    return () => { alive = false; unsubscribe(); };
   }, [open]);
 
   // 切换样式即重渲染预览；render 闭包随父组件更新（开销为一次 Canvas 绘制，可接受）
@@ -157,7 +170,7 @@ export function ShareCardSheet({
               {t(s.labelKey)}
             </button>
           ))}
-          {luaAvailable && (
+          {luaAvailable && luaRecord && (
             <button
               onClick={() => setStyle('lua')}
               className={cn(
@@ -167,7 +180,7 @@ export function ShareCardSheet({
                   : 'bg-card text-ink-2 shadow-[0_1px_4px_rgba(28,25,45,0.06)]',
               )}
             >
-              {t('share.styleLua')}
+              {luaName ? t('share.styleLuaNamed', { name: luaName }) : t('share.styleLua')}
             </button>
           )}
         </div>

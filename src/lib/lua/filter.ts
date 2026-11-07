@@ -32,6 +32,7 @@ export function recordView(rec: AnalysisRecord): Record<string, unknown> {
     mode: rec.mode ?? 'reading',
     note: rec.note ?? '',
     stats: {
+      durationSec: rec.stats.durationSec,
       avgF0: rec.stats.avgF0,
       medianF0: rec.stats.medianF0,
       minF0: rec.stats.minF0,

@@ -16,11 +16,12 @@
 import type { Flower, Petal } from '@/lib/flower';
 import type { AnalysisRecord } from '@/types';
 import { runLuaFn } from './engine';
-import { listScripts } from './scripts';
+import { activeScriptOf } from './scripts';
 
 /** 花瓣数与数值范围的安全钳制 */
 const MAX_PETALS = 96;
 
+/** 数值钳制：非有限值取兜底，其余夹在 [lo, hi] */
 function clamp(v: unknown, lo: number, hi: number, fallback: number): number {
   const n = typeof v === 'number' && isFinite(v) ? v : fallback;
   return Math.max(lo, Math.min(hi, n));
@@ -104,15 +105,14 @@ function buildStatsView(rec: AnalysisRecord, bands: BandSummary | null): Record<
   };
 }
 
-/** 批量预计算：花园记录集逐条跑第一个启用的 flower 脚本（无脚本/失败 = 空表） */
+/** 批量预计算：花园记录集逐条跑生效的 flower 脚本（无脚本/失败 = 空表） */
 export async function computeLuaFlowers(
   records: AnalysisRecord[],
   bandOf: (r: AnalysisRecord) => BandSummary | null,
 ): Promise<Map<string, Flower>> {
   const out = new Map<string, Flower>();
-  const scripts = (await listScripts()).filter((s) => s.kind === 'flower' && s.enabled);
-  if (scripts.length === 0) return out;
-  const script = scripts[0];
+  const script = await activeScriptOf('flower');
+  if (!script) return out;
   for (const rec of records) {
     const res = await runLuaFn<unknown>(script.code, 'flower', [buildStatsView(rec, bandOf(rec))]);
     if (!res.ok) continue;
