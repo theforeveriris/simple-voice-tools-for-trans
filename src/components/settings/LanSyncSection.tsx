@@ -145,8 +145,6 @@ export function LanSyncSection() {
 
   return (
     <SettingsSection icon={Wifi} title={t('lanSync.title')}>
-      <p className="mb-2 px-0.5 text-[11px] leading-relaxed text-ink-2">{t('lanSync.desc')}</p>
-
       {step === 'idle' && (
         <div className="flex gap-2 px-0.5">
           <button
@@ -187,13 +185,8 @@ export function LanSyncSection() {
 
       {(step === 'offer-created' || step === 'answer-created') && (
         <div className="flex flex-col gap-2 px-0.5">
-          {step === 'offer-created' && role === 'host' && (
-            <p className="text-[11px] leading-relaxed text-ink-2">{t('lanSync.hostStep1')}</p>
-          )}
-
           {step === 'offer-created' && role === 'guest' && (
             <>
-              <p className="text-[11px] leading-relaxed text-ink-2">{t('lanSync.guestStep1')}</p>
               <textarea
                 value={sdpIn}
                 onChange={(e) => setSdpIn(e.target.value)}
@@ -226,9 +219,8 @@ export function LanSyncSection() {
           {sdpOut && (
             <>
               {qrPayload && (
-                <div className="flex flex-col items-center gap-1.5 py-1">
+                <div className="flex flex-col items-center py-1">
                   <SyncQr value={qrPayload} size={240} />
-                  <p className="text-center text-[10px] leading-relaxed text-ink-2">{t('lanSync.qrHint')}</p>
                 </div>
               )}
               <p className="text-[11px] leading-relaxed text-ink-2">
@@ -254,7 +246,6 @@ export function LanSyncSection() {
 
           {step === 'offer-created' && role === 'host' && (
             <>
-              <p className="text-[11px] leading-relaxed text-ink-2">{t('lanSync.hostStep2')}</p>
               <textarea
                 value={sdpIn}
                 onChange={(e) => setSdpIn(e.target.value)}
@@ -282,10 +273,6 @@ export function LanSyncSection() {
                 )}
               </div>
             </>
-          )}
-
-          {step === 'answer-created' && role === 'guest' && (
-            <p className="text-[11px] leading-relaxed text-ink-2">{t('lanSync.guestStep2')}</p>
           )}
         </div>
       )}
