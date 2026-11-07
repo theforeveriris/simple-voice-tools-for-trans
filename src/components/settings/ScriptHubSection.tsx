@@ -1,23 +1,22 @@
 /**
  * 脚本中心（实验性功能子区块）
- * 管理 Lua 脚本：内置脚本（可停用）/ 用户脚本（增删改、导入导出 JSON 分享），
- * 每条可试运行（拿 demo 数据喂对应全局函数）验证脚本正确性。
+ * 管理 Lua 脚本：内置脚本（可停用）/ 用户脚本（增删改、导入导出 JSON 分享）。
  *
  * 生效规则（同一方向多个脚本怎么办）：
  *   - advice（建议）：可同时启用多个，运行时逐脚本执行后合并（每脚本至多 3 条、总计至多 3 条）；
  *   - card / flower / export（分享卡 / 声之花 / 导出桥）：单一消费方，同一方向同一时间只允许
- *     一个脚本生效——启用新脚本会自动停用该方向的其他脚本，界面标注「生效中」，避免「启用了却没跑」。
+ *     一个脚本生效——启用新脚本会自动停用该方向的其他脚本。
  *
- * 排版：四个方向各一组，组标题即入口（图标 · 名称 · 单选/多选 · 当前生效者 · 计数），
- * 点击展开组内的脚本行（发丝分隔，不给每行套卡片）。收起时一屏看完所有方向。
- * 建议方向用开关（多选语义），其余方向用单选圆点（单选语义，避免一排开关只能开一个）。
+ * 排版：四个方向各一组折叠标题；展开后脚本以**胶囊**铺开（与 AI 助手页的快捷提问同款）。
+ *   - 点胶囊：切换启用态，启用时填充主题强调色；
+ *   - 长按胶囊：弹出详情窗（简介 / 源码 / 试跑预览），右键同样可开。
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Braces, Check, ChevronRight, Download, Eye, FileDown, FilePlus2, Flower2,
-  Image, Lightbulb, Pencil, Play, Trash2, Upload, X,
+  Braces, ChevronRight, Download, FileDown, FilePlus2, Flower2, Image,
+  Lightbulb, Pencil, Play, Trash2, Upload, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -38,7 +37,7 @@ import { FlowerSvg } from '@/components/flowers/FlowerSvg';
 import type { Flower } from '@/lib/flower';
 import type { AdviceTarget } from '@/lib/advice';
 import type { AnalysisRecord, VoiceStats } from '@/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '../ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui';
 import { InfoTip } from './InfoTip';
 import { cn } from '@/lib/utils';
 
@@ -202,10 +201,9 @@ interface Draft {
   kind: ScriptKind;
 }
 
-/** 试跑预览状态（按脚本种类承载不同产物） */
-interface PreviewState {
-  name: string;
-  kind: ScriptKind;
+/** 长按详情窗：脚本本体 + 试跑结果 */
+interface DetailState {
+  script: LuaScriptView;
   status: 'loading' | 'ok' | 'error';
   error?: string;
   advice?: string[];
@@ -221,7 +219,7 @@ export function ScriptHubSection() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [testing, setTesting] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [detail, setDetail] = useState<DetailState | null>(null);
   /** 展开的方向（默认全收起，一屏看完所有方向） */
   const [open, setOpen] = useState<ScriptKind[]>([]);
 
@@ -240,55 +238,52 @@ export function ScriptHubSection() {
     reload();
   };
 
-  /** 试跑预览：用示例数据跑一遍脚本并把产物渲染出来（点击才跑，不自动全跑） */
-  const runPreview = async (script: LuaScriptView) => {
-    const base = { name: script.name, kind: script.kind };
-    setPreview({ ...base, status: 'loading' });
+  /** 打开详情窗：立即显示简介与源码，异步跑一次试跑预览填进下半部分 */
+  const openDetail = async (script: LuaScriptView) => {
+    setDetail({ script, status: 'loading' });
     const demo = demoOf();
     try {
       if (script.kind === 'advice') {
         const res = await runLuaFn<unknown>(script.code, 'advise', [demoArgs(script.kind, demo)]);
-        if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
+        if (!res.ok) { setDetail({ script, status: 'error', error: res.error }); return; }
         // 与运行时同一套规范化：脚本返回 { text, level } 表时不能显示成 [object Object]
-        const list = normalizeTips(res.value).map((tip) => tip.text);
-        setPreview({ ...base, status: 'ok', advice: list });
+        setDetail({ script, status: 'ok', advice: normalizeTips(res.value).map((tip) => tip.text) });
         return;
       }
       if (script.kind === 'card') {
         const res = await runLuaFn<unknown>(script.code, 'template', [demoArgs(script.kind, demo)]);
-        if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
+        if (!res.ok) { setDetail({ script, status: 'error', error: res.error }); return; }
         const ops = normalizeOps(res.value);
         const canvas = ops.length > 0 ? renderCardOps(ops, demo) : null;
-        setPreview({ ...base, status: 'ok', cardUrl: canvas?.toDataURL('image/png') });
+        setDetail({ script, status: 'ok', cardUrl: canvas?.toDataURL('image/png') });
         return;
       }
       if (script.kind === 'flower') {
         const res = await runLuaFn<unknown>(script.code, 'flower', [demoArgs(script.kind, demo)]);
-        if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
-        setPreview({ ...base, status: 'ok', flower: normalizeFlower(res.value, { petalsFrom: 'template', facts: [] }) });
+        if (!res.ok) { setDetail({ script, status: 'error', error: res.error }); return; }
+        setDetail({ script, status: 'ok', flower: normalizeFlower(res.value, { petalsFrom: 'template', facts: [] }) });
         return;
       }
-      // export：喂样例记录视图（含 series.frames）
       const res = await runLuaFn<unknown>(script.code, 'export', [demoArgs(script.kind, demo)]);
-      if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
+      if (!res.ok) { setDetail({ script, status: 'error', error: res.error }); return; }
       const value = res.value;
       if (!value || typeof value !== 'object') {
-        setPreview({ ...base, status: 'ok' });
+        setDetail({ script, status: 'ok' });
         return;
       }
       const o = value as { filename?: unknown; content?: unknown };
       if (typeof o.content !== 'string' || !o.content) {
-        setPreview({ ...base, status: 'ok' });
+        setDetail({ script, status: 'ok' });
         return;
       }
-      setPreview({
-        ...base,
+      setDetail({
+        script,
         status: 'ok',
         exportName: typeof o.filename === 'string' ? o.filename : 'export',
         exportContent: o.content.slice(0, 4000),
       });
     } catch (err) {
-      setPreview({ ...base, status: 'error', error: String(err) });
+      setDetail({ script, status: 'error', error: String(err) });
     }
   };
 
@@ -328,7 +323,6 @@ export function ScriptHubSection() {
         }
         return;
       }
-      // export：校验产出 { filename, content }
       const res = await runLuaFn<unknown>(code, 'export', [demoArgs(kind, demo)]);
       const value = res.ok && res.value && typeof res.value === 'object'
         ? (res.value as { content?: unknown })
@@ -357,7 +351,6 @@ export function ScriptHubSection() {
     const id = draft.id ?? `lua-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const prev = isNew ? undefined : scripts.find((s) => s.id === id);
     const kindChanged = !prev || prev.kind !== draft.kind;
-    // 编辑前是否在使用中（新建视为需要启用）
     const wasEnabled = isNew || (prev?.enabled ?? false);
     await putUserScript({ id, name, kind: draft.kind, code: draft.code, createdAt: 0, updatedAt: 0 });
     if (isSingleKindOf(draft.kind) && kindChanged && wasEnabled) {
@@ -475,7 +468,7 @@ export function ScriptHubSection() {
         </button>
       </div>
 
-      {/* 四个方向：折叠分组 */}
+      {/* 四个方向：折叠分组 + 胶囊 */}
       <div className="flex flex-col">
         {groups.map((g) => {
           const expanded = open.includes(g.kind);
@@ -505,29 +498,19 @@ export function ScriptHubSection() {
                 />
               </button>
 
-              {/* 组内脚本行 */}
+              {/* 组内脚本：胶囊 */}
               {expanded && (
-                <div className="pb-1 pl-8">
+                <div className="flex flex-wrap gap-1.5 pb-2.5 pl-8">
                   {g.list.map((s) => (
-                    <ScriptRow
+                    <ScriptChip
                       key={s.id}
                       script={s}
-                      single={g.single}
                       onToggle={() => void onToggle(s)}
-                      onPreview={() => void runPreview(s)}
-                      onEdit={() => setDraft({ id: s.id, name: s.name, code: s.code, kind: s.kind })}
-                      onDelete={() => {
-                        if (confirm(t('labs.scriptDeleteConfirm', { name: s.name }))) {
-                          void deleteUserScript(s.id).then(() => {
-                            toast.success(t('labs.scriptDeleteDone'));
-                            reload();
-                          });
-                        }
-                      }}
+                      onDetail={() => void openDetail(s)}
                     />
                   ))}
                   {g.list.length === 0 && (
-                    <p className="py-3 text-[11px] text-ink-2">{t('labs.scriptNoScripts')}</p>
+                    <p className="py-1 text-[11px] text-ink-2">{t('labs.scriptNoScripts')}</p>
                   )}
                 </div>
               )}
@@ -553,8 +536,9 @@ export function ScriptHubSection() {
           <Download size={13} />
           {t('labs.scriptExport')}
         </button>
-        <span className="ml-auto text-[10px] text-ink-2">
-          {t('labs.scriptCount', { n: scripts.length })}
+        <span className="ml-auto flex items-center gap-2 text-[10px] text-ink-2">
+          <span>{t('labs.scriptLongPressHint')}</span>
+          <span className="tabular-nums">{t('labs.scriptCount', { n: scripts.length })}</span>
         </span>
       </div>
 
@@ -613,69 +597,132 @@ export function ScriptHubSection() {
         </div>
       )}
 
-      {/* 试跑预览（点击才跑，不自动全跑）：按脚本种类渲染不同产物 */}
-      {preview && (
+      {/* 长按详情窗：简介 + 源码 + 试跑预览 */}
+      {detail && (
         <div
           className="fixed inset-0 z-[80] grid place-items-center bg-black/30 px-6 backdrop-blur-sm"
-          onClick={() => setPreview(null)}
+          onClick={() => setDetail(null)}
         >
           <div
-            className="card-surface relative flex max-h-[80dvh] w-full max-w-sm flex-col items-center overflow-y-auto p-5"
+            className="card-surface relative flex max-h-[82dvh] w-full max-w-md flex-col overflow-y-auto p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setPreview(null)}
+              onClick={() => setDetail(null)}
               aria-label={t('common.close')}
               className="absolute right-3 top-3 grid size-8 place-items-center rounded-full text-ink-2 hover:bg-surface-hi"
             >
               <X size={15} />
             </button>
-            <p className="max-w-[80%] truncate text-sm font-semibold text-ink">{preview.name}</p>
-            <p className="mb-2 text-[10px] text-ink-2">{t(kindLabelKey(preview.kind))}</p>
 
-            {preview.status === 'loading' && <p className="py-6 text-xs text-ink-2">…</p>}
+            <p className="max-w-[80%] truncate text-sm font-semibold text-ink">{detail.script.name}</p>
+            <div className="mb-3 mt-1 flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full bg-surface-hi px-1.5 py-px text-[9.5px] text-ink-2">
+                {t(kindLabelKey(detail.script.kind))}
+              </span>
+              <span className="rounded-full bg-surface-hi px-1.5 py-px text-[9.5px] text-ink-2">
+                {detail.script.builtin ? t('labs.scriptBuiltin') : t('labs.scriptUser')}
+              </span>
+              {detail.script.enabled && (
+                <span className="rounded-full bg-accent px-1.5 py-px text-[9.5px] font-medium text-on-accent">
+                  {t('labs.scriptDetailOn')}
+                </span>
+              )}
+            </div>
 
-            {preview.status === 'error' && (
-              <p className="py-3 text-center text-[11px] leading-relaxed text-[#B0532F]">
-                {t('labs.scriptTestFail')}{preview.error ? `：${preview.error}` : ''}
-              </p>
+            {/* 简介 */}
+            {detail.script.description && (
+              <>
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-2">
+                  {t('labs.scriptDetailDesc')}
+                </p>
+                <p className="mb-3 text-[11.5px] leading-relaxed text-ink">{detail.script.description}</p>
+              </>
             )}
 
-            {preview.status === 'ok' && preview.kind === 'advice' && (
-              (preview.advice?.length ?? 0) > 0 ? (
-                <ul className="w-full space-y-1">
-                  {preview.advice!.map((a, i) => (
+            {/* 源码 */}
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-2">
+              {t('labs.scriptDetailSource')}
+            </p>
+            <pre className="mb-3 max-h-52 w-full overflow-auto rounded-xl bg-surface-hi p-3 font-mono text-[10px] leading-relaxed text-ink-2">
+              {detail.script.code}
+            </pre>
+
+            {/* 试跑预览 */}
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-2">
+              {t('labs.scriptDetailPreview')}
+            </p>
+            {detail.status === 'loading' && <p className="py-4 text-xs text-ink-2">…</p>}
+            {detail.status === 'error' && (
+              <p className="py-2 text-[11px] leading-relaxed text-[#B0532F]">
+                {t('labs.scriptTestFail')}{detail.error ? `：${detail.error}` : ''}
+              </p>
+            )}
+            {detail.status === 'ok' && detail.script.kind === 'advice' && (
+              (detail.advice?.length ?? 0) > 0 ? (
+                <ul className="space-y-1">
+                  {detail.advice!.map((a, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-2">
                       <span className="mt-[6px] size-1 shrink-0 rounded-full bg-accent/70" />{a}
                     </li>
                   ))}
                 </ul>
-              ) : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+              ) : <p className="py-3 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
             )}
-
-            {preview.status === 'ok' && preview.kind === 'card' && (
-              preview.cardUrl
-                ? <img src={preview.cardUrl} alt={t('labs.preview')} className="w-full rounded-xl" />
-                : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+            {detail.status === 'ok' && detail.script.kind === 'card' && (
+              detail.cardUrl
+                ? <img src={detail.cardUrl} alt={t('labs.scriptDetailPreview')} className="w-full rounded-xl" />
+                : <p className="py-3 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
             )}
-
-            {preview.status === 'ok' && preview.kind === 'flower' && (
-              preview.flower
-                ? <FlowerSvg flower={preview.flower} rotation={0} className="h-44 w-44" />
-                : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+            {detail.status === 'ok' && detail.script.kind === 'flower' && (
+              detail.flower
+                ? <FlowerSvg flower={detail.flower} rotation={0} className="mx-auto h-40 w-40" />
+                : <p className="py-3 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
             )}
-
-            {preview.status === 'ok' && preview.kind === 'export' && (
-              preview.exportContent
+            {detail.status === 'ok' && detail.script.kind === 'export' && (
+              detail.exportContent
                 ? (
                   <>
-                    <p className="mb-1 text-[10px] text-ink-2">{preview.exportName}</p>
-                    <pre className="w-full max-h-56 overflow-auto rounded-xl bg-card p-3 font-mono text-[10px] leading-relaxed text-ink-2">
-                      {preview.exportContent}
+                    <p className="mb-1 text-[10px] text-ink-2">{detail.exportName}</p>
+                    <pre className="max-h-40 w-full overflow-auto rounded-xl bg-surface-hi p-3 font-mono text-[10px] leading-relaxed text-ink-2">
+                      {detail.exportContent}
                     </pre>
                   </>
                 )
-                : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+                : <p className="py-3 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+            )}
+
+            {/* 用户脚本：编辑 / 删除 */}
+            {!detail.script.builtin && (
+              <div className="mt-4 flex items-center gap-2 border-t border-black/[0.06] pt-3">
+                <button
+                  onClick={() => {
+                    const s = detail.script;
+                    setDraft({ id: s.id, name: s.name, code: s.code, kind: s.kind });
+                    setDetail(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-full bg-surface-hi px-3 py-1.5 text-[11px] font-medium text-ink transition-colors hover:bg-surface"
+                >
+                  <Pencil size={12} />
+                  {t('labs.scriptEdit')}
+                </button>
+                <button
+                  onClick={() => {
+                    const s = detail.script;
+                    if (confirm(t('labs.scriptDeleteConfirm', { name: s.name }))) {
+                      void deleteUserScript(s.id).then(() => {
+                        toast.success(t('labs.scriptDeleteDone'));
+                        setDetail(null);
+                        reload();
+                      });
+                    }
+                  }}
+                  className="flex items-center gap-1.5 rounded-full bg-surface-hi px-3 py-1.5 text-[11px] font-medium text-[#B0532F] transition-colors hover:bg-surface"
+                >
+                  <Trash2 size={12} />
+                  {t('labs.scriptDelete')}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -684,89 +731,94 @@ export function ScriptHubSection() {
   );
 }
 
+/** 长按触发阈值（ms） */
+const LONG_PRESS_MS = 450;
+/** 手指移动超过该距离视为滚动，取消长按 */
+const LONG_PRESS_SLOP = 8;
+
 /**
- * 组内的一行脚本。
- * 多选方向（建议）用开关；单选方向用圆点（空心 = 未生效，实心勾 = 生效中），
- * 让「只能开一个」在视觉上就说清楚，而不是摆一排只能开一个的开关。
+ * 脚本胶囊（与 AI 助手页的快捷提问同款）
+ * - 点一下：切换启用态，启用时填充主题强调色；
+ * - 长按 / 右键：打开详情窗（简介 / 源码 / 预览）。
  */
-function ScriptRow({
+function ScriptChip({
   script,
-  single,
   onToggle,
-  onPreview,
-  onEdit,
-  onDelete,
+  onDetail,
 }: {
   script: LuaScriptView;
-  single: boolean;
   onToggle: () => void;
-  onPreview: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onDetail: () => void;
 }) {
+  const timer = useRef<number | null>(null);
+  /** 最近一次长按触发的时间（用时间戳而非布尔标志：松手时若浏览器没补发 click，
+   *  布尔标志会残留，把之后一次正常点击吞掉） */
+  const longPressAt = useRef(0);
+  const origin = useRef<{ x: number; y: number } | null>(null);
+
+  const clear = () => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+    origin.current = null;
+  };
+
+  const start = (e: React.PointerEvent) => {
+    clear();
+    origin.current = { x: e.clientX, y: e.clientY };
+    timer.current = window.setTimeout(() => {
+      timer.current = null;
+      longPressAt.current = Date.now();
+      onDetail();
+    }, LONG_PRESS_MS);
+  };
+
+  /** 移动超出容差 → 当作滚动，取消长按 */
+  const move = (e: React.PointerEvent) => {
+    const o = origin.current;
+    if (!o) return;
+    if (Math.abs(e.clientX - o.x) > LONG_PRESS_SLOP || Math.abs(e.clientY - o.y) > LONG_PRESS_SLOP) {
+      clear();
+    }
+  };
+
+  useEffect(() => () => clear(), []);
+
   return (
-    <div className="flex items-start gap-2 border-t border-black/[0.04] py-2 first:border-t-0">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span className="truncate text-[13px] font-medium text-ink">{script.name}</span>
-          <span className="rounded-full bg-surface-hi px-1.5 py-px text-[9.5px] text-ink-2">
-            {script.builtin ? t('labs.scriptBuiltin') : t('labs.scriptUser')}
-          </span>
-        </div>
-        {script.description && (
-          <p className="mt-0.5 line-clamp-1 text-[11px] leading-relaxed text-ink-2">
-            {script.description}
-          </p>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-0.5">
-        <button
-          onClick={onPreview}
-          aria-label={t('labs.preview')}
-          title={t('labs.preview')}
-          className="grid size-7 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-black/5 hover:text-accent"
-        >
-          <Eye size={13} />
-        </button>
+    <button
+      type="button"
+      onPointerDown={start}
+      onPointerMove={move}
+      onPointerUp={clear}
+      onPointerLeave={clear}
+      onPointerCancel={clear}
+      onClick={() => {
+        // 长按刚触发过详情：这次收尾的 click 不再切换启用态
+        if (Date.now() - longPressAt.current < 700) return;
+        onToggle();
+      }}
+      onContextMenu={(e) => { e.preventDefault(); onDetail(); }}
+      className={cn(
+        'max-w-full select-none rounded-full border px-3 py-1.5 text-[11px] font-medium',
+        'transition-colors active:scale-[0.98]',
+        script.enabled
+          ? 'border-accent bg-accent text-on-accent'
+          : 'border-line/70 bg-ink/[0.04] text-ink-2 hover:border-line hover:bg-ink/[0.07] hover:text-ink',
+      )}
+      title={script.description || script.name}
+    >
+      <span className="flex items-center gap-1.5">
         {!script.builtin && (
-          <>
-            <button
-              onClick={onEdit}
-              aria-label={t('labs.scriptEdit')}
-              title={t('labs.scriptEdit')}
-              className="grid size-7 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-black/5 hover:text-accent"
-            >
-              <Pencil size={13} />
-            </button>
-            <button
-              onClick={onDelete}
-              aria-label={t('labs.scriptDelete')}
-              title={t('labs.scriptDelete')}
-              className="grid size-7 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-black/5 hover:text-[#D66E5B]"
-            >
-              <Trash2 size={13} />
-            </button>
-          </>
-        )}
-        {single ? (
-          <button
-            onClick={onToggle}
-            role="radio"
-            aria-checked={script.enabled}
-            aria-label={script.name}
+          <span
             className={cn(
-              'ml-1 grid size-5 place-items-center rounded-full border transition-colors',
-              script.enabled
-                ? 'border-accent bg-accent text-on-accent'
-                : 'border-black/20 text-transparent hover:border-accent/60',
+              'size-1.5 shrink-0 rounded-full',
+              script.enabled ? 'bg-on-accent/80' : 'bg-accent/60',
             )}
-          >
-            <Check size={11} strokeWidth={3} />
-          </button>
-        ) : (
-          <Switch checked={script.enabled} onCheckedChange={onToggle} />
+          />
         )}
-      </div>
-    </div>
+        <span className="truncate">{script.name}</span>
+      </span>
+    </button>
   );
 }
