@@ -40,8 +40,9 @@ quefrency = 1/F0 处形成一个峰**，而包络变化平缓、分布在低 que
   的**以当前帧为中心**的滑动平均，抑制相邻帧的倒谱峰跳动（"Smoothed" 的由来）；
 - **CPPS = 平滑后帧序列的均值**（Hillenbrand 标准口径；不再减标准差）。
 
-与 Praat 的差异：Praat 的 PowerCepstrogram 对倒谱使用未归一化 IFFT + 内部缩放，
-绝对数值与本实现存在量级差异（验证设施交叉验证显示本口径约为 Praat 的 1/20）。
+与 Praat 的差异：Praat 的 PowerCepstrogram 用 ln 谱 + 内部缩放，
+本实现用 dB 功率谱 + 均值，绝对数值与本实现存在量级差异（交叉验证见
+`scripts/validation/`，实测约为 Praat 的 1/9 – 1/24，逐信号不同）。
 相对趋势与方向一致，绝对数值不可直接比较。
 
 ## 四、数值解读（仅供参考，非医学诊断）

@@ -5,7 +5,7 @@
  * 核心模块（图表画笔等非 React 代码）直接 import { t } 即可。
  *
  * 统一约定：本 hook 仅作订阅用，返回 void；
- * 组件内一律从 '@/i18n' 导入模块级 t 取词（全项目 73 处的既有惯用法）。
+ * 组件内一律从 '@/i18n' 导入模块级 t 取词（全项目 1400+ 处的既有惯用法）。
  */
 
 import { useEffect, useSyncExternalStore } from 'react';

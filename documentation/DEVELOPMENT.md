@@ -44,11 +44,36 @@ npx tsc -b --force
 ### 提交前自查
 
 1. `npx tsc -b --force` 无错误；
-2. `npm test` 全绿（25 个文件 162 例）；
+2. `npm test` 全绿（59 个文件 470 例，其中 16 例为参数验证套件，在缺少
+   `validation-cache/` 音频时自动跳过——见 `scripts/validation/README.md`）；
 3. 改了设置项/存储结构？检查 `documentation/ARCHITECTURE-STATE.md` 的键清单与迁移说明是否需要同步；
 4. 改了算法参数默认值？`constants/index.ts` 与 `documentation/PARAMETERS-GUIDE.md` 必须同步（历史上出过错）。
 
 更多专题（数据流 / 主题 / 动效 / 性能）见下文与文末文档索引。
+
+### 参数验证设施（可选，需要 Python）
+
+`scripts/validation/` 是一套**独立于 `npm test` 的三层验证设施**，用来证明每个声音
+参数的取值是对的，而不是"跑通"而已：
+
+1. **构造真值**（`scripts/validation/truth.json`）：13 个确定性合成信号
+   （正弦 / 脉冲串 / Klatt 元音 / 滑音 / 衰减 / 静音），真值由构造给出；
+2. **TS 管线回归**（`src/lib/audio/validation/validation.test.ts`）：
+   跑完整分析管线并对构造真值断言；
+3. **Praat 交叉验证**（`scripts/validation/expected_praat.json`）：
+   同一批 WAV 喂 parselmouth，比对 F0 / 共振峰 / Jitter / Shimmer / HNR / CPPS。
+
+```bash
+python scripts/validation/synth_fixtures.py          # 生成合成 WAV（写入 validation-cache/）
+python scripts/validation/praat_reference.py         # 提取 Praat 参考值（需 pip install praat-parselmouth）
+npx vitest run src/lib/audio/validation/validation.test.ts
+python scripts/validation/report.py                  # 生成 VERIFICATION-REPORT.md
+```
+
+合成音频**不入仓**（`validation-cache/` 已 gitignore），只提交脚本与预期值。
+因此 `npm test` 在没有 `validation-cache/` 时会**跳过**这 16 个用例
+（CI 里同样跳过），本地想跑完整验证时按上面四步生成一次即可。
+详细说明见 `scripts/validation/README.md`，最新报告见仓库根的 `VERIFICATION-REPORT.md`。
 
 ## 项目概览
 
@@ -79,7 +104,7 @@ npx tsc -b --force
 | 动效 | Framer Motion（layout / springs） |
 | 音频 | Web Audio API：AnalyserNode + 自研 DSP（纯 TS，无音频依赖） |
 | 可视化 | 原生 Canvas 2D（自绘，不依赖图表库） |
-| 测试 | Vitest 3（DSP 黄金样本回归 + 导出/备份/LLM/i18n 完整性，53 个测试文件） |
+| 测试 | Vitest 3（DSP 黄金样本回归 + 参数验证 + 导出/备份/LLM/i18n 完整性，59 个测试文件）+ Playwright（e2e 冒烟 + 视觉快照） |
 | 原生壳 | Capacitor 7（Android APK）+ Tauri 2（Windows NSIS 安装包） |
 | 图标/提示 | lucide-react / sonner；uqr（分享图二维码） |
 
@@ -108,7 +133,7 @@ src/
 │   │   ├── FlowerSvg.tsx         # 单朵声音花的 SVG 渲染
 │   │   └── TimeMachine.tsx       # 花园时间机器（A→B 对比动画）
 │   ├── layout/
-│   │   ├── BottomBar.tsx         # 纯导航底栏：悬浮胶囊 / 经典全宽（5 页签，无录音键）
+│   │   ├── BottomBar.tsx         # 底栏三种样式：悬浮胶囊（默认）/ 经典全宽 / AI 工作台
 │   │   ├── SplashScreen.tsx      # 原生壳启动页（isNative 时渲染，设置可关）
 │   │   ├── EmptyHero.tsx         # 空状态引导
 │   │   ├── ErrorBoundary.tsx     # 页面级错误边界
@@ -149,7 +174,8 @@ src/
 ├── hooks/
 │   ├── useLiveCanvas.ts          # 实时画布尺寸自适应（回调 ref + ResizeObserver）
 │   ├── useDeferredMount.ts       # 两帧延迟挂载（避开入场动画争主线程）
-│   └── use-mobile.ts             # 断点判定
+│   ├── useLiveSheetLoop.ts       # 实时练习子页的 rAF 循环
+│   └── useLlmStream.ts           # AI 助手流式响应
 ├── i18n/
 │   ├── index.ts                  # 核心 t()：覆盖层→内置→AI→zh-CN 查找链 + 版本订阅
 │   ├── hook.ts                   # useI18n：订阅 settings.language 与词典版本
@@ -180,46 +206,63 @@ src/
 │   ├── reminder.ts               # 每日练习提醒（本地通知）
 │   ├── audio/                    # 录音引擎与 DSP（见文末算法文档）
 │   │   ├── recorder.ts           # 录音引擎单例（实时循环/记录生成/统计）
-│   │   ├── pitch.ts / pitchAlt.ts# YIN / pYIN / MPM（模块级复用缓冲，零稳态分配）
+│   │   ├── pitchCore.ts          # 音高共享基础件（τ 范围 / CMND / 抛物线插值 / 复用缓冲）
+│   │   ├── pitch.ts / pitchAlt.ts# YIN / pYIN / MPM
 │   │   ├── formants.ts           # LPC 共振峰（同为复用缓冲）
 │   │   ├── voiceQuality.ts / cpp.ts # J/S/HNR / CPPS
 │   │   ├── spectralVoice.ts      # H1–H2 / H2–H4 / H1–A3 / 气声度 / 鼻化
 │   │   ├── sibilance.ts          # 咝音频谱重心（/s/ 等摩擦音帧自动挑选）
+│   │   ├── resonance.ts          # F2−F1 同帧间距 + 谱倾斜
+│   │   ├── normalize.ts          # 外部音频导入的自动增益归一
 │   │   ├── algoParams.ts         # 实验性算法参数单例（实时/离线/Worker 同步）
 │   │   ├── reanalyze.ts          # 历史记录用当前算法参数重算（新旧对比后覆盖）
 │   │   ├── analysisPipeline.ts / analysisWorker.ts / analysisClient.ts
 │   │   │                         # 离线管线（Worker，PCM transfer 交付，32kHz 统一口径）
 │   │   ├── importAudio.ts        # 外部音频导入（含 Share Target）
 │   │   ├── pitchCompare.ts       # 音高算法对比（实验性）
+│   │   ├── pitchSmooth.ts        # F0 显示平滑（0–3 档）
 │   │   ├── sustained.ts          # 长音指标（MPT/CV/衰减）
+│   │   ├── watermark.ts          # 音频水印（导出溯源）
 │   │   ├── golden.test.ts        # 黄金样本回归测试（源-滤波合成，精确真值）
+│   │   ├── validation/           # 参数验证套件（构造真值 + Praat 交叉验证）
 │   │   └── demo.ts / spectrogram.ts / testHelpers.ts + 其余 *.test.ts
 │   ├── backup/                   # github（设备流）/ webdav / local（目录句柄）/ crypto（AES-GCM）
 │   ├── sync/                     # 局域网点对点同步（WebRTC 信令 / 记录与音频传输）
 │   ├── lua/                      # Lua 脚本引擎（建议规则 / 分享卡 / 声音花 / 导出桥）
-│   ├── export/                   # csv / shareCard（PNG）/ backup（ZIP）/ settings / interactiveHtml / praat
+│   ├── export/                   # csv / shareCard（PNG）/ backup（ZIP）/ settings / interactiveHtml /
+│   │                             #   praat / midi / clinicalReport / template（自定义导出模板）/ recordsSchema
 │   ├── storage/
 │   │   └── idb.ts                # IndexedDB：records / audio / kv（键清单见状态文档）
+│   ├── appId.ts                  # 应用标识与旧 id 兼容
+│   ├── docs.ts / docKnowledge.ts # 应用内文档注册表与检索（AI 问答用）
 │   └── theme/
 │       ├── monet.ts              # OKLCH 色板生成 + 预设（见 ARCHITECTURE-THEME.md）
 │       ├── ambient.ts            # 氛围彩蛋（声音染色 / 音量呼吸 / 极光时刻）
 │       ├── bgImage.ts            # 自定义背景图（压缩/存储/恢复）
+│       ├── themeShare.ts         # .svt-theme 主题分享（导出/导入）
 │       └── dynamic.ts            # Material You：原生壳内壁纸取色写入莫奈三滑条
 ├── store/
 │   ├── useStore.ts               # 主状态 + settings 持久化（迁移/模块同步，见状态文档）
-│   └── useHistoryStore.ts        # 记录（IDB 持久化，200 条界面截断）
+│   ├── useHistoryStore.ts        # 记录（IDB 持久化，200 条界面截断）
+│   └── startup.ts                # 启动迁移（LLM 档案生成 / 模块级单例同步）
 ├── types/index.ts                # 全部类型定义
 ├── constants/index.ts            # 音区/预设/默认设置/轴范围/PRIDE_FLAGS
 ├── fonts/                        # 自托管 Inter Tight / Roboto Mono（woff2，OFL 许可）
 └── index.css                     # 全局样式与主题 CSS 变量
-documentation/                    # 开发者与算法文档（本目录）
-public/                           # 静态资源：favicon.svg、PWA 图标、sw-custom.js、guide.md、OGP
+documentation/                    # 开发者与算法文档（本目录）+ schema/（记录导出 JSON Schema）
+public/                           # 静态资源：favicon.svg、PWA 图标、sw-custom.js、guide.md、
+                                  #   privacy-policy.md、fonts/（OFL 字体）、OGP
 scripts/                          # generate-pwa-assets.py / generate-android-icons.py /
                                   #   generate-tauri-icons.py（Pillow 生成图片资源）
-android/                          # Capacitor Android 工程（原生插件：分享接收/快捷方式/系统栏）
+                                  #   prune-android-assets.mjs（裁掉原生包里的 web-only 资源）
+                                  #   release.mjs（版本号同步 + changelog + tag）
+                                  #   validation/（参数验证设施，见其 README）
+e2e/                              # Playwright 冒烟 + 视觉快照（含快照基线）
+lua-scripts/                      # 内置 Lua 脚本（建议规则 / 分享卡 / 导出桥）
+android/                          # Capacitor Android 工程（原生插件：分享接收/快捷方式/系统栏/快捷磁贴）
 src-tauri/                        # Tauri Windows 工程（NSIS 安装包）
 fastlane/                         # Google Play / IzzyOnDroid 商店元数据与截图
-capacitor.config.ts               # Capacitor 配置（appId、Splash 等）
+capacitor.config.ts               # Capacitor 配置（appId / appName / webDir / 边到边安全区）
 docs/                             # ⚠️ 构建产物输出目录（vite outDir，已 gitignore），勿手放文件
 ```
 
@@ -293,10 +336,14 @@ App 内监听设置变化（hue / accentHue / darkHue / huePreset / prideFlag / 
 
 ## 导航栏与测试页录音
 
-- 底部导航是**纯导航**：测试 / 分析 / 历史 / AI / 设置，5 个页签；录音键不在导航栏。
-- `settings.navStyle` 两种皮肤：
-  - `floating`：悬浮胶囊，选中项 `layoutId` 胶囊滑移 + 标签；
-  - `classic`：贯穿底部的全宽底栏，5 等分，选中项 accent + 短下划线（默认）。
+- `settings.navStyle` 三种样式（在 设置 → 外观 里切换）：
+  - `floating`：**默认**。悬浮胶囊，选中项 `layoutId` 胶囊滑移 + 标签；
+    4 个页签（测试 / 分析 / 历史 / 设置）+ 录音球，**不显示 AI 页签**；
+  - `classic`：贯穿底部的全宽底栏，5 等分（测试 / 分析 / 历史 / AI / 设置），
+    选中项 accent + 短下划线；是纯导航，录音键不在导航栏；
+  - `ai`：AI 工作台，隐藏整个底栏，助手独占全屏（设置入口在历史侧边栏底部）。
+- 持久化默认值为 `'floating'`（`constants/index.ts`），并由 persist 的
+  `version: 2` + `migrate` 给旧安装铺一次（见状态文档）。
 - 经典底栏下，测试页顶部是模式胶囊 + 目标 + 录音计时；**音高卡片右下角**是
   四分之一圆扇形录音键，录音中换成结束方块。悬浮胶囊（floating）仍沿用原来的
   录音球 + 长按扇形模式选择；两种样式不要同时渲染录音控件。
@@ -323,14 +370,19 @@ npm install       # 安装依赖
 npm run dev       # 开发（默认 5173）
 npm run build     # tsc -b && vite build → 输出到 docs/
 npm run preview   # 本地预览构建产物
-npm test          # vitest run（CI 同步执行；含 DSP 黄金样本回归与 i18n 键集校验）
-npm run cap:sync  # build + npx cap sync android（Android 壳，见 GUIDE-CAPACITOR.md）
+npm test          # vitest run（CI 同步执行；含 DSP 黄金样本回归、参数验证与 i18n 键集校验）
+npm run test:watch    # vitest watch 模式
+npm run test:e2e     # Playwright 端到端（e2e/ 冒烟 + 视觉快照，需要浏览器）
+npm run cap:sync  # build + npx cap sync android + 裁掉 web-only 资源（Android 壳，见 GUIDE-CAPACITOR.md）
+npm run cap:open  # 用 Android Studio 打开 android/
 npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-DESKTOP.md）
 ```
 
 - **部署**：push 到 `main` 后由 GitHub Actions 自动构建并发布 GitHub Pages
   （`.github/workflows/deploy.yml`），`docs/` 仅是本地构建产物（已 gitignore，不入库）；
-- **CI**（`.github/workflows/ci.yml`）：PR 与 push 跑 vitest + build；
+- **CI**（`.github/workflows/ci.yml`）：**只在 pull_request 上跑**，三道关卡
+  `npm run lint` → `npm test` → `npm run build`；push 到 main 的测试与构建
+  由 `deploy.yml` 覆盖（见下）；
 - **发布**（`.github/workflows/android-release.yml` / `desktop-release.yml`）：
   push 到 main 产出 APK（条件化签名）与 Windows NSIS 安装包，滚动进 `latest`
   预发布并清理旧版本资产；推 `v*` tag 时进正式 Release；
@@ -372,8 +424,11 @@ npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-
 | [GUIDE-CAPACITOR.md](./GUIDE-CAPACITOR.md) | Capacitor 安卓壳：构建、签名、原生分享/快捷方式、已知限制 |
 | [GUIDE-DESKTOP.md](./GUIDE-DESKTOP.md) | Tauri Windows 桌面版：构建、CI、平台差异 |
 | [PARAMETERS-GUIDE.md](./PARAMETERS-GUIDE.md) | 参数说明书（面向使用者） |
+| [RECORDS-FORMAT.md](./RECORDS-FORMAT.md) | 记录导出开放格式（records v2）与 JSON Schema |
 | [REFERENCES.md](./REFERENCES.md) | 参考文献：参数区间与算法实现的文献出处（正文统一引用） |
+| [../scripts/validation/README.md](../scripts/validation/README.md) | 参数验证设施：构造真值回归 + Praat 交叉验证（报告 `VERIFICATION-REPORT.md`） |
 | [README.md](../README.md) | 项目介绍与使用说明 |
 
 应用内路径：**设置 → 关于**，其中「使用说明」可离线阅读（构建自 `public/guide.md`）；
-开发者文档（本目录）在关于页提供 GitHub 源文件链接。
+开发者文档（本目录）也会打包进产物，可在关于页用同一个浮层直接阅读
+（浮层内另有「看源文件」的 GitHub 链接）。

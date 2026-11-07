@@ -11,8 +11,18 @@ npm run tauri dev     # 开发窗口（热更新，需要本机 Rust 工具链�
 npm run tauri build   # 本地出包：src-tauri/target/release/bundle/nsis/*-setup.exe
 ```
 
-前置：Rust 工具链（rustup，MSVC target）+ Node。只改 Web 代码时
+前置：Rust 工具链（rustup，MSVC target；`Cargo.toml` 要求 edition 2024 /
+rustc 1.90+）+ Node。只改 Web 代码时
 `npm run build` 后 `npm run tauri dev` 即可；CI 是主要出包途径，本机构建非必需。
+
+Tauri 侧要点：
+
+- `src-tauri/tauri.conf.json` 的 `frontendDist` 指向 `../docs`，与 Vite 的
+  `outDir` 一致——必须先 `npm run build`；
+- `src-tauri/capabilities/default.json` 只授予 `core:default` 权限集；
+- `tauri-plugin-log` 仅在 debug 构建里注册（`src-tauri/src/lib.rs`），
+  release 不带日志插件；
+- 图标由 `scripts/generate-tauri-icons.py` 生成到 `src-tauri/icons/`。
 
 ## CI（GitHub Actions）
 
@@ -38,6 +48,10 @@ vitest → vite build → 版本号从 package.json 同步进 tauri.conf.json �
 
 ## 已知限制 / 说明
 
+- `Cargo.toml` 里的 `version` / `authors` / `license` / `repository` 是**占位元数据**，
+  没有维护；对外版本号以 `package.json` 为准，由 `scripts/release.mjs` 与
+  `desktop-release.yml` 同步进 `tauri.conf.json`（因此仓库里 checked-in 的
+  `tauri.conf.json` 版本号可能落后于 `package.json`）。
 - 布局为移动优先，桌面默认窗口 440×920（手机比例，可任意缩放）。
 - 未内置自动更新（Tauri updater 可以后加：签名密钥 + 更新清单）。
 - 仅打包 NSIS 安装包；要 msi / 便携版可在 `tauri.conf.json` 的
