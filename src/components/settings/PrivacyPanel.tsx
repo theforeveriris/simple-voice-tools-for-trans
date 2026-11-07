@@ -2,7 +2,7 @@
  * 数据去向面板（设置 → 数据 首个区块，只读为主）
  * - 标题旁的 ⓘ 收纳四条数据边界说明（本机存储 / 云备份 / 本地备份 / AI 上传内容）
  * - 云备份现状：GitHub 连接、WebDAV 配置、加密开关
- * AI 请求日志已拆成独立区块（LlmRequestLogSection）。
+ * AI 请求日志已拆成独立子页（LlmRequestLogPage，入口在数据页）。
  */
 
 import { useEffect, useState } from 'react';
