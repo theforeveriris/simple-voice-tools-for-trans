@@ -84,6 +84,7 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmModelConfig' },
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmProfiles' },
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmPromptEntry' },
+  { page: 'llm', sectionKey: 'settings.memoryTitle', labelKey: 'settings.llmMemoryEntry' },
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'assistant.entry' },
   // 数据
   { page: 'data', sectionKey: 'settings.storageUsage', labelKey: 'settings.storageUsage' },

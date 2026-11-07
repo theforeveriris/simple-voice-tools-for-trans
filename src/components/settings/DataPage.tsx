@@ -55,6 +55,7 @@ import { StorageUsage } from './StorageUsage';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 import { PrivacyPanel } from './PrivacyPanel';
+import { LlmRequestLogSection } from './LlmRequestLogSection';
 import { LanSyncSection } from './LanSyncSection';
 import { ImportAudioSection } from './ImportAudioSection';
 import { GithubBackupSection } from './GithubBackupSection';
@@ -394,11 +395,17 @@ export function DataPage({
           <p className="text-base font-semibold text-ink">{t('settings.data')}</p>
         </div>
 
-        {/* 数据去向（隐私边界 + AI 请求日志） */}
+        {/* 数据去向（隐私边界） */}
         <PrivacyPanel />
 
+        {/* AI 请求日志（独立区块） */}
+        <LlmRequestLogSection />
+
         {/* 存储用量 */}
-        <SettingsSection icon={HardDrive} title={t('settings.storageUsage')}>
+        <SettingsSection
+          icon={HardDrive}
+          title={<InfoTip label={t('settings.storageUsage')} text={t('settings.storageUsageDesc')} />}
+        >
           <StorageUsage />
         </SettingsSection>
 

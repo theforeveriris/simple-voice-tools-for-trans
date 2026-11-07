@@ -17,6 +17,8 @@ export interface ChatContextMeta {
   totalRecords: number;
   /** 注入的内置文档摘录 */
   docs: { title: string; chars: number }[];
+  /** 本轮注入的长期记忆条数 */
+  memories?: number;
 }
 
 export interface ChatMessage {

@@ -491,9 +491,8 @@ export function ScriptHubSection() {
           <Download size={13} />
           {t('labs.scriptExport')}
         </button>
-        <span className="ml-auto flex items-center gap-2 text-[10px] text-ink-2">
-          <span>{t('labs.scriptLongPressHint')}</span>
-          <span className="tabular-nums">{t('labs.scriptCount', { n: scripts.length })}</span>
+        <span className="ml-auto text-[10px] tabular-nums text-ink-2">
+          {t('labs.scriptCount', { n: scripts.length })}
         </span>
       </div>
 

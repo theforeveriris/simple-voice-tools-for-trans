@@ -37,6 +37,7 @@ import {
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
+import { buildMemoryPrompt, addMemories, extractMemoryCandidates } from '@/lib/memory';
 import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
@@ -162,8 +163,8 @@ const ASSISTANT_VISUAL_GUIDE = [
   '【选择】单条记录的音高/共振峰/能量/元音优先用 record://；多记录对比、趋势、可调参数用 genui；纯文字能讲清就不用图表。',
 ].join('\n');
 
-/** 助手系统提示词：定位与边界 + 历史记录使用规则 + 内置文档摘录，按界面语言回答 */
-function systemPrompt(profile: string, history: string, docs = '', extra = ''): string {
+/** 助手系统提示词：定位与边界 + 历史记录使用规则 + 内置文档摘录 + 长期记忆，按界面语言回答 */
+function systemPrompt(profile: string, history: string, docs = '', extra = '', memory = ''): string {
   return [
     '你是 Simple Voice Tool for Trans 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
     '不要使用 emoji 或颜文字；用文字、Markdown、图表和交互组件表达。',
@@ -173,6 +174,7 @@ function systemPrompt(profile: string, history: string, docs = '', extra = ''): 
     '回复支持 Markdown：可用 **粗体**、*斜体*、`行内代码`、有序/无序列表、表格（| 列 | 列 |）、> 引用与 ## 小标题，让长回答结构清晰；除 genui 组件外不要输出代码块。',
     ASSISTANT_VISUAL_GUIDE,
     profile,
+    memory,
     history
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
@@ -523,16 +525,24 @@ export function AssistantPage() {
     );
     // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
+    // 记忆服务：用户明确陈述的事实 / 要求随手收进长期记忆（线索词过滤，重复自动跳过）
+    if (lastUser) {
+      const candidates = extractMemoryCandidates([lastUser.content], 5);
+      if (candidates.length > 0) void addMemories(candidates);
+    }
     const docHit = lastUser
       ? await retrieveDocsDetailed(lastUser.content)
       : { text: '', docs: [] };
-    const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraContext);
+    // 长期记忆：置顶 + 与本轮问题相关的条目（无记忆时为空串）
+    const memoryHit = await buildMemoryPrompt(lastUser?.content ?? '');
+    const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraContext, memoryHit.text);
     // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
     const contextMeta: ChatContextMeta = {
       recordIds: hist.meta.detailIds,
       pinnedIds: hist.meta.pinnedIds,
       totalRecords: hist.meta.totalRecords,
       docs: docHit.docs,
+      memories: memoryHit.count,
     };
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;

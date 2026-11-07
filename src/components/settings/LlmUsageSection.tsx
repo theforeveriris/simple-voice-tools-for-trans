@@ -1,8 +1,8 @@
 /**
- * Token 用量分区（实验性 · 大模型配置下方）
+ * Token 用量分区（大模型配置下方）
  * 读取本机 kv（llm:usage:*）展示各功能的调用次数与 token 消耗，
- * 可填每百万 tokens 单价折算估算费用；纯读取型面板（参照 StorageUsage
- * 的挂载即算模式）+ 单价设置行；数据由 lib/llm.ts 落账。
+ * 费用由模型单价自动折算：优先用服务商 /models 返回的真实单价，
+ * 其次内置单价目录（lib/llmPricing.ts）。数据由 lib/llm.ts 落账。
  */
 
 import { useEffect, useState } from 'react';
@@ -11,11 +11,15 @@ import {
   clearLlmUsage, emptyTotals, LLM_FEATURES, readLlmUsage,
   type LlmFeature, type LlmUsageCount, type LlmUsageSnapshot,
 } from '@/lib/llmUsage';
+import { useActiveLlmConfig } from '@/lib/llmProfiles';
+import { builtinPriceFor, resolveModelPrice } from '@/lib/llmPricing';
+import type { ModelPrice } from '@/lib/llmModels';
 import { t } from '@/i18n';
 import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AppSettings } from '@/types';
 import { SettingsSection, SettingRow } from './rows';
+import { InfoTip } from './InfoTip';
 
 const FEATURE_KEY: Record<LlmFeature, DictKey> = {
   advice: 'settings.llmUsageFeatureAdvice',
@@ -41,20 +45,23 @@ function fmtTime(ts: number): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const numCls =
-  'w-20 rounded-lg border border-black/10 bg-surface-hi px-2 py-1 text-right text-xs tabular-nums text-ink outline-none placeholder:text-ink-2/50 focus:border-accent';
-
 export function LlmUsageSection({
   settings,
-  update,
 }: {
   settings: AppSettings;
-  update: (patch: Partial<AppSettings>) => void;
 }) {
   useI18n();
   const [snap, setSnap] = useState<LlmUsageSnapshot | null>(null);
   // 清空按钮两步确认：第一次点击进入确认态，再次点击才真正清空
   const [confirmClear, setConfirmClear] = useState(false);
+  const cfg = useActiveLlmConfig(settings.llmActiveProfileId);
+  /**
+   * 单价：内置目录同步可得；服务商 /models 的价格异步到达后按 cfg 覆盖。
+   * 用 { key, price } 而不是在 effect 里同步 setState——key 不匹配就回退内置值。
+   */
+  const cfgKey = cfg ? `${cfg.protocol ?? 'openai'}|${cfg.baseUrl}|${cfg.modelId}` : '';
+  const [remotePrice, setRemotePrice] = useState<{ key: string; price: ModelPrice | null } | null>(null);
+  const price = remotePrice && remotePrice.key === cfgKey ? remotePrice.price : builtinPriceFor(cfg);
 
   useEffect(() => {
     let alive = true;
@@ -68,6 +75,19 @@ export function LlmUsageSection({
     };
   }, []);
 
+  useEffect(() => {
+    if (!cfg) return;
+    let alive = true;
+    void resolveModelPrice(cfg).then((p) => {
+      if (alive) setRemotePrice({ key: cfgKey, price: p });
+    });
+    return () => {
+      alive = false;
+    };
+    // cfgKey 已覆盖 cfg 的三个关键字段
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfgKey]);
+
   const onClear = () => {
     if (!confirmClear) {
       setConfirmClear(true);
@@ -79,44 +99,22 @@ export function LlmUsageSection({
       .catch(() => {});
   };
 
-  const priceIn = settings.llmPriceIn ?? 0;
-  const priceOut = settings.llmPriceOut ?? 0;
-  const showCost = priceIn > 0 || priceOut > 0;
-  const cost = (c: LlmUsageCount) => (c.promptTokens / 1e6) * priceIn + (c.completionTokens / 1e6) * priceOut;
+  const showCost = price != null;
+  const cost = (c: LlmUsageCount) => (c.promptTokens / 1e6) * price!.input + (c.completionTokens / 1e6) * price!.output;
 
-  const onPrice = (key: 'llmPriceIn' | 'llmPriceOut') => (v: string) => {
-    update({ [key]: v === '' ? undefined : Math.max(0, Number(v) || 0) });
-  };
+  const priceLabel = price
+    ? t('settings.llmUsagePriceResolved', {
+      model: cfg?.modelId ?? '—',
+      input: String(price.input),
+      output: String(price.output),
+    })
+    : t('settings.llmUsagePriceUnknown');
 
   return (
-    <SettingsSection icon={Gauge} title={t('settings.llmUsageTitle')}>
-      {/* 单价设置（始终可见，无调用记录时也可先填） */}
-      <SettingRow stacked label={t('settings.llmUsagePrice')} desc={t('settings.llmUsagePriceDesc')}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-ink-2">↑ {t('settings.llmUsagePrompt')}</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="any"
-            value={settings.llmPriceIn ?? ''}
-            onChange={(e) => onPrice('llmPriceIn')(e.target.value)}
-            placeholder="0"
-            className={numCls}
-          />
-          <span className="ml-2 text-[11px] text-ink-2">↓ {t('settings.llmUsageCompletion')}</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="any"
-            value={settings.llmPriceOut ?? ''}
-            onChange={(e) => onPrice('llmPriceOut')(e.target.value)}
-            placeholder="0"
-            className={numCls}
-          />
-        </div>
-      </SettingRow>
+    <SettingsSection
+      icon={Gauge}
+      title={<InfoTip label={t('settings.llmUsageTitle')} text={priceLabel} wide />}
+    >
       {!snap ? (
         <p className="py-2 text-xs text-ink-2">{t('settings.llmUsageCounting')}</p>
       ) : snap.totals.all.calls === 0 ? (
