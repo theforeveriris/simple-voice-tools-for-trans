@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
+import { useStore } from '@/store/useStore';
 import {
   deleteUserScript, exportScripts, importAny, inferScriptKind, listScripts,
   putUserScript, setScriptEnabled, type LuaScriptView, type ScriptKind,
@@ -426,7 +427,11 @@ export function ScriptHubSection() {
     }
   };
 
-  /** 各方向的脚本（按方向分组，供折叠组渲染） */
+  /**
+   * 各方向的脚本（按方向分组，供折叠组渲染）。
+   * 依赖语言：summary 里的本地化文案要随语言切换重算（useI18n 只触发重渲染，不给值）。
+   */
+  const language = useStore((s) => s.settings.language);
   const groups = useMemo(
     () => KINDS.map((k) => {
       const list = scripts.filter((s) => s.kind === k.kind);
@@ -441,7 +446,8 @@ export function ScriptHubSection() {
           : t('labs.scriptActiveCount', { n: active.length }),
       };
     }),
-    [scripts],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- language 变化时 summary 文案要重算
+    [scripts, language],
   );
 
   return (

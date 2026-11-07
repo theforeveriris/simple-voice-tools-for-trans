@@ -94,6 +94,29 @@ describe('lua engine', () => {
       expect(res.value.b).toBe('hi');
     }
   });
+
+  it('返回 nil / 无 return 时值为 null（调用方需判空）', async () => {
+    const nilRes = await runLuaFn('function f() return nil end', 'f', []);
+    expect(nilRes.ok).toBe(true);
+    if (nilRes.ok) expect(nilRes.value).toBeNull();
+
+    const noRes = await runLuaFn('function f() end', 'f', []);
+    expect(noRes.ok).toBe(true);
+    if (noRes.ok) expect(noRes.value).toBeNull();
+  });
+
+  it('表里的 nil 字段被丢弃（不是 null 键）', async () => {
+    const res = await runLuaFn<Record<string, unknown>>(
+      'function f() return { a = 1, b = nil, c = "x" } end',
+      'f',
+      [],
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value.a).toBe(1);
+      expect('b' in res.value).toBe(false);
+    }
+  });
 });
 
 /** 最小可用记录（仅 Lua 建议用到的字段） */
