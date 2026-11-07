@@ -42,9 +42,9 @@ quefrency = 1/F0 处形成一个峰**，而包络变化平缓、分布在低 que
 
 与 Praat 的差异：Praat 的 PowerCepstrogram 用 ln 谱 + 内部缩放，
 本实现用 dB 功率谱 + 均值，绝对数值与本实现存在量级差异（交叉验证见
-`scripts/validation/`，实测约为 Praat 的 1/9 – 1/24，逐信号不同）。
-**绝对数值不可直接比较，相对高低也不保证与 Praat 同向**——例如脉冲串加抖动后，
-本实现下降而 Praat 上升（见 `VERIFICATION-REPORT.md` 的 CPPS 表）。
+`scripts/validation/`，实测约为 Praat 的 1/21 – 1/3，逐信号不同）。
+**绝对数值不可直接比较，相对高低也不保证与 Praat 同向**——例如脉冲串叠加
+Shimmer（幅度扰动）后，本实现下降而 Praat 上升（见 `VERIFICATION-REPORT.md` 的 CPPS 表）。
 
 ## 四、数值解读（仅供参考，非医学诊断）
 

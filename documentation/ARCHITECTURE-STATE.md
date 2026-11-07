@@ -113,6 +113,8 @@ kv 仓库键清单：
 它和 IDB kv 中的 `memory:items` / Lua 脚本一样，**不在设置导出的 AppSettings 范围内**）。
 迁移设备时：模板用 `.svt-template` 文件单独导入，Lua 脚本在脚本中心导出/导入 JSON，
 长期记忆与 AI 对话目前不随备份迁移（只存本机，可在对应页面手动复制或清除）。
+注意脚本 JSON **不保存启用态**，导入的脚本会获得新 id 并默认启用——导入后请检查
+脚本中心，避免原本停用的建议脚本重新生效。
 
 另有一条 **Cache Storage** 键（不是 localStorage）：`svt-share-target`
 （`lib/audio/importAudio.ts`）——PWA「分享到」接收到的音频暂存处。

@@ -102,4 +102,5 @@
     <!-- 相机：局域网同步扫码（可选能力；没有相机的设备仍可复制粘贴连接文本） -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 </manifest>

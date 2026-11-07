@@ -1251,7 +1251,7 @@ export const zhTW = {
   'privacy.lineLocal': '記錄、音訊與設定只保存在本機瀏覽器（IndexedDB）；不使用下方任何雲端功能時，沒有資料離開本機。',
   'privacy.lineCloud': '雲端備份（GitHub / WebDAV）把記錄與音訊上傳到你自己的儲存空間；開啟「雲端備份加密」後先加密再上傳，未開啟則按原樣上傳。',
   'privacy.lineLocalBackup': '手動 ZIP 匯出與本機自動備份不加密，存放在你選擇的位置。',
-  'privacy.lineLlm': '訓練建議 / 週報僅上傳統計指標（不含音訊與原始曲線）；AI 助手另含對話文本、選取的記憶與內建文件片段，均不含音訊與原始曲線。請求內容不含 API Key；數據頁的「AI 請求日誌」記錄每次實際發出的內容。',
+  'privacy.lineLlm': '訓練建議 / 週報僅上傳統計指標與備註（不含音訊與原始曲線）；AI 助手另含對話文本、選取的記憶與內建文件片段，均不含音訊與原始曲線。請求內容不含 API Key；數據頁的「AI 請求日誌」記錄每次實際發出的內容（最多 10 條，超長訊息截斷；寫入失敗不影響請求）。',
   'privacy.ghRow': 'GitHub 雲端備份',
   'privacy.ghConnected': '已連線（{login}）',
   'privacy.ghNot': '未連線',

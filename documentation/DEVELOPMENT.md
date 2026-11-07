@@ -44,8 +44,8 @@ npx tsc -b --force
 ### 提交前自查
 
 1. `npx tsc -b --force` 无错误；
-2. `npm test` 全绿（63 个文件 506 例；全新 checkout 没有
-   `validation-cache/` 时，其中 16 个参数验证用例自动跳过，即 490 例——
+2. `npm test` 全绿（63 个文件 507 例；全新 checkout 没有
+   `validation-cache/` 时，其中 16 个参数验证用例自动跳过，即 491 例——
    生成方式见 `scripts/validation/README.md`）；
 3. 改了设置项/存储结构？检查 `documentation/ARCHITECTURE-STATE.md` 的键清单与迁移说明是否需要同步；
 4. 改了算法参数默认值？`constants/index.ts` 与 `documentation/PARAMETERS-GUIDE.md` 必须同步（历史上出过错）。

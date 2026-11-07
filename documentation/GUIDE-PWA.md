@@ -10,9 +10,9 @@
   生效**（skipWaiting + clientsClaim 由插件注入）；
 - Workbox 预缓存 `**/*.{js,css,html,svg,png,woff2,md,wasm}`，`navigateFallback: index.html`；
   `wasm` 是 Lua 脚本中心（wasmoon）的运行时，列入后离线也能执行脚本；
-- `includeAssets: ['favicon.svg', 'og-image.png', 'privacy-policy.md']`：
-  这三个文件不在 globPatterns 的扩展名白名单里（`.txt` 不在其中），需显式列入，
-  否则隐私政策等页面在离线时取不到；
+- `includeAssets: ['favicon.svg', 'og-image.png', 'privacy-policy.md']`：把三个根级
+  静态文件显式列入预缓存清单；扩展名本身都在 globPatterns 覆盖范围内，但显式列出
+  可保证构建管线或 glob 调整时隐私政策等页面仍能离线打开；
 - `injectRegister: null` + `main.tsx` 手动注册：原生壳内不注册 SW；
 - `importScripts: ['sw-custom.js']`：自定义 SW 先于 Workbox 路由注册；
 - 产物输出 `docs/`（GitHub Pages），`base: './'` 相对路径。
@@ -109,4 +109,4 @@ URL 加 `?demo=1` 且当前无历史记录时，生成一条示例记录并跳�
 | 页面白屏 / 卡在旧版 | SW 精顽固缓存 | 清除缓存并重置 |
 | 安装按钮禁用 | 已 standalone 或浏览器不支持 | 已安装是正常态；不支持看手动指引 |
 | 分享入口不见 | 非 HTTPS / 浏览器不支持 | share_target 需安装 + HTTPS |
-| 局域网同步没有扫码按钮 | 非安全上下文（如 `http://192.168.x.x`）或没有摄像头 | 用同一 Wi-Fi 下支持相机的设备，或直接复制粘贴连接文本 |
+| 局域网同步没有扫码按钮 | 非安全上下文（如 `http://192.168.x.x`）或浏览器不暴露摄像头 API | 改用 HTTPS / localhost 打开应用，或直接复制粘贴连接文本；扫码能力只检查 `getUserMedia`，不探测设备是否真有摄像头 |

@@ -34,7 +34,7 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 | `createdAt` | integer | epoch 毫秒 |
 | `durationSec` / `sampleHz` | number | 时长（秒）/ 序列采样率（≈30 fps） |
 | `mode` | string? | `reading` / `sustained` / `glide`；v1 缺失 |
-| `series` | object | 帧级序列：`t` / `f0` / `rmsDb` 必备，`f1` / `f2` 可选（等长，未检出 = null） |
+| `series` | object | 帧级序列：`t` / `f0` / `rmsDb` 必备，`f1` / `f2` 可选（等长，未检出 = null；导入时缺失或长度不符会按 `t` 补成 null 数组） |
 | `stats` | object | 聚合统计（必备 16 个标量 + 可空指标） |
 | `spec` | object? | 语谱量化：64 频带 × 行 Uint8 base64 |
 | `env` | object? | 环境元数据：`noiseFloorDb` / `micLabel` / `hourOfDay`（v2 新增） |
@@ -46,9 +46,11 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 
 ## 校验工具
 
-应用内置了轻量校验器（`src/lib/export/recordsSchema.ts`），用于显式检查文件是否符合
-公开 Schema；实际导入链路（`parseRecordsPayload`）保持**宽容读入**——只解析结构与
-版本上限（过新版本拒绝），不在导入时逐条报告 Schema 错误。外部工具也可以用任意
+应用内置了轻量校验器（`src/lib/export/recordsSchema.ts`），用于对导入文件做**部分**
+结构检查；它并不强制完整公开 Schema（例如 `series.f0` 缺失目前不会报错），
+通过校验不等于符合 Schema。完整校验请用下面的 JSON Schema 校验器。
+实际导入链路（`parseRecordsPayload`）保持**宽容读入**——只解析结构、补齐可选的
+`f1` / `f2` 数组并检查版本上限（过新版本拒绝），不在导入时逐条报告 Schema 错误。外部工具也可以用任意
 JSON Schema 校验器对着 Schema 文件验证：
 
 ```bash
