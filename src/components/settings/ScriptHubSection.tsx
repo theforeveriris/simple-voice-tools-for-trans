@@ -15,13 +15,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Braces, ChevronRight, Download, FileDown, FilePlus2, Flower2, Image,
+  Braces, Download, FileDown, FilePlus2, Flower2, Image,
   Lightbulb, Pencil, Play, Trash2, Upload, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { useStore } from '@/store/useStore';
 import {
   deleteUserScript, exportScripts, importAny, inferScriptKind, listScripts,
   putUserScript, setScriptEnabled, type LuaScriptView, type ScriptKind,
@@ -220,14 +219,9 @@ export function ScriptHubSection() {
   const [testing, setTesting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [detail, setDetail] = useState<DetailState | null>(null);
-  /** 展开的方向（默认全收起，一屏看完所有方向） */
-  const [open, setOpen] = useState<ScriptKind[]>([]);
 
   const reload = () => void listScripts().then(setScripts);
   useEffect(reload, []);
-
-  const toggleGroup = (kind: ScriptKind) =>
-    setOpen((cur) => (cur.includes(kind) ? cur.filter((k) => k !== kind) : [...cur, kind]));
 
   /** 启用/停用脚本：单一方向自动停用同方向其他脚本，并在 UI 明确告知 */
   const onToggle = async (s: LuaScriptView) => {
@@ -428,32 +422,21 @@ export function ScriptHubSection() {
   };
 
   /**
-   * 各方向的脚本（按方向分组，供折叠组渲染）。
-   * 依赖语言：summary 里的本地化文案要随语言切换重算（useI18n 只触发重渲染，不给值）。
+   * 各方向的脚本（按方向分组渲染）。
    */
-  const language = useStore((s) => s.settings.language);
   const groups = useMemo(
     () => KINDS.map((k) => {
       const list = scripts.filter((s) => s.kind === k.kind);
       const active = list.filter((s) => s.enabled);
-      return {
-        ...k,
-        list,
-        active,
-        /** 组标题里的「当前生效者」：单选方向显示脚本名，多选方向显示数量 */
-        summary: k.single
-          ? (active[0]?.name ?? t('labs.scriptNoneActive'))
-          : t('labs.scriptActiveCount', { n: active.length }),
-      };
+      return { ...k, list, active };
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- language 变化时 summary 文案要重算
-    [scripts, language],
+    [scripts],
   );
 
   return (
     <div className="card-surface p-5">
       {/* 头部：标题 + ⓘ 说明 + 自检 */}
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <Braces size={15} className="text-accent" />
         <span className="text-sm font-semibold text-ink">
           <InfoTip label={t('labs.scripts')} text={t('labs.scriptsDesc')} />
@@ -468,56 +451,28 @@ export function ScriptHubSection() {
         </button>
       </div>
 
-      {/* 四个方向：折叠分组 + 胶囊 */}
-      <div className="flex flex-col">
-        {groups.map((g) => {
-          const expanded = open.includes(g.kind);
-          return (
-            <div key={g.kind} className="border-t border-black/[0.04] first:border-t-0">
-              {/* 组标题：整个标题行可点，展开 / 收起 */}
-              <button
-                onClick={() => toggleGroup(g.kind)}
-                aria-expanded={expanded}
-                className="flex w-full items-center gap-2 py-2 text-left"
-              >
-                <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-surface-hi text-ink-2">
-                  <g.icon size={12} />
-                </span>
-                <span className="text-sm font-medium text-ink">{t(g.labelKey)}</span>
-                <span className="truncate text-[11px] text-ink-2">
-                  {g.single ? t('labs.scriptSingleBadge') : t('labs.scriptMultiBadge')}
-                  {' · '}
-                  <span className="text-ink">{g.summary}</span>
-                </span>
-                <span className="ml-auto shrink-0 text-[10px] tabular-nums text-ink-2">
-                  {g.active.length}/{g.list.length}
-                </span>
-                <ChevronRight
-                  size={14}
-                  className={cn('shrink-0 text-ink-2 transition-transform', expanded && 'rotate-90')}
-                />
-              </button>
-
-              {/* 组内脚本：胶囊 */}
-              {expanded && (
-                <div className="flex flex-wrap gap-1.5 pb-2.5 pl-8">
-                  {g.list.map((s) => (
-                    <ScriptChip
-                      key={s.id}
-                      script={s}
-                      onToggle={() => void onToggle(s)}
-                      onDetail={() => void openDetail(s)}
-                    />
-                  ))}
-                  {g.list.length === 0 && (
-                    <p className="py-1 text-[11px] text-ink-2">{t('labs.scriptNoScripts')}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* 四个方向：小标签 + 胶囊（常驻展开） */}
+      {groups.map((g) => (
+        <div key={g.kind} className="mt-3 first:mt-2">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-ink-2">
+            <g.icon size={11} />
+            {t(g.labelKey)}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {g.list.map((s) => (
+              <ScriptChip
+                key={s.id}
+                script={s}
+                onToggle={() => void onToggle(s)}
+                onDetail={() => void openDetail(s)}
+              />
+            ))}
+            {g.list.length === 0 && (
+              <p className="py-1 text-[11px] text-ink-2">{t('labs.scriptNoScripts')}</p>
+            )}
+          </div>
+        </div>
+      ))}
 
       {/* 工具行 */}
       <div className="mt-1 flex items-center gap-3 border-t border-black/[0.04] pt-3">
