@@ -12,8 +12,9 @@
  *
  * 说明：本实现按 Hillenbrand 标准定义（dB 谱 + 均值）。与 Praat 的
  * PowerCepstrogram 存在量级差异（验证设施 scripts/validation/ 交叉验证显示
- * 本口径数值约为 Praat 的 1/9 – 1/24，逐信号不同），绝对数值不可直接比较，
- * 相对趋势一致。本口径对合成信号做构造真值回归（见 validation.test.ts）。
+ * 本口径数值约为 Praat 的 1/9 – 1/24，逐信号不同），绝对数值不可直接比较；
+ * 相对高低也不保证与 Praat 同向（见 VERIFICATION-REPORT.md 的脉冲信号对比）。
+ * 本口径对合成信号做构造真值回归（见 validation.test.ts）。
  *
  * 经验参考：连续语音健康嗓音多在 4–20dB，<4dB 提示谐波结构不显著
  * （气息声/噪声成分高）。数值仅供参考，不构成医学诊断。

@@ -8,7 +8,8 @@
 
 - `vite-plugin-pwa`，`registerType: 'autoUpdate'`：SW 更新下载完成后**下次加载
   生效**（skipWaiting + clientsClaim 由插件注入）；
-- Workbox 预缓存 `**/*.{js,css,html,svg,png,woff2,md}`，`navigateFallback: index.html`；
+- Workbox 预缓存 `**/*.{js,css,html,svg,png,woff2,md,wasm}`，`navigateFallback: index.html`；
+  `wasm` 是 Lua 脚本中心（wasmoon）的运行时，列入后离线也能执行脚本；
 - `includeAssets: ['favicon.svg', 'og-image.png', 'privacy-policy.md']`：
   这三个文件不在 globPatterns 的扩展名白名单里（`.txt` 不在其中），需显式列入，
   否则隐私政策等页面在离线时取不到；
@@ -108,3 +109,4 @@ URL 加 `?demo=1` 且当前无历史记录时，生成一条示例记录并跳�
 | 页面白屏 / 卡在旧版 | SW 精顽固缓存 | 清除缓存并重置 |
 | 安装按钮禁用 | 已 standalone 或浏览器不支持 | 已安装是正常态；不支持看手动指引 |
 | 分享入口不见 | 非 HTTPS / 浏览器不支持 | share_target 需安装 + HTTPS |
+| 局域网同步没有扫码按钮 | 非安全上下文（如 `http://192.168.x.x`）或没有摄像头 | 用同一 Wi-Fi 下支持相机的设备，或直接复制粘贴连接文本 |

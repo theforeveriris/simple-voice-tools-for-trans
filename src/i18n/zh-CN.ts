@@ -1254,7 +1254,7 @@ export const zhCN = {
   'privacy.lineLocal': '记录、音频与设置只保存在本机浏览器（IndexedDB）；不使用下方任何云功能时，没有数据离开本机。',
   'privacy.lineCloud': '云备份（GitHub / WebDAV）把记录与音频上传到你自己的存储；开启「云备份加密」后先加密再上传，未开启则按原样上传。',
   'privacy.lineLocalBackup': '手动 ZIP 导出与本地自动备份不加密，存放在你选择的位置。',
-  'privacy.lineLlm': 'AI 功能仅上传统计指标（不含音频与原始曲线），请求体不含 API Key；下方日志记录每次实际发出的请求内容。',
+  'privacy.lineLlm': '训练建议 / 周报仅上传统计指标（不含音频与原始曲线）；AI 助手另含对话文本、选中的记忆与内置文档片段，均不含音频与原始曲线。请求体不含 API Key；数据页的「AI 请求日志」记录每次实际发出的内容。',
   'privacy.ghRow': 'GitHub 云备份',
   'privacy.ghConnected': '已连接（{login}）',
   'privacy.ghNot': '未连接',

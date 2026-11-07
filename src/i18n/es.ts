@@ -1253,7 +1253,7 @@ export const es = {
   'privacy.lineLocal': 'Los registros, el audio y los ajustes se guardan solo en este navegador (IndexedDB); mientras no uses ninguna función en la nube, no sale ningún dato del dispositivo.',
   'privacy.lineCloud': 'La copia en la nube (GitHub / WebDAV) sube los registros y el audio a tu propio almacenamiento. Con el cifrado de copias activado se cifran antes de subirse; si no, se suben tal cual.',
   'privacy.lineLocalBackup': 'La exportación manual a ZIP y la copia automática local no se cifran y se guardan donde tú elijas.',
-  'privacy.lineLlm': 'Las funciones de AI solo suben estadísticas (sin audio ni curvas originales) y el cuerpo de la petición nunca contiene la API Key; el registro de abajo muestra exactamente lo que envía cada petición.',
+  'privacy.lineLlm': 'Los consejos de entrenamiento y el informe semanal solo suben estadísticas (sin audio ni curvas originales); el asistente AI envía además el texto de la conversación, las memorias seleccionadas y extractos de la documentación integrada, nunca audio ni curvas originales. El cuerpo de la petición nunca contiene la API Key; la subpágina «AI request log» en Datos muestra exactamente lo que envía cada petición.',
   'privacy.ghRow': 'Copia en la nube de GitHub',
   'privacy.ghConnected': 'Conectado ({login})',
   'privacy.ghNot': 'Sin conectar',

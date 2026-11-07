@@ -93,7 +93,8 @@ $$\tau^* = \tau + \frac{d'(\tau-1) - d'(\tau+1)}{2\,(d'(\tau-1) - 2d'(\tau) + d'
 - `detectPitchYin(samples, sampleRate, minHz?, maxHz?)` —— 主函数，四个步骤与上文一一对应：
   1. 调用 `computeCmnd` 求出归一化差分序列；
   2. 扫描寻找第一个低于阈值的谷，找不到返回 `null`；
-  3. `parabolicRefine` 抛物线插值（局部变量 `betterTau`），换算频率并夹紧到有效范围；
+  3. `parabolicRefine` 抛物线插值（局部变量 `betterTau`），换算频率；若结果超出
+     `minHz`–`maxHz` 则返回 `null`（不做夹取）；
   4. `prob = 1 - 最小 CMND 值` 作为置信度。
 - `rmsDb(samples)` —— 帧能量计算，被录音引擎同时用于能量曲线与有声门限。
 
@@ -104,7 +105,8 @@ $$\tau^* = \tau + \frac{d'(\tau-1) - d'(\tau+1)}{2\,(d'(\tau-1) - 2d'(\tau) + d'
 - 60fps 下实时路径约 90M 次运算/秒，现代桌面浏览器单帧耗时 < 2ms；
 - pYIN / MPM（`pitchAlt.ts`）与 YIN 共享同一调度入口 `detectPitch(samples, sampleRate, minHz, maxHz, algo)`，
   `algo` 取自 `settings.pitchAlgorithm`（默认 `'yin'`）。**当前设置界面没有暴露这个开关**，
-  因此实际运行时恒为 YIN；`pitchAlgorithm` 仍参与重算的参数指纹（`lib/audio/reanalyze.ts`）。
+  因此正常使用恒为 YIN；导入的旧配置若指定了 pYIN / MPM 仍会生效。
+  `pitchAlgorithm` 仍参与重算的参数指纹（`lib/audio/reanalyze.ts`）。
 
 ## 局限与改进方向
 

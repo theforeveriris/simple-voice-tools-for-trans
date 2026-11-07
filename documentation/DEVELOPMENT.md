@@ -44,8 +44,9 @@ npx tsc -b --force
 ### 提交前自查
 
 1. `npx tsc -b --force` 无错误；
-2. `npm test` 全绿（59 个文件 470 例，其中 16 例为参数验证套件，在缺少
-   `validation-cache/` 音频时自动跳过——见 `scripts/validation/README.md`）；
+2. `npm test` 全绿（63 个文件 506 例；全新 checkout 没有
+   `validation-cache/` 时，其中 16 个参数验证用例自动跳过，即 490 例——
+   生成方式见 `scripts/validation/README.md`）；
 3. 改了设置项/存储结构？检查 `documentation/ARCHITECTURE-STATE.md` 的键清单与迁移说明是否需要同步；
 4. 改了算法参数默认值？`constants/index.ts` 与 `documentation/PARAMETERS-GUIDE.md` 必须同步（历史上出过错）。
 
@@ -53,8 +54,9 @@ npx tsc -b --force
 
 ### 参数验证设施（可选，需要 Python）
 
-`scripts/validation/` 是一套**独立于 `npm test` 的三层验证设施**，用来证明每个声音
-参数的取值是对的，而不是"跑通"而已：
+`scripts/validation/` 是一套**独立于 `npm test` 的三层验证设施**，用合成信号
+检验关键参数的数值与行为（不是"跑通"而已，也不宣称覆盖每个参数的绝对正确性；
+Praat 交叉验证仍有个别失败项，见报告）：
 
 1. **构造真值**（`scripts/validation/truth.json`）：13 个确定性合成信号
    （正弦 / 脉冲串 / Klatt 元音 / 滑音 / 衰减 / 静音），真值由构造给出；
@@ -64,8 +66,9 @@ npx tsc -b --force
    同一批 WAV 喂 parselmouth，比对 F0 / 共振峰 / Jitter / Shimmer / HNR / CPPS。
 
 ```bash
+pip install numpy scipy praat-parselmouth
 python scripts/validation/synth_fixtures.py          # 生成合成 WAV（写入 validation-cache/）
-python scripts/validation/praat_reference.py         # 提取 Praat 参考值（需 pip install praat-parselmouth）
+python scripts/validation/praat_reference.py         # 提取 Praat 参考值
 npx vitest run src/lib/audio/validation/validation.test.ts
 python scripts/validation/report.py                  # 生成 VERIFICATION-REPORT.md
 ```
@@ -104,9 +107,9 @@ python scripts/validation/report.py                  # 生成 VERIFICATION-REPOR
 | 动效 | Framer Motion（layout / springs） |
 | 音频 | Web Audio API：AnalyserNode + 自研 DSP（纯 TS，无音频依赖） |
 | 可视化 | 原生 Canvas 2D（自绘，不依赖图表库） |
-| 测试 | Vitest 3（DSP 黄金样本回归 + 参数验证 + 导出/备份/LLM/i18n 完整性，59 个测试文件）+ Playwright（e2e 冒烟 + 视觉快照） |
+| 测试 | Vitest 3（DSP 黄金样本回归 + 参数验证 + 导出/备份/LLM/i18n 完整性，63 个测试文件）+ Playwright（e2e 冒烟 + 视觉快照） |
 | 原生壳 | Capacitor 7（Android APK）+ Tauri 2（Windows NSIS 安装包） |
-| 图标/提示 | lucide-react / sonner；uqr（分享图二维码） |
+| 图标/提示 | lucide-react / sonner；uqr（二维码渲染）+ jsQR（相机扫码兜底）；wasmoon（Lua 脚本中心） |
 
 ## 目录结构
 
@@ -160,11 +163,14 @@ src/
 │   │   ├── AppPage.tsx           # 应用（安装/分享/版本/检查更新/运行状态/诊断）
 │   │   ├── RecordingPage.tsx     # 录音（采集行为/音质/设备）
 │   │   ├── TrainingPage.tsx      # 训练（画像/靶标/建议/音区边界/实时视图/提醒）
-│   │   ├── LlmPage.tsx           # 大模型（AI 助手入口/模型配置/档案/提示词/用量）
+│   │   ├── LlmPage.tsx           # 大模型（AI 助手入口/模型配置/档案/提示词/记忆/用量）
 │   │   ├── DataPage.tsx          # 数据管理（数据去向/存储用量/备份恢复/WebDAV/局域网同步/导入导出）
 │   │   ├── AdvancedPage.tsx      # 高级（功能开关/算法参数/脚本中心）
 │   │   ├── PromptPage.tsx        # 提示词调节（LlmPage 的二级页）
-│   │   ├── PrivacyPanel.tsx      # 数据去向面板（含 AI 请求日志）
+│   │   ├── MemoryPage.tsx        # 长期记忆（LlmPage 的二级页）
+│   │   ├── LlmRequestLogPage.tsx # AI 请求日志（DataPage 的二级页）
+│   │   ├── PrivacyPanel.tsx      # 数据去向面板（AI 请求日志已拆为独立子页）
+│   │   ├── LanSyncSection.tsx / SyncQr.tsx / QrScannerDialog.tsx # 局域网同步（二维码/扫码/粘贴）
 │   │   ├── BackupEncryptionSection.tsx / BackupPassphraseDialog.tsx  # 云备份口令加密
 │   │   ├── GithubBackupSection.tsx / ConnectGithubDialog.tsx         # GitHub 云备份
 │   │   ├── DocSheet.tsx / AboutTab.tsx    # 应用内文档浮层（guide.md 等）与关于页
@@ -193,7 +199,9 @@ src/
 │   │                             #   openai/anthropic 双协议、流式、思考过程）
 │   ├── llmProfiles.ts / llmChats.ts / llmRequestLog.ts / llmResultStore.ts / llmUsage.ts
 │   │                             # LLM 档案 / 助手对话 / 请求日志 / 结果缓存 / 用量统计
-│   ├── llmModels.ts              # /models 拉取、响应解析、上下文长度目录与端点推导
+│   ├── memory.ts                 # AI 助手长期记忆（本机 kv，置顶 + 相关度注入）
+│   ├── llmModels.ts / llmPricing.ts # /models 拉取、上下文长度目录；单价解析（接口优先，内置兜底）
+│   ├── sync/                     # 局域网同步（lanSync / sdpCodec 压缩二维码 / qrScan 能力探测 / lanPeers）
 │   ├── assistantContent.ts       # AI 回复分段（Markdown / record:// 图表 / genui）
 │   ├── assistantChartRoute.ts    # record:// 图表引用的纯字符串路由
 │   ├── assistantCharts.tsx       # 记录图表的独立卡片渲染（复用 SeriesChart）
@@ -293,7 +301,8 @@ docs/                             # ⚠️ 构建产物输出目录（vite outDi
   增删清导入 / `getAllRecords()`（导出与备份的全量读）。IndexedDB（`svt` 库 v2，
   records / audio / kv 三个仓库）承载持久化；kv 仓库存放 GitHub 备份令牌等敏感态，
   不进 localStorage。写入失败降级为内存态并 toast；
-- 长音静音自动停止：循环内检测静音时长超过 `silenceStopSec`（门限 -50 dB 硬编码）
+- 长音静音自动停止：循环内检测静音时长超过 `silenceStopSec`（门限取可调的
+  `activeGateDb`，默认 -50 dB）
   触发停止；滑音模式按 20 秒计时。
 
 ### 图表渲染
@@ -372,11 +381,17 @@ npm run build     # tsc -b && vite build → 输出到 docs/
 npm run preview   # 本地预览构建产物
 npm test          # vitest run（CI 同步执行；含 DSP 黄金样本回归、参数验证与 i18n 键集校验）
 npm run test:watch    # vitest watch 模式
-npm run test:e2e     # Playwright 端到端（e2e/ 冒烟 + 视觉快照，需要浏览器）
+npx playwright install chromium  # 首次跑 e2e 前安装浏览器
+npm run test:e2e     # Playwright 端到端（e2e/ 冒烟 + 视觉快照；只有 Windows 基线入库）
 npm run cap:sync  # build + npx cap sync android + 裁掉 web-only 资源（Android 壳，见 GUIDE-CAPACITOR.md）
 npm run cap:open  # 用 Android Studio 打开 android/
 npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-DESKTOP.md）
 ```
+
+视觉快照基线只跟踪 Windows（`e2e/snapshots.spec.mts-snapshots/*-win32.png`）。
+在 Linux / macOS 上首次跑会因缺少对应平台基线而失败或直接写图：用
+`npx playwright test e2e/snapshots.spec.mts --update-snapshots` 生成后人工检查，
+**不要提交**非 Windows 图；更新受审查的基线时在 Windows 上跑同一条命令。
 
 - **部署**：push 到 `main` 后由 GitHub Actions 自动构建并发布 GitHub Pages
   （`.github/workflows/deploy.yml`），`docs/` 仅是本地构建产物（已 gitignore，不入库）；

@@ -7,8 +7,9 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 ## 设计原则
 
 - **零闭锁**：格式是纯 JSON，无专有序列化；删除本应用后数据依旧可读
-- **向后兼容**：读取方必须接受 v1/v2 并忽略未知字段（记录对象上
-  `additionalProperties: true`；`version` 字段本身是 `const: 2`，缺失即视为 v1）
+- **向后兼容**：应用读取器接受 `version` 缺失 / `1` / `2`，并忽略未知字段（记录对象上
+  `additionalProperties: true`）。公开的 v2 JSON Schema 把 `version` 写成 `const: 2`，
+  只用于校验 v2 文件；校验 v1 时应把该约束放宽为 `1` 或缺失
 - **缺失即 null**：帧级未检出用 `null`（JSON 文件内）；JS 内存中的 NaN 在导出前会转为 null
 
 ## 顶层结构
@@ -45,12 +46,16 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 
 ## 校验工具
 
-应用内置了轻量校验器（`src/lib/export/recordsSchema.ts`，导入时「宽容读入、
-严格报告」），外部工具也可以用任意 JSON Schema 校验器对着 Schema 文件验证：
+应用内置了轻量校验器（`src/lib/export/recordsSchema.ts`），用于显式检查文件是否符合
+公开 Schema；实际导入链路（`parseRecordsPayload`）保持**宽容读入**——只解析结构与
+版本上限（过新版本拒绝），不在导入时逐条报告 Schema 错误。外部工具也可以用任意
+JSON Schema 校验器对着 Schema 文件验证：
 
 ```bash
-# 在 documentation/ 目录下执行（Schema 路径相对于该目录）
-npx ajv-cli validate -s schema/records-v2.schema.json -d your-export.json
+# ajv-cli 需配 draft 2020-12 与 ajv-formats（schema 里用了 format: date-time）
+npx --package ajv-cli --package ajv-formats ajv validate \
+  --spec=draft2020 -c ajv-formats \
+  -s documentation/schema/records-v2.schema.json -d your-export.json
 ```
 
 ## 与 Praat 互操作

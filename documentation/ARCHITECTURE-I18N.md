@@ -93,7 +93,7 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`、去掉首�
 ### 生成与增量补全
 
 - `generateAiLocale(label, cfg, onProgress, { glossary?, signal? })`：**全量**。
-  基准 1338 键（zh-CN 词典现有规模），每批 `BATCH = 90` 条一次请求（15 批），
+  基准 1393 键（zh-CN 词典现有规模），每批 `BATCH = 90` 条一次请求（16 批），
   进度按批上报。
 - `translateMissing(label, cfg, onProgress, opts)`：**增量**。只翻译缓存缺失的键
   （应用升级新增界面文案后），并入现有词典保存。缺失键清单：`missingKeys(label)`；
@@ -117,8 +117,9 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`、去掉首�
 
 - 状态机 `idle | running | done | error | cancelled`，环形日志上限 60 条；
 - API：`startAITask(label, missingOnly)` / `subscribeAITask` / `getAITaskState()` /
-  `cancelAITask()`。`startAITask` 返回 `AITaskStartResult`：
-  `'started'` 已启动 / `'busy'` 已有任务在跑 / `'no-config'` 未配置 LLM 档案；
+  `cancelAITask()`。`startAITask` 是 **async**，返回
+  `Promise<AITaskStartResult>`：`'started'` 已启动 / `'busy'` 已有任务在跑 /
+  `'no-config'` 未配置 LLM 档案（调用方必须 `await`，不能直接和字符串比较）；
   取消经 `AbortSignal`，已完成批次保留在缓存中，续跑即增量补全；
 - 语言子页的进度卡经 `useSyncExternalStore(subscribeAITask, getAITaskState)` 订阅。
 

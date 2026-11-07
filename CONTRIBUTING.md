@@ -14,8 +14,11 @@ A voice measurement, analysis and training tracker built on the Web Audio API �
 npm install      # install dependencies
 npm run dev      # dev server
 npm test         # vitest suite (DSP golden fixtures / parameter validation / export / backup / LLM / i18n integrity …)
+                 #   the 16 fixture-based validation cases skip on a fresh checkout;
+                 #   generate fixtures with scripts/validation/README.md if you need them
 npm run lint     # eslint
 npm run build    # tsc -b && vite build
+npx playwright install chromium   # once per machine, before the first e2e run
 npm run test:e2e # Playwright end-to-end (e2e/ smoke + visual snapshots)
 ```
 
@@ -23,6 +26,13 @@ Native shells have their own entry points: `npm run cap:sync` / `npm run cap:ope
 for the Android app (Capacitor) and `npm run tauri dev` / `npm run tauri build`
 for the Windows desktop app (Tauri). See `documentation/GUIDE-CAPACITOR.md` and
 `documentation/GUIDE-DESKTOP.md`.
+
+E2E snapshots: the reviewed baselines in `e2e/snapshots.spec.mts-snapshots/` are
+Windows-only (`*-win32.png`). On Linux/macOS the first run cannot compare against
+them and may write platform-suffixed baselines instead; run
+`npx playwright test e2e/snapshots.spec.mts --update-snapshots` to generate
+local images, review them, and do **not** commit non-Windows baselines. CI runs
+lint → test → build only; e2e is a local check.
 
 No microphone needed to explore: append `?demo=1` to any page URL, or use the "load demo data" buttons in history / analysis / settings.
 
@@ -70,7 +80,7 @@ Issues with a clear use case are welcome. This app intentionally keeps everythin
 ## Privacy & Data
 
 - Never commit test recordings, API keys, or user data
-- AI/LLM-related code must keep the existing guarantees: only aggregate statistics leave the device, keys stay in local IndexedDB, and payloads remain inspectable in Settings → Data → Data destination
+- AI/LLM-related code must keep the existing guarantees: training advice and weekly reports send only aggregate statistics; the assistant also sends the conversation text and the memory entries it selects; audio and raw curves never leave the device; keys stay in local IndexedDB, and payloads remain inspectable in Settings → Data → **AI request log**
 
 ## License
 

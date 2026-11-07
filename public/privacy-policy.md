@@ -1,7 +1,7 @@
 # 隐私政策 / Privacy Policy
 
 **Simple Voice Tool for Trans**（下称"本应用"）以本地优先为设计原则。本政策说明各类数据
-的去向，最后更新：2026-10-18。功能变更导致数据流变化时，本页会同步更新。
+的去向，最后更新：2026-11-08。功能变更导致数据流变化时，本页会同步更新。
 
 - English summary at the bottom / 英文摘要见文末。
 
@@ -12,22 +12,24 @@
 
 - 录音音频与全部分析记录（音高 / 共振峰 / 能量 / 嗓音质量统计）；
 - 备注、训练靶标、基线、提醒时间等设置；
-- 主题偏好、界面语言、自定义词条。
+- 长期记忆（事实 / 偏好 / 要求 / 注意）、AI 助手对话历史与 AI 请求日志；
+- 导出模板、Lua 脚本与主题偏好、界面语言、自定义词条。
 
-清空浏览器数据或卸载应用即彻底删除（云端备份除外，见下）。
+清空浏览器数据或卸载应用即彻底删除（云端备份除外，见下）。局域网同步只在你主动操作时
+把记录与音频直接传到同一 Wi-Fi 下的另一台设备，不经过任何服务器。
 
 ## 二、可能离开设备的数据（均需你主动操作）
 
 ### 1. 大模型（AI）请求 —— 可选功能
 
-- **发送内容**：统计指标（均值、范围、Jitter/Shimmer/HNR/CPPS 等数字）与
+- **发送内容**：训练建议 / 周报发送统计指标（均值、范围、Jitter/Shimmer/HNR/CPPS 等数字）与
   记录元信息（模式、时长、备注）。**不发送录音音频与逐帧曲线**。
-  AI 助手对话会发送对话文本本身，并自动附带记录统计摘要（同样不含音频与逐帧曲线）
-  与检索到的应用内置文档片段。
+  AI 助手对话会发送对话文本本身、本次选中的**长期记忆**、记录统计摘要（同样不含音频与逐帧曲线）
+  与检索到的应用内置文档片段；AI 翻译只发送界面词条（中文键值与术语表）。
 - **接收方**：你在 设置 → 大模型 中自行填写的接口地址（OpenAI 兼容 /
   Anthropic）。本应用作者不经营任何中转服务，看不到这些请求。
 - **凭据**：API Key 仅存本地 IndexedDB，不随备份明文导出（加密导出除外）。
-- **审查**：每次请求的实际载荷可在 设置 → 数据 → 数据去向 中逐条查看、复制、清空。
+- **审查**：每次请求的实际载荷可在 设置 → 数据 → **AI 请求日志** 中逐条查看、复制、清空。
 
 ### 2. 云备份 —— 可选功能
 
@@ -49,6 +51,7 @@
 | 权限 | 用途 |
 | --- | --- |
 | 麦克风 | 仅在录音与实时监听时采样，不后台录音 |
+| 相机（可选） | 仅在 设置 → 数据 → 局域网同步 扫码时打开，关闭弹窗即释放 |
 | 通知（可选） | 练习提醒 |
 | 文件夹访问（可选） | 本地自动备份写入 |
 | 系统分享接收（可选，安装为应用后） | 接收你主动分享的音频做离线分析 |
@@ -65,8 +68,10 @@
 
 ## 六、你的控制权
 
-- **查看/导出**：设置 → 数据（全量 JSON / 摘要 CSV / 交互式 HTML / Praat）。
-- **删除**：设置 → 数据 → 清除全部数据；或直接清空浏览器站点数据。
+- **查看/导出**：设置 → 数据（全量 JSON / 摘要 CSV / 交互式 HTML / Praat）；AI 请求日志在
+  设置 → 数据 → **AI 请求日志**。
+- **删除**：设置 → 数据 → 清除全部数据；长期记忆可在 设置 → 大模型 → 记忆 中逐条或整体清除；
+  或直接清空浏览器站点数据。
 - **云端删除**：删除云备份即删除对应仓库/目录中的文件（应用不保留副本）。
 
 ## 七、联系方式
@@ -79,9 +84,12 @@
 
 Simple Voice Tool for Trans is local-first: recordings and analysis data never leave your
 device by default. Data leaves the device only when **you** explicitly (a) send
-aggregate statistics (never audio) to an LLM endpoint **you** configure, (b) back
-up to **your own** GitHub repo or WebDAV server (optional passphrase encryption
-before upload), or (c) the app checks GitHub Releases for updates (no user data
-attached). No analytics, no ads, no crash reporting. You can inspect every AI
-request payload in Settings → Data, export or wipe all data at any time.
+aggregate statistics (never audio) to an LLM endpoint **you** configure — the AI
+assistant additionally sends your chat text and the long-term memories it selects,
+and AI translation sends UI strings, (b) back up to **your own** GitHub repo or
+WebDAV server (optional passphrase encryption before upload), (c) transfer records
+directly to another device on the same Wi-Fi via LAN sync, or (d) the app checks
+GitHub Releases for updates (no user data attached). No analytics, no ads, no crash
+reporting. You can inspect every AI request payload in Settings → Data → **AI request
+log**, export or wipe all data at any time, and clear memories individually.
 Contact: the repository's issue tracker.

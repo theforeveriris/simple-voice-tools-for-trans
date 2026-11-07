@@ -72,7 +72,8 @@ kv 仓库键清单：
 | `llm:results` | lib/llmResultStore | 大模型成功结果按缓存键持久化（最新在前，封顶 50 条） |
 | `llm:profiles` | lib/llmProfiles | 大模型接口配置档案（多套一键切换，含 protocol: openai/anthropic、stream、contextTokens 与各档案 API Key；活动档案由 `settings.llmActiveProfileId` 指针指定） |
 | `llm:chats` | lib/llmChats | AI 助手对话历史（最新在前，封顶 30 条） |
-| `llm:requestLog` | lib/llmRequestLog | AI 请求日志（数据去向面板用，封顶 10 条，不含 API Key） |
+| `llm:requestLog` | lib/llmRequestLog | AI 请求日志（数据页 → AI 请求日志子页用，封顶 10 条，不含 API Key） |
+| `memory:items` | lib/memory | AI 助手长期记忆（事实 / 偏好 / 要求 / 注意，上限 200 条、单条 300 字符；只存本机，不进设置导出） |
 | `llm:suggestCache` | lib/assistantSuggestAi | AI 快速提示（quick prompts）缓存（指纹 + 时间 + 词条） |
 | `bg-image` | lib/theme/bgImage | 自定义背景图 Blob（ZIP 备份会打包） |
 | `luaScripts` | lib/lua/scripts | 用户 Lua 脚本列表（脚本中心） |
@@ -105,11 +106,13 @@ kv 仓库键清单：
 | `svt:reminder:fired:<date>` | lib/reminder | 每日提醒当日已触发标记 |
 | `svt:onboarded` | settings/OnboardingSheet | 首次引导完成标记（`"1"`） |
 | `svt:lan-peers` | lib/sync/lanPeers | 局域网同步最近对端设备记忆（JSON，上限 5 条） |
-| `svt.exportTemplates` | lib/export/templateStore | 导出模板列表（JSON；**故意用点号**，以便随设置导出一起带走） |
+| `svt.exportTemplates` | lib/export/templateStore | 导出模板列表（JSON；**不随设置导出**，换设备需用 `.svt-template` 文件单独导入） |
 
 新增键时：能进 IDB kv 的不进 localStorage；有结构的走 JSON；命名保持
-`svt:<域>[:<子域>]`（例外：`svt.exportTemplates` 用点号，因为它是随设置导出
-一起同步的模板列表，命名需与 `svt:` 域前缀区分）。
+`svt:<域>[:<子域>]`（例外：`svt.exportTemplates` 用点号，与 `svt:` 域前缀区分；
+它和 IDB kv 中的 `memory:items` / Lua 脚本一样，**不在设置导出的 AppSettings 范围内**）。
+迁移设备时：模板用 `.svt-template` 文件单独导入，Lua 脚本在脚本中心导出/导入 JSON，
+长期记忆与 AI 对话目前不随备份迁移（只存本机，可在对应页面手动复制或清除）。
 
 另有一条 **Cache Storage** 键（不是 localStorage）：`svt-share-target`
 （`lib/audio/importAudio.ts`）——PWA「分享到」接收到的音频暂存处。

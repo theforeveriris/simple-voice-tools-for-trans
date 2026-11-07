@@ -11,6 +11,10 @@ import json
 import os
 import sys
 
+# Windows 控制台默认 GBK，报告里的 ✅/⚠️ 会触发 UnicodeEncodeError
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CACHE = os.path.join(ROOT, "validation-cache")
 VALIDATION = os.path.dirname(__file__)
@@ -90,7 +94,7 @@ def main():
 
     lines.append("\n## CPPS 对比（dB）\n")
     lines.append("> ⚠️ 本口径（dB 谱 + 均值）与 Praat（ln 谱 + 内部缩放）存在量级差异，")
-    lines.append("> 绝对数值不可直接比较。相对趋势与方向一致。\n")
+    lines.append("> 绝对数值不可直接比较；相对高低也不保证同向（脉冲串加抖动后本实现下降、Praat 上升）。\n")
     lines.append("| 信号 | 应用 | Praat | 偏差 |")
     lines.append("|------|------|-------|------|")
     for name, a in results.items():
@@ -129,9 +133,9 @@ def main():
 
     lines.append(f"\n## 汇总\n")
     lines.append(f"- F0 对比通过率: {ok_count}/{f0_total}")
-    lines.append(f"- 全部测试: 16 passed (构造真值) + Praat 交叉验证")
+    lines.append(f"- 构造真值: 16/16 通过；Praat 交叉验证存在个别失败项（见各表判定列）")
     lines.append(f"- 修复项: Shimmer 段幅度 bug、HNR YIN 置信度→ACF、CPPS mean−SD→mean")
-    lines.append(f"- 已知差异: CPPS 量级（Praat 内部缩放）、Jitter/Shimmer 噪声敏感性（峰检测 vs 交叉相关）")
+    lines.append(f"- 已知差异: CPPS 量级与相对高低不保证同向（Praat 内部缩放）、Jitter/Shimmer 噪声敏感性（峰检测 vs 交叉相关）")
 
     out = "\n".join(lines)
     out_path = os.path.join(ROOT, "VERIFICATION-REPORT.md")
