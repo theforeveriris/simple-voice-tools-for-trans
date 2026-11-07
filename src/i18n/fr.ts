@@ -1253,7 +1253,7 @@ export const fr = {
   'privacy.lineLocal': 'Les enregistrements, l\'audio et les réglages restent dans ce navigateur (IndexedDB). Tant que tu n\'utilises aucune fonction cloud ci-dessous, rien ne quitte cet appareil.',
   'privacy.lineCloud': 'La sauvegarde cloud (GitHub / WebDAV) envoie les enregistrements et l\'audio vers ton propre stockage. Si le chiffrement des sauvegardes cloud est activé, les fichiers sont chiffrés avant l\'envoi ; sinon, ils sont envoyés tels quels.',
   'privacy.lineLocalBackup': 'L\'export ZIP manuel et la sauvegarde locale automatique ne sont pas chiffrés et sont stockés là où tu le choisis.',
-  'privacy.lineLlm': 'Les fonctions AI n\'envoient que des statistiques (sans audio ni courbes brutes) et le corps de la requête ne contient jamais de API Key ; le journal ci-dessous indique exactement ce que chaque requête a envoyé.',
+  'privacy.lineLlm': 'Les conseils d\'entraînement et le rapport hebdomadaire n\'envoient que des statistiques et les notes des enregistrements (sans audio ni courbes brutes) ; l\'assistant AI envoie en plus le texte de la conversation, les mémoires sélectionnées et des extraits de la documentation intégrée, jamais l\'audio ni les courbes brutes. Le corps de la requête ne contient jamais de API Key ; la sous-page « AI request log » dans Données indique exactement ce que chaque requête a envoyé (10 dernières seulement, messages longs tronqués ; un échec d\'écriture ne bloque pas la requête).',
   'privacy.ghRow': 'Sauvegarde cloud GitHub',
   'privacy.ghConnected': 'Connecté ({login})',
   'privacy.ghNot': 'Non connecté',

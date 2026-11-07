@@ -67,6 +67,19 @@ describe('parseRecordsPayload', () => {
     expect(parsed.records).toEqual([]);
   });
 
+  it('v1 记录缺少 f1 / f2 时补成等长 null 数组', () => {
+    const rec = makeRecord('v1');
+    const series = { ...rec.series } as Record<string, unknown>;
+    delete series.f1;
+    delete series.f2;
+    const parsed = parseRecordsPayload(JSON.stringify({
+      version: 1,
+      records: [{ ...rec, series } as unknown as AnalysisRecord],
+    }));
+    expect(parsed.records[0].series.f1).toEqual([null, null]);
+    expect(parsed.records[0].series.f2).toEqual([null, null]);
+  });
+
   it('更高版本（99）拒绝并抛 Error', () => {
     expect(() => parseRecordsPayload('{"version":99,"records":[]}')).toThrow(Error);
   });

@@ -41,6 +41,26 @@ export function buildRecordsPayload(records: AnalysisRecord[]): RecordsPayload {
 }
 
 /**
+ * 兼容早期导出：`series.f1` / `f2` 在旧格式里可以缺失。分析页与图表会按
+ * `series.t` 的下标直接读取这两个数组，缺失数组会在打开记录时崩溃；这里在
+ * 导入边界补成等长 null 数组（过短/过长同样按 t 的长度对齐）。
+ */
+function normalizeRecordSeries(rec: AnalysisRecord): AnalysisRecord {
+  const series = rec.series;
+  if (!series || typeof series !== 'object') return rec;
+  const n = Array.isArray(series.t) ? series.t.length : 0;
+  const fit = (arr: unknown): (number | null)[] => {
+    if (Array.isArray(arr) && arr.length === n) return arr as (number | null)[];
+    return Array.from({ length: n }, (_, i) =>
+      Array.isArray(arr) && typeof arr[i] === 'number' ? (arr[i] as number) : null);
+  };
+  const f1 = fit(series.f1);
+  const f2 = fit(series.f2);
+  if (f1 === series.f1 && f2 === series.f2) return rec;
+  return { ...rec, series: { ...series, f1, f2 } };
+}
+
+/**
  * 解析并校验备份/导出 JSON 中的记录数组。
  * 接受当前版本（2）与历史版本（1、裸数组）；显式拒绝更新的版本，
  * 避免旧应用在格式变更后静默错读新备份。
@@ -53,8 +73,9 @@ export function parseRecordsPayload(json: string): { records: AnalysisRecord[]; 
   } catch {
     throw new Error(t('backup.errJsonParse'));
   }
+  const normalize = (records: AnalysisRecord[]) => records.map(normalizeRecordSeries);
   // 最早期的导出是裸 records 数组，继续接受
-  if (Array.isArray(parsed)) return { records: parsed as AnalysisRecord[], version: null };
+  if (Array.isArray(parsed)) return { records: normalize(parsed as AnalysisRecord[]), version: null };
   const obj = parsed as { version?: unknown; records?: unknown } | null;
   if (!obj || typeof obj !== 'object' || !Array.isArray(obj.records)) {
     throw new Error(t('backup.errBadPayload'));
@@ -63,7 +84,7 @@ export function parseRecordsPayload(json: string): { records: AnalysisRecord[]; 
   if (version != null && version > BACKUP_FORMAT_VERSION) {
     throw new Error(t('backup.errVersionTooNew', { version }));
   }
-  return { records: obj.records as AnalysisRecord[], version };
+  return { records: normalize(obj.records as AnalysisRecord[]), version };
 }
 
 /** 音频 Blob 类型 → 备份文件扩展名 */

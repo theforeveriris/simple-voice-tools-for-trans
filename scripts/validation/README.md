@@ -1,6 +1,7 @@
 # 声音参数验证设施
 
-对全部声音参数做正确性验证：构造真值回归 + Praat 交叉验证。
+用合成信号检验关键声音参数的数值与行为（构造真值回归 + Praat 交叉验证）。
+它不宣称覆盖每个参数的绝对正确性；个别 Praat 对比仍有失败项，见报告中的判定列。
 
 ## 三层验证
 
@@ -13,10 +14,13 @@
 ## 使用方式
 
 ```bash
+# 依赖：numpy / scipy（合成信号）+ praat-parselmouth（Praat 参考值）
+pip install numpy scipy praat-parselmouth
+
 # 1. 生成合成信号（确定性种子）
 python scripts/validation/synth_fixtures.py
 
-# 2. 提取 Praat 参考值（需要 pip install praat-parselmouth）
+# 2. 提取 Praat 参考值
 python scripts/validation/praat_reference.py
 
 # 3. 跑 TS 管线验证 + 生成对比报告
@@ -35,7 +39,7 @@ cat VERIFICATION-REPORT.md
 - `src/lib/audio/validation/fixtures.ts` — WAV 读取器
 - `src/lib/audio/validation/validation.test.ts` — TS 侧验证测试
 
-## 已验证的修复
+## 历史修复记录（以报告判定列为准）
 
 | 参数 | 修复 | 验证结果 |
 |------|------|----------|
@@ -45,6 +49,6 @@ cat VERIFICATION-REPORT.md
 
 ## 已知差异
 
-- **CPPS 量级**：本口径（dB 谱 + 1/N 归一化）约为 Praat（ln 谱 + 内部缩放）的 1/20，绝对数值不可直接比较
+- **CPPS 量级**：本口径（dB 谱 + 1/N 归一化）与 Praat（ln 谱 + 内部缩放）存在量级差异，实测约为其 1/21 – 1/3（逐信号不同，见 `VERIFICATION-REPORT.md`），绝对数值不可直接比较；相对高低也不保证同向（脉冲串叠加 Shimmer 后本实现下降、Praat 上升）
 - **Jitter/Shimmer 噪声敏感性**：峰检测法在噪声下偏高（sine200_snr20: jitter +2.1%, shimmer +12.7%），Praat 用交叉相关更稳健
 - **共振峰**：纯音（sine）的 Praat Burg 会把基频当成"共振峰"，仅元音信号可对比

@@ -1,7 +1,7 @@
 # i18n 架构（国际化与 AI 翻译）
 
 本文描述界面文案系统：核心查找链、七种内置语言、用户自定义覆盖层、
-AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook / aiLocale / 八个词典）。
+AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook / aiLocale / aiTranslateTask / 七个词典）。
 
 ## 核心查找链（`src/i18n/index.ts`）
 
@@ -9,7 +9,7 @@ AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook
 
 ```
 用户自定义覆盖层  svt:i18n-overrides:<tag>   （语言子页 → 编辑词条，最高优先级）
-  → 内置词典      DICTS[locale]               （zh-CN / zh-TW / en / ja / lzh / es / fr / bo）
+  → 内置词典      DICTS[locale]               （zh-CN / zh-TW / en / ja / lzh / es / fr）
   → AI 词典       aiDicts.get('ai')           （registerAiDict 注入的运行时层）
   → zh-CN 基准回退 zhCN[key]                  （所有未翻译词条的兜底）
 ```
@@ -17,7 +17,8 @@ AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook
 要点：
 
 - **React 无关**：`t()` 是模块级纯函数，任何非 React 代码（Canvas 画笔、DSP、备份）
-  都可直接调用；React 侧经 `useI18n()` 取用。
+  都可直接调用；React 组件也直接 `import { t } from '@/i18n'` 取词，
+  `useI18n()` 只作订阅（返回 `void`）。
 - **占位符**：`{name}` 形式，`t('toast.jsonExported', { n: 5 })` 插值；未知占位符原样保留。
 - `DictKey = keyof typeof zhCN`：**zh-CN 词典是类型层面与运行时的双重基准**，
   所有键必译性由 `src/i18n/i18n.test.ts` 校验（键集合一致、占位符集合一致、无空串）。
@@ -34,8 +35,8 @@ AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook
 2. **词典版本 bump**（`registerAiDict` / `setOverride`）→ `useSyncExternalStore(subscribeI18n, getI18nVersion)`。
 
 这就是「编辑词条保存后界面立即变化」「AI 词典生成完成自动切换」的机制。
-`useI18n()` 返回 `t` 本身——组件**没有**按词条粒度的细粒度订阅，词典变化会重渲染
-所有调用了 `useI18n` 的组件（当前规模下足够快）。
+`useI18n()` 只负责订阅、返回 `void`——组件**没有**按词条粒度的细粒度订阅，
+词典变化会重渲染所有调用了 `useI18n` 的组件（当前规模下足够快）。
 
 ## 用户自定义覆盖层
 
@@ -43,7 +44,7 @@ AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook
 - **AI 语言按 slug 分库**（`deutsch` 与 `français` 互不串扰）；重新生成 AI 词典
   不会清除覆盖（用户意图优先于机器翻译）。
 - API：`getOverride(key)` / `setOverride(key, value|null)`（当前语言维度，
-  null 或空串即移除）；`overrideCount()`。
+  null 或空串即移除）。
 - UI 入口：语言子页 → 编辑词条 → `EditStringsSheet`（搜索键 / 简中原文 /
   当前译文，逐条编辑，带「已自定义」标记与「重置」）。
 
@@ -85,12 +86,14 @@ chat 接口，档案存 IndexedDB、经 `llmActiveProfileId` 异步解析）翻�
 }
 ```
 
-slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字符，空则 `custom`。
+slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`、去掉首尾 `-`、截 24 字符；
+若折叠后为空（纯中文等非 ASCII 名称），用 `custom-<FNV-1a 哈希的 base36>` 兜底
+（同一名称始终得到同一 slug）。
 
 ### 生成与增量补全
 
 - `generateAiLocale(label, cfg, onProgress, { glossary?, signal? })`：**全量**。
-  基准约 1202 键（zh-CN 词典现有规模），每批 `BATCH = 90` 条一次请求（约 14 批），
+  基准 1393 键（zh-CN 词典现有规模），每批 `BATCH = 90` 条一次请求（16 批），
   进度按批上报。
 - `translateMissing(label, cfg, onProgress, opts)`：**增量**。只翻译缓存缺失的键
   （应用升级新增界面文案后），并入现有词典保存。缺失键清单：`missingKeys(label)`；
@@ -113,15 +116,21 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字
 生成/补全跑在**模块级单例的后台任务**里——切页、设置子页卸载都不中断：
 
 - 状态机 `idle | running | done | error | cancelled`，环形日志上限 60 条；
-- API：`startAITask()` / `subscribeAITask` / `getAITaskState()` / `cancelAITask()`
-  （取消经 `AbortSignal`，已完成批次保留在缓存中，续跑即增量补全）；
+- API：`startAITask(label, missingOnly)` / `subscribeAITask` / `getAITaskState()` /
+  `cancelAITask()`。`startAITask` 是 **async**，返回
+  `Promise<AITaskStartResult>`：`'started'` 已启动 / `'busy'` 已有任务在跑 /
+  `'no-config'` 未配置 LLM 档案（调用方必须 `await`，不能直接和字符串比较）；
+  取消经 `AbortSignal`，已完成批次保留在缓存中，续跑即增量补全；
 - 语言子页的进度卡经 `useSyncExternalStore(subscribeAITask, getAITaskState)` 订阅。
 
 ### 词典分享
 
 - 导出：`buildAiLocalePayload(cache)` → `{ app: 'simple-voice-tools-for-trans', kind: 'ai-locale', version: 1, exportedAt, label, model, generatedAt, dict }`。
 - 导入：`parseAiLocalePayload(json)` 校验 app/kind/version（版本过新拒绝），
-  **dict 仅保留基准中存在的键**（防脏文件），然后 `importAiCache`（写缓存 + 注册）。
+  **dict 仅保留基准中存在的键且值为非空字符串**（防脏文件，值会 trim），
+  然后 `importAiCache`（写缓存 + 注册）。
+  app 标识同时接受新 id `simple-voice-tools-for-trans` 与旧 id
+  `simple-voice-tools`（`lib/appId.ts` 的 `isKnownAppId`）。
 
 ### 启动恢复与缺失提示
 
@@ -132,9 +141,10 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字
 
 ## 首次启动语言检测（`main.tsx`）
 
-无 `svt:settings:v1` 时读 `navigator.languages` 匹配内置语言：
+无 `svt:settings:v1` 时读 `navigator.languages`（无则取 `navigator.language`）匹配内置语言：
 `zh-CN/zh-Hans → zh-CN`；`zh-TW/zh-HK/zh-MO/zh-Hant → zh-TW`；`ja* → ja`；
-`es* → es`；`fr* → fr`；`bo* → bo`；其余 zh 系回退 `zh-CN`；都不匹配 → 默认英文。
+`es* → es`；`fr* → fr`；其余 zh 系回退 `zh-CN`；都不匹配 → 默认英文。
+（文言 `lzh` 不会被自动检测命中，只能手动选择。）
 检测结果同步写入持久化设置，此后与显式选择无异。
 
 ## 持久化键一览（本子系统）
@@ -151,12 +161,14 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字
 设置 → 关于 的「使用说明」不走 i18n 词典：构建时把 `public/guide.md`（仅简体中文
 一个版本）打进产物，运行时 `DocSheet` 以 `fetch(BASE_URL + 'guide.md')` 拉取、
 内置极简 Markdown 渲染器展示，Service Worker 预缓存使其可离线阅读。开发者文档
-（`documentation/`）在关于页以 GitHub 源文件链接提供，不参与七语言键集校验。
+（`documentation/`）也会被打包进产物，可在关于页用同一个浮层直接阅读
+（`lib/docs.ts` 用 `import.meta.glob` 内联），浮层内另有「看源文件」的
+GitHub 链接；它们不参与七语言键集校验。
 
 ## 给开发者的约定
 
 1. **新界面文案必须进 zh-CN 词典**，用 `t('key')` 而非字面量；英文界面同样如此。
 2. 新增词条后无需更新 AI 词典——缺失词条回退中文，用户会收到补全提示；
    但发布说明里可提醒 AI 语言用户补全。
-3. 更新 `settings.updateNotes`（应用子页「本次更新内容」）时，八个语言都改。
+3. 更新 `settings.updateNotes`（应用子页「本次更新内容」）时，七个语言都改。
 4. 占位符名在各语言中不可增删（漂移测试强制）。

@@ -99,4 +99,8 @@
     <!-- 麦克风录音：WebView 的 getUserMedia 授权请求会映射到 RECORD_AUDIO 运行时弹窗 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- 相机：局域网同步扫码（可选能力；没有相机的设备仍可复制粘贴连接文本） -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 </manifest>

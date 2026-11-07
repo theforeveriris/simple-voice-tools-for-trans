@@ -23,8 +23,8 @@ SettingsPage
 | 语言 | 界面说什么话（界面语言 + AI 翻译） |
 | 录音 | 声音怎么采进来（采集行为 / 音质 / 设备） |
 | 训练 | 我在练什么、怎么被督促（画像 / 靶标 / 建议 / 音区边界 / 实时视图 / 提醒） |
-| 大模型 | AI 能力怎么接（档案 / 模型 / 提示词 / 助手 / 用量） |
-| 数据 | 数据存哪、怎么进出（数据去向 / 存储 / 导入 / 同步 / 备份 / WebDAV / GitHub / 数据操作） |
+| 大模型 | AI 能力怎么接（档案 / 模型 / 提示词 / 记忆 / 助手 / 用量） |
+| 数据 | 数据存哪、怎么进出（数据去向 / 存储 / 导入 / 同步 / 备份 / WebDAV / GitHub / AI 请求日志 / 数据操作） |
 | 应用 | App 本身怎么装、怎么更新、怎么启动（安装 / 分享 / 版本 / 启动页签 / 启动页 / 状态） |
 | 高级 | 仍未定型或可编程的能力（语谱图 / 实时频谱 / 音高算法对比 / 算法参数 / 脚本中心） |
 
@@ -87,8 +87,11 @@ props 约定：`{ settings, update, onBack }`——`update` 即 `updateSettings`
 3. `SEARCH_INDEX` 登记子页的设置项（否则搜索不到）；
 4. `i18n` 七语言加子页标题键（搜索索引用的 sectionKey / labelKey 也要有词条）；
 5. 若子页含持久化设置项：`types.AppSettings` + `DEFAULT_SETTINGS` +
-   `lib/export/settings.ts` 白名单（可选字符串进 `OPTIONAL_STRING_KEYS`，
-   枚举进 `STRING_ENUMS`，数值范围进 `NUMBER_RANGE`）。
+   `lib/export/settings.ts` 白名单——敏感项进 `SECRET_KEYS`（永不出现在导出里），
+   可选字符串进 `OPTIONAL_STRING_KEYS`，可选数值进 `OPTIONAL_NUMBER_KEYS`，
+   枚举进 `STRING_ENUMS`，数值范围进 `NUMBER_RANGE`。
+   注意 `STRING_ENUMS` 漏项会导致该值在导入时被静默丢弃（例如 `navStyle` 的
+   `'ai'`），新增枚举值必须同步这里。
 
 参考实现：`AppPage`（无设置项的最简形态）、`LanguagePage`（开关 + 下拉 +
 表单 + 浮层 + 进度条的最全形态）。
@@ -96,7 +99,8 @@ props 约定：`{ settings, update, onBack }`——`update` 即 `updateSettings`
 ## 变体：二级页与独立全屏页
 
 - **二级页**：子页之下再挂一层本地 state 页，如 `LlmPage` → `PromptPage`
-  （提示词调节）；骨架与 props 约定相同，只是由 LlmPage 自己管理开合。
+  （提示词调节）/ `MemoryPage`（长期记忆），以及 `DataPage` → `LlmRequestLogPage`
+  （AI 请求日志）；骨架与 props 约定相同，只是由所属子页管理开合。
 - **顶级页**：不完全属于设置的概念页放在 `components/` 顶级目录，并由底部导航
   直接进入，如 `components/ai/AssistantPage.tsx`（AI 页签）；设置 → 大模型
   里的 AI 助手入口只做快捷切页，不再单独打开全屏浮层。
@@ -105,14 +109,14 @@ props 约定：`{ settings, update, onBack }`——`update` 即 `updateSettings`
 
 | 子页 | 区块 | 关键实现 |
 | --- | --- | --- |
-| 外观 | 主题（深浅 / 预设三卡 / 骄傲旗参数）· 自定义背景图 · 氛围彩蛋 · 导航栏样式（悬浮胶囊 / 经典底栏）· **图表与显示**（网格 / 联动 / 迷你基频 / 实时窗口 / 音高轴 / 语谱配色 / 回放倍速 / 日记周起始）· 花园布局 · 主题分享 | `applyPreset` 立即重放主题；背景图管线见 ARCHITECTURE-THEME.md；主题包见 `lib/theme/themeShare.ts` |
+| 外观 | 主题（深浅 / 预设三卡 / 骄傲旗参数 / 自定义背景图 / 氛围彩蛋）· **导航栏**（悬浮胶囊（默认）/ 经典底栏 / AI 工作台）· **图表与显示**（网格 / 联动 / 迷你基频 / 实时窗口 / F0 显示平滑 / 音高轴 / 语谱配色 / 回放倍速 / 日记周起始）· 花园布局 · 主题分享 | `applyPreset` 立即重放主题；背景图管线见 ARCHITECTURE-THEME.md；主题包见 `lib/theme/themeShare.ts` |
 | 语言 | 界面语言 + AI 翻译（合一区块） | 见 ARCHITECTURE-I18N.md |
 | 录音 | 录音行为（自动进入分析 / 保存音频 / 静音判停 / 最长时长）· 音质与设备（码率 / 增益降噪 / 震动 / 自动回放 / 麦克风选择） | 环境元数据（底噪 / 麦克风 / 时段）在 `lib/audio/recorder.ts` 采集 |
-| 训练 | 用户画像（方向 / 年龄段）· 训练靶标（靶标 / 共振峰目标区 / 基线记录）· 训练建议（建议模式 / 对比时建议）· 自定义音区边界 · 实时练习视图 ×4 · 每日练习提醒 | 实时视图为 `components/pages/*LiveSheet.tsx`；靶标达成率见 `lib/audio/recorder.ts` |
-| 大模型 | AI 页快捷入口 · 模型配置 · 配置档案（模型拉取 / 上下文识别） · 提示词调节 · 用量与费用 | 档案制（`llm:profiles`），支持 openai/anthropic 双协议；模型列表与上下文识别见 `lib/llmModels.ts`；请求日志在数据页 |
-| 数据 | 数据去向（页首，含 AI 请求日志）· 存储用量 · 外部音频导入 · 局域网同步 · 备份与恢复（含口令加密）· WebDAV · GitHub 云备份 · 数据操作 | `PrivacyPanel`；加密见 ARCHITECTURE-STATE.md；局域网见 `lib/sync/lanSync.ts` |
+| 训练 | 用户画像（方向 / 年龄段）· 训练靶标（靶标 / 共振峰目标区 / 基线记录）· 训练建议（建议模式 / 对比时建议）· 自定义音区边界 · 实时功能（实时练习视图 ×4）· 练习提醒 | 实时视图为 `components/pages/*LiveSheet.tsx`；靶标达成率见 `lib/audio/recorder.ts` |
+| 大模型 | AI 页快捷入口 · 模型配置 · 配置档案（模型拉取 / 上下文识别） · 提示词调节 · **长期记忆** · 用量与费用 | 档案制（`llm:profiles`），支持 openai/anthropic 双协议；模型列表与上下文识别见 `lib/llmModels.ts`；费用优先取 `/models` 单价、回退内置目录（`lib/llmPricing.ts`）；记忆存 `memory:items`（`lib/memory.ts`） |
+| 数据 | 数据去向（页首）· 存储用量 · 外部音频导入 · 局域网同步（二维码 / 粘贴）· 备份与恢复 · **口令加密** · WebDAV · GitHub 云备份 · **AI 请求日志**（独立子页）· 数据操作 | `PrivacyPanel`；日志页 `LlmRequestLogPage`；加密见 ARCHITECTURE-STATE.md；局域网见 `lib/sync/lanSync.ts`、`sdpCodec.ts`、`qrScan.ts` |
 | 应用 | 安装与分享 · 版本与更新 · 启动默认页签 · 启动页（原生）· 运行状态 | 见 GUIDE-PWA.md；原生壳内「检查更新」比对 GitHub Releases APK（`lib/appUpdate.ts`） |
-| 高级 | 功能开关（语谱图 / 实时频谱 / SI 改名 / 音高算法对比）· 算法参数 · 脚本中心 | 算法参数 13 项见 PARAMETERS-GUIDE.md；脚本见 `lib/lua/*` |
+| 高级 | 功能开关（语谱图 / SI 改名 / 实时频谱 / 音高算法对比 / 齿音卡）· 算法参数 · 脚本中心 | 算法参数 13 项见 PARAMETERS-GUIDE.md；脚本见 `lib/lua/*`（建议可多开合并；分享卡 / 花朵 / 导出同一方向单一生效） |
 
 ## 文案规范
 

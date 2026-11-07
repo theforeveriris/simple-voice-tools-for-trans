@@ -1,16 +1,19 @@
 # Capacitor 安卓壳（GUIDE-CAPACITOR）
 
 用 Capacitor 把现有 Web 应用原样打包为安卓 App：**Web 代码 100% 复用**，
-壳层只做权限、分享接收、通知、系统栏适配、应用快捷方式五件事。
+壳层只做权限、分享接收、通知、系统栏适配、应用快捷方式、快捷磁贴六件事。
 
 ## 架构总览
 
 ```
 浏览器 PWA  ←─ 同一份 Vite 构建（docs/）→  Capacitor WebView（https://localhost）
                                         ├─ 麦克风：RECORD_AUDIO 权限 + WebView getUserMedia 桥
+                                        ├─ 相机（可选）：CAMERA 权限，仅局域网同步扫码时使用
                                         ├─ 分享接收：ShareTargetPlugin（Java）→ Web 导入管线
                                         ├─ 提醒通知：@capacitor/local-notifications
-                                        └─ 应用快捷方式：AppShortcutPlugin（长按图标深链页签）
+                                        ├─ 系统栏：SystemBarsPlugin（配色 / 沉浸式）
+                                        ├─ 应用快捷方式：AppShortcutPlugin（长按图标深链页签）
+                                        └─ 快捷磁贴：RouteTileService + 录音/历史/设置三张
 ```
 
 Web 层平台分支的主要入口是 `src/lib/platform.ts` 的 `isNative`
@@ -23,6 +26,7 @@ Web 层平台分支的主要入口是 `src/lib/platform.ts` 的 `isNative`
 | 检查更新 | 比对线上 `version.json` | 比对 GitHub Releases 最新 APK（`lib/appUpdate.ts`），新版本给下载按钮，浏览器下载后覆盖安装（数据保留） |
 | 设置 → 应用 | 安装入口 / 检查更新 / 清缓存可见 | 隐藏安装入口 / SW 状态 / 清缓存重置；版本、检查更新、分享应用、诊断信息可见 |
 | 应用快捷方式 | manifest shortcuts（长按图标） | `AppShortcutPlugin`：静态 shortcuts 深链录音 / 历史 / 设置（同一套 `#/hash` 语义） |
+| 快捷磁贴 | 无 | `RouteTileService` + 录音 / 历史 / 设置三张 TileService（API 24+；下拉通知栏的快捷设置区；API 34+ 走 `PendingIntent` 重载） |
 | 「分享到」 | manifest share_target（SW 拦截 POST） | `ShareTargetPlugin` 收 SEND intent → 缓存目录 → 事件给 Web |
 | 练习提醒 | Web Notification | `LocalNotifications.schedule`（即时展示） |
 | 其余（Web Audio / MediaRecorder / IndexedDB / vibrate / clipboard） | — | WebView 原样可用，无分支 |
@@ -30,7 +34,8 @@ Web 层平台分支的主要入口是 `src/lib/platform.ts` 的 `isNative`
 ## 日常开发流
 
 ```bash
-npm run cap:sync   # = npm run build + npx cap sync android（构建产物拷入 android 工程）
+npm run cap:sync   # = npm run build + npx cap sync android + node scripts/prune-android-assets.mjs
+                    #   （构建产物拷入 android 工程，再裁掉 web-only 资源，省约 550KB APK）
 npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 ```
 
@@ -48,7 +53,8 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 
 `.github/workflows/android-release.yml`：
 
-- **推送到 main**：跑 vitest → vite build → cap sync → gradle 构建——三个签名
+- **推送到 main**：跑 vitest → vite build → cap sync → 裁掉 web-only 资源
+  （`scripts/prune-android-assets.mjs`）→ gradle 构建——三个签名
   secrets 齐全时 `assembleRelease`（产出 `SimpleVoiceToolForTrans-v{版本}-release.apk`），
   否则回退 debug 签名；APK 传到 **`latest` 预发布**（滚动替换并清理旧版本 .apk，
   固定下载入口：`github.com/theforeveriris/simple-voice-tools-for-trans/releases/latest`）。
@@ -95,6 +101,8 @@ storeFile/storePassword/keyAlias/keyPassword，并在 `android/app/build.gradle`
 - [ ] 分析页图表 / 回放 / 语谱图
 - [ ] 系统「分享到」音频文件（微信语音导出 / 文件管理器）→ 自动进分析页
 - [ ] 练习提醒的测试通知（Android 13+ 首次会申请通知权限）
+- [ ] 局域网同步扫码（首次弹相机权限；无相机时复制粘贴仍可用）
+- [ ] 快捷磁贴（录音 / 历史 / 设置，API 34+ 点击能展开应用）
 - [ ] 设置导出/导入、ZIP 备份恢复
 
 ## 原生分享接收（ShareTargetPlugin）
@@ -175,6 +183,10 @@ Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
 - **麦克风不弹权限**：确认 manifest 有 `RECORD_AUDIO`（已加）。Capacitor 的
   BridgeWebChromeClient 会把 WebView 的 getUserMedia 请求映射为运行时权限弹窗；
   若极老机型仍不弹，兜底方案是加一个请求运行时权限的小插件（未预置）。
+- **局域网同步扫码打不开相机**：确认 manifest 有 `CAMERA`（已加，`uses-feature`
+  设为非必需），且系统设置里已授权；相机仅用于扫码，关闭弹窗即释放。
+- **快捷磁贴点击无反应**：API 34+ 必须走 `startActivityAndCollapse(PendingIntent)`；
+  `RouteTileService` 已按版本分支，旧系统保留 Intent 重载。
 - **Node 版本**：Capacitor 7 要求 Node ≥ 20。
 - **gradle 报 SDK 找不到**：`android/local.properties` 的 `sdk.dir`（本机已配置，
   该文件不提交）。

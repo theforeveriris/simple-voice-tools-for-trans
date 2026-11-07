@@ -1,7 +1,8 @@
 /**
  * 导出模板仓库（localStorage，数量级是个位数）
  * 与主题包 / Lua 脚本并列的零后端 UGC 之一；存 localStorage 而非 IDB——
- * 模板体积小、随配置导出语义更自然（用户换设备时跟着配置走）。
+ * 模板体积小、便于整体备份。注意：设置导出/导入只处理 AppSettings，
+ * **不包含**这个键；换设备时需用模板文件（.svt-template）单独导入。
  */
 
 import { parseTemplateFile, type ExportTemplate } from '@/lib/export/template';

@@ -1,7 +1,9 @@
 package com.theforeveriris.simplevoicetool;
 
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.service.quicksettings.TileService;
 
 /**
@@ -23,7 +25,15 @@ abstract class RouteTileService extends TileService {
     public void onClick() {
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("simplevoicetool://open/" + route()));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        // API 24 恒成立（TileService 本身即 24+）；Bundle 重载是 29+ 的替代，此处用旧签名保持向下兼容
-        startActivityAndCollapse(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // API 34+ 要求 PendingIntent 重载；Intent 重载已废弃并可能抛异常
+            PendingIntent pending = PendingIntent.getActivity(
+                    this, 0, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            startActivityAndCollapse(pending);
+        } else {
+            // API 24–33：旧签名保持向下兼容
+            startActivityAndCollapse(intent);
+        }
     }
 }
