@@ -159,10 +159,12 @@ export async function setScriptEnabled(
   id: string,
   enabled: boolean,
 ): Promise<{ displaced: string[] }> {
-  // 先跑一遍 listScripts 完成脏数据归一化，再读取归一化后的启用映射——
-  // 否则用归一化前的旧 map 覆盖，会把刚写入的归一化结果冲掉
-  const all = await listScripts();
+  const users = await getUserScripts();
   const map = await getEnabledMap();
+  // 归一化与激活**在同一次 map 上完成**再写入一次——
+  // 若分两次（先 listScripts 落盘、再读回来改），时序稍有偏差就会用旧 map 覆盖归一化结果
+  normalizeSingleKinds(map, users);
+  const all = buildScriptList(map, users);
   const displaced: string[] = [];
   if (enabled) {
     const target = all.find((s) => s.id === id);
@@ -182,13 +184,10 @@ export async function setScriptEnabled(
 }
 
 /**
- * 全部脚本视图（内置 + 用户），合并启用态。
- * 内置默认启用 defaultEnabled 标记；用户脚本默认启用。
- * 附带迁移：单一方向（card/flower/export）若历史数据里启用了多个，
- * 保留第一个（内置优先）并停用其余——保证「同一方向只生效一个」不产生静默忽略。
+ * 单一方向归一化：每个方向只保留第一个启用的脚本，其余停用。
+ * 直接改传入的 map（返回是否有改动），让调用方决定何时落盘。
  */
-export async function listScripts(): Promise<LuaScriptView[]> {
-  const [users, map] = await Promise.all([getUserScripts(), getEnabledMap()]);
+function normalizeSingleKinds(map: Record<string, boolean>, users: LuaUserScript[]): boolean {
   const built = buildScriptList(map, users);
   /** 内置脚本的默认启用标记（用户脚本默认启用） */
   const defaultEnabledOf = new Map(BUILTIN_SCRIPTS.map((b) => [b.id, b.defaultEnabled]));
@@ -204,7 +203,18 @@ export async function listScripts(): Promise<LuaScriptView[]> {
       }
     }
   }
-  if (changed) {
+  return changed;
+}
+
+/**
+ * 全部脚本视图（内置 + 用户），合并启用态。
+ * 内置默认启用 defaultEnabled 标记；用户脚本默认启用。
+ * 附带迁移：单一方向（card/flower/export）若历史数据里启用了多个，
+ * 保留第一个（内置优先）并停用其余——保证「同一方向只生效一个」不产生静默忽略。
+ */
+export async function listScripts(): Promise<LuaScriptView[]> {
+  const [users, map] = await Promise.all([getUserScripts(), getEnabledMap()]);
+  if (normalizeSingleKinds(map, users)) {
     await setEnabledMap(map);
   }
   return buildScriptList(map, users);

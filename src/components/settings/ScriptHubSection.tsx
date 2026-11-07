@@ -343,17 +343,24 @@ export function ScriptHubSection() {
     }
   };
 
-  /** 保存草稿：新建的单一方向脚本自动生效（停用同方向旧脚本） */
+  /**
+   * 保存草稿。
+   * 生效规则：
+   *   - 新建的单一方向脚本 → 保存即生效（停用同方向旧脚本）；
+   *   - 编辑已有脚本、且方向改成单一消费方 → 原先启用中的保持在用（停用同方向旧脚本），
+   *     原先停用的保持停用，不因为改了方向就被悄悄点亮。
+   */
   const saveDraft = async () => {
     if (!draft) return;
     const name = draft.name.trim() || t('labs.scriptUntitled');
     const isNew = draft.id === null;
     const id = draft.id ?? `lua-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    // 编辑现有脚本：若方向改到单一消费方，保存即生效（停用同方向旧脚本）
     const prev = isNew ? undefined : scripts.find((s) => s.id === id);
     const kindChanged = !prev || prev.kind !== draft.kind;
+    // 编辑前是否在使用中（新建视为需要启用）
+    const wasEnabled = isNew || (prev?.enabled ?? false);
     await putUserScript({ id, name, kind: draft.kind, code: draft.code, createdAt: 0, updatedAt: 0 });
-    if (isSingleKindOf(draft.kind) && (isNew || kindChanged)) {
+    if (isSingleKindOf(draft.kind) && kindChanged && wasEnabled) {
       await setScriptEnabled(id, true);
     }
     toast.success(t('labs.scriptSaved'));

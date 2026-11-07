@@ -95,6 +95,28 @@ describe('历史脏数据归一化', () => {
     expect(enabled.length).toBe(1);
     expect(enabled[0].id).toBe('card-a'); // 保留先写入的那个
   });
+
+  it('先归一化再激活：启用新脚本时不会被归一化覆盖回去', async () => {
+    // 造脏数据：两个卡脚本都启用
+    await putUserScript({ id: 'card-c', name: 'card-c', kind: 'card', code: 'function template(record) return {} end', createdAt: 0, updatedAt: 0 });
+    await putUserScript({ id: 'card-d', name: 'card-d', kind: 'card', code: 'function template(record) return {} end', createdAt: 0, updatedAt: 0 });
+    // 显式激活后者：归一化与激活必须在同一次 map 更新里完成
+    await setScriptEnabled('card-d', true);
+    const all = await listScripts();
+    const enabledCards = all.filter((s) => s.kind === 'card' && s.enabled);
+    expect(enabledCards.map((s) => s.id)).toEqual(['card-d']);
+  });
+
+  it('停用的脚本改方向后保持停用（不会因保存被悄悄点亮）', async () => {
+    await putUserScript({ id: 'card-e', name: 'card-e', kind: 'card', code: 'function template(record) return {} end', createdAt: 0, updatedAt: 0 });
+    await setScriptEnabled('card-e', false);
+    // 模拟编辑器把方向从 card 改成 flower 后保存：调用方只在 wasEnabled 时才激活
+    await putUserScript({ id: 'card-e', name: 'card-e', kind: 'flower', code: 'function flower(stats) return { petals = {} } end', createdAt: 0, updatedAt: 0 });
+    const all = await listScripts();
+    const s = all.find((x) => x.id === 'card-e');
+    expect(s?.kind).toBe('flower');
+    expect(s?.enabled).toBe(false);
+  });
 });
 
 /** 最小建议记录（仅 Lua 建议用到的字段） */
