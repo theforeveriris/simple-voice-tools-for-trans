@@ -40,7 +40,8 @@ export function ThemeCard({ active, onClick, label, children }: {
       aria-pressed={active}
       className={cn(
         'flex flex-col gap-1.5 rounded-2xl bg-card p-2 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.97]',
-        active && 'ring-2 ring-accent',
+        // ring-inset：选中描边画在盒内，避免最外侧卡片贴住滚动容器边缘时被裁掉左右两段
+        active && 'ring-2 ring-inset ring-accent',
       )}
     >
       <span className="relative block h-10 w-full overflow-hidden rounded-xl border border-line/60">
