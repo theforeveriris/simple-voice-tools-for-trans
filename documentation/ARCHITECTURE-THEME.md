@@ -67,8 +67,9 @@ userDarkHue = userHue)` → `{ hue, accentHue, spec }`；
 外观页的预设选择为**三张卡片**（`ThemeCard`：色板预览 + 名称 + 选中描边）：
 莫奈卡用 OKLCH 渐变实时预览当前色相，骄傲旗卡渲染当前旗帜条纹，
 自定义图片卡显示当前背景图缩略图（未选图时占位图标）；旗帜三选一
-同为条纹卡片。`constants.THEME_PRESETS`（8 个命名色相）目前无 UI 消费，
-是预留数据。
+同为条纹卡片。预设规格在 `lib/theme/monet.ts` 的 `THEME_PRESETS`
+（`monet` / `transPride` / `nonbinary` / `genderfluid` 四项），
+`constants` 里没有同名导出。
 
 新增旗帜的完整步骤：
 
@@ -78,7 +79,7 @@ userDarkHue = userHue)` → `{ hue, accentHue, spec }`；
    （浅色 + `.dark` 微光两组）；
 4. 外观页的旗帜选择为**条纹卡片三选一网格**（由 `PRIDE_FLAGS` 驱动，非下拉）；
    导入白名单 `STRING_ENUMS.prideFlag` 加 id；
-5. i18n 五语言加旗帜名。
+5. i18n 七语言加旗帜名。
 
 ## 渐变背景与毛玻璃（index.css）
 

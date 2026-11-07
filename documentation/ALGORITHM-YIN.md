@@ -1,6 +1,7 @@
 # 音高检测 · YIN 算法
 
-> 源码：`src/lib/audio/pitch.ts` ｜ 实时运行于每一帧（约 60fps），单帧约 1.5M 次乘加运算
+> 源码：`src/lib/audio/pitch.ts`（YIN 实现）+ `src/lib/audio/pitchCore.ts`（共享基础件）
+> ｜ 实时运行于每一帧（约 60fps），单帧约 1.5M 次乘加运算
 
 ## 为什么选择 YIN
 
@@ -42,7 +43,7 @@ CMND 把每个点的差分除以"它之前所有差分的累积平均"：在首�
 远低于 1，而在次周期处由于累积平均已经被之前的低谷拉低，d' 不会显著低于 1。
 这一步是 YIN 抗八度错误的核心。
 
-> 实现说明：`pitch.ts` 的归一化从搜索下限 τ_min 开始累积（分母系数 `τ - τMin + 1`，
+> 实现说明：`pitchCore.ts` 的归一化从搜索下限 τ_min 开始累积（分母系数 `τ - τMin + 1`，
 > `cmnd[τMin] = 1`），与上式在 τ ≫ τ_min 时等价；这是为跳过不搜索的短周期区间。
 
 ### 第 3 步：绝对阈值搜索
@@ -78,30 +79,40 @@ $$\tau^* = \tau + \frac{d'(\tau-1) - d'(\tau+1)}{2\,(d'(\tau-1) - 2d'(\tau) + d'
 
 ## 源码导读
 
+公共基础件在 `src/lib/audio/pitchCore.ts`（YIN / pYIN / MPM 三处同款逻辑收敛到一处）：
+
+- `tauRange(sampleRate, minHz, maxHz)` —— 推算 τ 搜索区间；
+- `computeCmnd(...)` —— 差分函数 + 累积均值归一化（CMND）；
+- `parabolicRefine(...)` —— 抛物线插值细化（三处同款公式，修插值 bug 只改这里）；
+- `ensurePitchScratch(len)` —— 模块级按需增长复用缓冲（`diffBuf` / `cmndBuf` /
+  `nsdfBuf` / 极值候选池），实时循环 60fps 稳态零分配；
+  同线程内调用严格串行（实时循环 / 离线管线 / Worker 各自独占本线程），复用安全。
+
 `src/lib/audio/pitch.ts`：
 
 - `detectPitchYin(samples, sampleRate, minHz?, maxHz?)` —— 主函数，四个步骤与上文一一对应：
-  1. 双重循环计算 `diff[]`（差分函数）；
-  2. 单循环计算 `cmnd[]`（累积均值归一化）；
-  3. 扫描寻找第一个低于阈值的谷，找不到返回 `null`；
-  4. `betterTau` 抛物线插值，换算频率并夹紧到有效范围。
+  1. 调用 `computeCmnd` 求出归一化差分序列；
+  2. 扫描寻找第一个低于阈值的谷，找不到返回 `null`；
+  3. `parabolicRefine` 抛物线插值（局部变量 `betterTau`），换算频率并夹紧到有效范围；
+  4. `prob = 1 - 最小 CMND 值` 作为置信度。
 - `rmsDb(samples)` —— 帧能量计算，被录音引擎同时用于能量曲线与有声门限。
-- 差分/CMND 缓冲为模块级按需增长复用（`diffBuf` / `cmndBuf`），稳态零分配；
-  同线程内调用严格串行，复用安全。
 
 ## 复杂度与实时性
 
 - 时间复杂度 O(W · τ_max)：实时 W=2048、48 kHz 下 τ_max=800，约 **1.6M 次乘加/帧**
   （44.1 kHz 约 1.5M；32 kHz 离线管线 W=1024、τ_max=533，约 0.55M）；
 - 60fps 下实时路径约 90M 次运算/秒，现代桌面浏览器单帧耗时 < 2ms；
-- pYIN / MPM（`pitchAlt.ts`）与 YIN 共享同一调度入口 `detectPitch`，按设置切换。
+- pYIN / MPM（`pitchAlt.ts`）与 YIN 共享同一调度入口 `detectPitch(samples, sampleRate, minHz, maxHz, algo)`，
+  `algo` 取自 `settings.pitchAlgorithm`（默认 `'yin'`）。**当前设置界面没有暴露这个开关**，
+  因此实际运行时恒为 YIN；`pitchAlgorithm` 仍参与重算的参数指纹（`lib/audio/reanalyze.ts`）。
 
 ## 局限与改进方向
 
 - 强噪声下仍可能出现倍频/半频跳跃，可用中值滤波后处理；
 - 哑音段（气声、擦音）返回 null，曲线断开是预期行为；
 - 更高稳健性的 pYIN 与更低成本的 MPM **均已实现**（`pitchAlt.ts`，见
-  PARAMETERS-GUIDE.md「音高算法与对比卡」），可在设置中切换或整段对比；
+  PARAMETERS-GUIDE.md「音高算法与对比卡」），可在分析页的对比卡里整段对比
+  （把存档音频重算成 pYIN / MPM 曲线，与录音时用的 YIN 叠放）；
 - 若未来支持歌唱微调显示，可将置信度 prob 一并存储用于曲线透明度编码。
 
 ## 基准（本地合成语料）

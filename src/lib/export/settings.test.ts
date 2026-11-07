@@ -139,4 +139,18 @@ describe('parseSettingsPayload', () => {
     }));
     expect(ok.bandBounds).toEqual([80, 160, 175, 250]);
   });
+
+  it('navStyle：三种取值都能随导出往返（AI 工作台曾因漏在枚举白名单外被丢弃）', () => {
+    for (const style of ['floating', 'classic', 'ai'] as const) {
+      const parsed = parseSettingsPayload(JSON.stringify({
+        kind: 'settings', version: SETTINGS_FORMAT_VERSION, settings: { navStyle: style },
+      }));
+      expect(parsed.navStyle).toBe(style);
+    }
+    // 非法值仍被忽略
+    const bad = parseSettingsPayload(JSON.stringify({
+      kind: 'settings', version: SETTINGS_FORMAT_VERSION, settings: { navStyle: 'tablet' },
+    }));
+    expect(bad.navStyle).toBeUndefined();
+  });
 });

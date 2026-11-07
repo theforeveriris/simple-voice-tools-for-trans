@@ -12,7 +12,7 @@ import { llmChat, type LlmConfig } from '@/lib/llm';
 import { APP_ID, isKnownAppId } from '@/lib/appId';
 
 const LS_PREFIX = 'svt:i18n-ai:';
-/** 每批翻译的词条数：全量约 660 键 → 8 批左右，兼顾单次请求体积与调用次数 */
+/** 每批翻译的词条数：全量 1338 键 → 15 批，兼顾单次请求体积与调用次数 */
 const BATCH = 90;
 /** 词典分享文件的格式版本（settings / records 同风格：app + kind + version） */
 const AI_LOCALE_FORMAT_VERSION = 1;
