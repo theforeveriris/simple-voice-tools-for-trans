@@ -6,6 +6,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import type { MemoryWrite } from './memory';
 
 /** 一次生成实际注入的上下文（供气泡下方的「本轮上下文」面板展示） */
 export interface ChatContextMeta {
@@ -23,6 +24,8 @@ export interface ChatContextMeta {
   memoryQuery?: string;
   /** 本轮助手实际执行的数据 / 计划 / 操作工具 */
   toolCalls?: { name: string; summary: string; ok: boolean; ms: number }[];
+  /** 自动 / 手动保存的长期记忆（渲染「已记住」chip，可撤销） */
+  memoryWrites?: MemoryWrite[];
 }
 
 export interface ChatMessage {
@@ -46,6 +49,8 @@ export interface ChatConversation {
   messages: ChatMessage[];
   /** 通过 /attach 固定的历史记录 id（跨轮保留，/detach 或新对话清除） */
   pinnedRecordIds?: string[];
+  /** 临时会话：不自动写入长期记忆（手动「记住」仍可用） */
+  memoryOff?: boolean;
 }
 
 const KV_CHATS = 'llm:chats';
@@ -170,9 +175,20 @@ function truncate(text: string, max: number): string {
 }
 
 /** 新建对话（可带初始消息，用于分支），返回 id */
-export function createChat(title: string, messages: ChatMessage[] = []): string {
+export function createChat(
+  title: string,
+  messages: ChatMessage[] = [],
+  opts: { memoryOff?: boolean } = {},
+): string {
   const now = Date.now();
-  const conv: ChatConversation = { id: genId(), title, createdAt: now, updatedAt: now, messages };
+  const conv: ChatConversation = {
+    id: genId(),
+    title,
+    createdAt: now,
+    updatedAt: now,
+    messages,
+    ...(opts.memoryOff ? { memoryOff: true } : {}),
+  };
   // 加载未完成时也先建立内存列表：其余写操作都有 !chats 守卫会静默丢消息，
   // 这里放行后 ensureLoaded 按 id 合并，新对话不会被读到的旧数据覆盖
   chats ??= [];
@@ -201,6 +217,40 @@ export function addMessage(id: string, msg: ChatMessage): void {
 export function setMessages(id: string, messages: ChatMessage[]): void {
   if (!chats) return;
   commit(chats.map((c) => (c.id === id ? { ...c, updatedAt: Date.now(), messages } : c)));
+}
+
+/** 给某条助手消息补写上下文（自动记忆保存完成后写入 chip 数据） */
+export function patchMessageContext(
+  id: string,
+  index: number,
+  patch: Partial<ChatContextMeta>,
+): void {
+  if (!chats) return;
+  commit(chats.map((c) => {
+    if (c.id !== id) return c;
+    const messages = c.messages.map((m, i) => {
+      if (i !== index) return m;
+      const context: ChatContextMeta = {
+        recordIds: [],
+        pinnedIds: [],
+        totalRecords: 0,
+        docs: [],
+        ...(m.context ?? {}),
+        ...patch,
+      };
+      const next: ChatMessage = { ...m, context };
+      return next;
+    });
+    return { ...c, messages, updatedAt: Date.now() };
+  }));
+}
+
+/** 切换「本次对话不写入记忆」 */
+export function setChatMemoryOff(id: string, off: boolean): void {
+  if (!chats) return;
+  commit(chats.map((c) => (c.id === id
+    ? { ...c, memoryOff: off || undefined, updatedAt: Date.now() }
+    : c)));
 }
 
 /**

@@ -8,19 +8,20 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Brain, SquarePen, Star, Trash2, Wand2 } from 'lucide-react';
+import { ArrowLeft, Brain, Check, Search, SquarePen, Star, Trash2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  addMemories, addMemory, clearMemories, deleteMemory, extractMemoryCandidates,
+  addMemories, clearMemories, deleteMemories, extractMemoryCandidates, restoreMemory, saveMemory,
   updateMemory, useMemories, MEMORY_KINDS, MEMORY_TEXT_MAX,
   type MemoryItem, type MemoryKind,
 } from '@/lib/memory';
+import { useStore } from '@/store/useStore';
 import { useChats } from '@/lib/llmChats';
 import { t } from '@/i18n';
 import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Textarea } from '@/components/ui';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Switch, Textarea } from '@/components/ui';
 import { SettingsSection } from './rows';
 import { InfoTip } from './InfoTip';
 
@@ -43,12 +44,19 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
   const [editPinned, setEditPinned] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [query, setQuery] = useState('');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const memoryAutoSave = useStore((s) => s.settings.memoryAutoSave);
+  const updateSettings = useStore((s) => s.updateSettings);
 
-  /** 置顶在前，其余按最近更新 */
-  const list = useMemo(
-    () => [...memories].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt),
-    [memories],
-  );
+  /** 置顶在前，其余按最近更新；搜索时按正文过滤 */
+  const list = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...memories]
+      .filter((m) => !q || m.text.toLowerCase().includes(q) || (m.source?.quote ?? '').toLowerCase().includes(q))
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt);
+  }, [memories, query]);
 
   const iconBtn =
     'grid size-9 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90';
@@ -56,13 +64,53 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
   const add = () => {
     const value = text.trim();
     if (!value) return;
-    void addMemory({ text: value, kind }).then((item) => {
-      if (item) {
+    void saveMemory({ text: value, kind }).then((res) => {
+      if (res && res.action !== 'duplicate') {
         setText('');
         toast.success(t('settings.memoryAdded'));
       } else {
         toast.error(t('settings.memoryDuplicate'));
       }
+    });
+  };
+
+  const removeOne = (m: MemoryItem) => {
+    void deleteMemories([m.id]).then((removed) => {
+      if (removed.length === 0) return;
+      toast.success(t('settings.memoryDeleted'), {
+        action: {
+          label: t('common.undo'),
+          onClick: () => {
+            for (const r of removed) void restoreMemory(r);
+          },
+        },
+      });
+    });
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const removeSelected = () => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    void deleteMemories(ids).then((removed) => {
+      setSelected(new Set());
+      if (removed.length === 0) return;
+      toast.success(t('settings.memoryDeleted'), {
+        action: {
+          label: t('common.undo'),
+          onClick: () => {
+            for (const r of removed) void restoreMemory(r);
+          },
+        },
+      });
     });
   };
 
@@ -139,6 +187,20 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
           </span>
         </div>
 
+        {/* 自动保存开关 */}
+        <SettingsSection icon={Brain} title={t('settings.memoryAutoSave')}>
+          <div className="flex items-start justify-between gap-3 px-0.5 py-1">
+            <p className="max-w-[75%] text-[11px] leading-relaxed text-ink-2">
+              {t('settings.memoryAutoSaveDesc')}
+            </p>
+            <Switch
+              checked={memoryAutoSave !== 'off'}
+              onCheckedChange={(v) => updateSettings({ memoryAutoSave: v ? 'auto' : 'off' })}
+              aria-label={t('settings.memoryAutoSave')}
+            />
+          </div>
+        </SettingsSection>
+
         {/* 添加 */}
         <SettingsSection
           icon={Brain}
@@ -169,6 +231,33 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
         {/* 记忆列表 */}
         <SettingsSection icon={SquarePen} title={t('settings.memoryList')}>
           <div className="flex items-center gap-2 px-0.5 pb-1">
+            <div className="relative flex-1">
+              <Search size={12} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ink-2/60" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('settings.memorySearch')}
+                aria-label={t('settings.memorySearch')}
+                className="w-full rounded-full bg-surface-hi/70 py-1.5 pl-7 pr-2 text-[11px] text-ink outline-none placeholder:text-ink-2/60"
+              />
+            </div>
+            {list.length > 0 && (
+              <button
+                onClick={() => {
+                  setSelectMode((v) => !v);
+                  setSelected(new Set());
+                }}
+                className={cn(
+                  'px-1 py-1 text-[11px] font-medium transition-opacity hover:opacity-70',
+                  selectMode ? 'text-accent' : 'text-ink-2',
+                )}
+              >
+                {selectMode ? t('common.cancel') : t('settings.memorySelect')}
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 px-0.5 pb-1">
             <button
               onClick={extract}
               disabled={extracting || !chats || chats.length === 0}
@@ -191,11 +280,40 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
             )}
           </div>
 
+          {selectMode && selected.size > 0 && (
+            <div className="mb-1 flex items-center gap-2 rounded-xl bg-surface-hi/60 px-2 py-1.5">
+              <span className="text-[11px] text-ink-2">
+                {t('settings.memorySelected', { n: selected.size })}
+              </span>
+              <button
+                onClick={removeSelected}
+                className="ml-auto rounded-full bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-500"
+              >
+                {t('settings.memoryDeleteSelected')}
+              </button>
+            </div>
+          )}
+
           {list.length === 0 ? (
             <p className="px-0.5 pb-2 text-[11px] leading-relaxed text-ink-2">{t('settings.memoryEmpty')}</p>
           ) : (
             list.map((m) => (
               <div key={m.id} className="flex items-start gap-1.5 border-t border-black/[0.04] py-2.5 first:border-t-0">
+                {selectMode && (
+                  <button
+                    onClick={() => toggleSelected(m.id)}
+                    aria-label={t('settings.memorySelect')}
+                    aria-pressed={selected.has(m.id)}
+                    className={cn(
+                      'mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border transition-colors',
+                      selected.has(m.id)
+                        ? 'border-accent bg-accent text-on-accent'
+                        : 'border-line text-transparent',
+                    )}
+                  >
+                    <Check size={11} />
+                  </button>
+                )}
                 <button
                   onClick={() => void updateMemory(m.id, { pinned: !m.pinned })}
                   aria-label={t('settings.memoryPin')}
@@ -212,6 +330,14 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
                     {t(KIND_KEY[m.kind])}
                   </span>
                   <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-ink">{m.text}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] text-ink-2/70">
+                    <span>{new Date(m.updatedAt).toLocaleDateString()}</span>
+                    {m.source?.quote && (
+                      <span className="min-w-0 truncate">
+                        {t('settings.memorySource', { quote: m.source.quote })}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => openEdit(m)}
@@ -221,7 +347,7 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
                   <SquarePen size={13} />
                 </button>
                 <button
-                  onClick={() => void deleteMemory(m.id)}
+                  onClick={() => removeOne(m)}
                   aria-label={t('common.delete')}
                   className="grid size-6 shrink-0 place-items-center rounded-full text-ink-2 transition-colors hover:text-[#B0532F]"
                 >

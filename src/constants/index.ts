@@ -237,6 +237,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   adviceOnCompare: false,
   practiceReminderEnabled: false,
   practiceReminderTime: '20:00',
+  memoryAutoSave: 'auto',
   // AI 翻译语言（语言子页面）
   aiTranslateEnabled: false,
   // 配置子页面扩展

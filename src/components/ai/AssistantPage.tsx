@@ -23,7 +23,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Brain, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight,
+  ArrowUp, Ban, Brain, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight,
   Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,12 +35,12 @@ import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
-  addMessage, createChat, deleteChat, getChat, renameChat, saveAssistantDraft, setMessages,
+  addMessage, createChat, deleteChat, getChat, patchMessageContext, renameChat, saveAssistantDraft, setChatMemoryOff, setMessages,
   setPinnedRecords, useChats, type ChatContextMeta, type ChatConversation, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
-import { buildMemoryPrompt, addMemory, deleteMemory, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, searchMemories, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind } from '@/lib/memory';
+import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
 import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
 import {
@@ -52,6 +52,7 @@ import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
 import { ContextPanel } from '@/components/ai/ContextPanel';
+import { MemorySavedChip } from '@/components/ai/MemorySavedChip';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { Textarea } from '@/components/ui';
 import { useStore } from '@/store/useStore';
@@ -343,6 +344,7 @@ const MessageBody = memo(function MessageBody({ text }: { text: string }) {
 const Bubble = memo(function Bubble({
   m,
   idx,
+  chatId,
   streaming = false,
   liveThink = '',
   active,
@@ -356,6 +358,7 @@ const Bubble = memo(function Bubble({
 }: {
   m: ChatMessage;
   idx: number;
+  chatId?: string;
   streaming?: boolean;
   liveThink?: string;
   /** 操作行是否展开（非流式） */
@@ -372,7 +375,16 @@ const Bubble = memo(function Bubble({
   useI18n();
   const mine = m.role === 'user';
   const think = streaming ? liveThink : m.think ?? '';
-  const hasMeta = !streaming && (!!m.think || !!m.context);
+  const ctx = m.context;
+  const hasContext = !!ctx && (
+    (ctx.recordIds?.length ?? 0) > 0
+    || (ctx.pinnedIds?.length ?? 0) > 0
+    || (ctx.docs?.length ?? 0) > 0
+    || (ctx.memories ?? 0) > 0
+    || !!ctx.memoryQuery
+    || (ctx.toolCalls?.length ?? 0) > 0
+  );
+  const hasMeta = !streaming && (!!m.think || hasContext);
   const onBodyClick = () => onAction(streaming ? null : active ? null : idx);
   const body = (
     <>
@@ -391,6 +403,13 @@ const Bubble = memo(function Bubble({
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
+      {!mine && !streaming && (m.context?.memoryWrites?.length ?? 0) > 0 && (
+        <MemorySavedChip
+          chatId={chatId}
+          messageIndex={idx}
+          writes={m.context?.memoryWrites ?? []}
+        />
+      )}
       {hasMeta && (
         <button
           type="button"
@@ -468,6 +487,8 @@ export function AssistantPage() {
   const chats = useChats();
   /** null = 尚未开始对话（发送第一条时创建） */
   const [activeId, setActiveId] = useState<string | null>(null);
+  /** 新建对话时是否默认关闭自动记忆（发送第一条消息时写入对话） */
+  const [draftMemoryOff, setDraftMemoryOff] = useState(false);
   const [input, setInput] = useState('');
   /** null = 空闲；否则为流式累积文本 */
   const [streamText, setStreamText] = useState<string | null>(null);
@@ -487,6 +508,10 @@ export function AssistantPage() {
     kind: MemoryKind;
     pinned: boolean;
     loading: boolean;
+    /** 来源消息，保存后写入对应气泡的「已记住」chip */
+    chatId?: string;
+    messageIndex?: number;
+    quote?: string;
   } | null>(null);
   /** 侧边栏两步删除的待确认对话 id */
   const [delId, setDelId] = useState<string | null>(null);
@@ -608,11 +633,21 @@ export function AssistantPage() {
   }, []);
 
   /**
-   * 回答完成后让 AI 自己判断这轮是否值得存入长期记忆；有则直接调 save_memory 入库。
-   * 后台执行，不阻塞回答；工具不支持/失败时静默（用户仍可手动「记住」）。
+   * 回答完成后让 AI 自己判断这轮是否值得存入长期记忆；有则智能入库。
+   * - 自动保存关闭 / 临时会话 / 纯寒暄与提问：不调用写作模型
+   * - 写入结果显示在消息下方的「已记住」chip，toast 与 chip 都可撤销
    */
-  const autoSaveMemories = async (userText: string, assistantText: string) => {
+  const autoSaveMemories = async (
+    chatId: string,
+    messageIndex: number,
+    userText: string,
+    assistantText: string,
+  ) => {
     if (!cfg || !assistantText.trim()) return;
+    const settings = useStore.getState().settings;
+    if (settings.memoryAutoSave === 'off') return;
+    if (getChat(chatId)?.memoryOff) return;
+    if (!shouldAutoSaveMemory(userText)) return;
     try {
       const calls = await llmToolCall(
         cfg,
@@ -625,19 +660,31 @@ export function AssistantPage() {
         .map(parseMemorySaveCall)
         .filter((x): x is NonNullable<typeof x> => !!x)
         .slice(0, 3);
-      const ids: string[] = [];
+      const writes: MemoryWrite[] = [];
       for (const s of saves) {
-        const item = await addMemory(s);
-        if (item) ids.push(item.id);
-      }
-      if (ids.length > 0) {
-        toast.success(t('assistant.memoryAutoSaved', { n: ids.length }), {
-          action: {
-            label: t('common.undo'),
-            onClick: () => ids.forEach((id) => void deleteMemory(id)),
-          },
+        const res = await saveMemory({
+          ...s,
+          source: { chatId, messageIndex, quote: userText.slice(0, 240) },
         });
+        if (res && res.action !== 'duplicate') {
+          writes.push({
+            id: res.item.id,
+            text: res.item.text,
+            action: res.action,
+            beforeItem: res.beforeItem,
+          });
+        }
       }
+      if (writes.length === 0) return;
+      const prev = getChat(chatId)?.messages[messageIndex]?.context?.memoryWrites ?? [];
+      const undo = () => {
+        for (const write of writes) void undoMemoryWrite(write);
+        patchMessageContext(chatId, messageIndex, { memoryWrites: prev });
+      };
+      patchMessageContext(chatId, messageIndex, { memoryWrites: [...prev, ...writes] });
+      toast.success(t('assistant.memoryAutoSaved', { n: writes.length }), {
+        action: { label: t('common.undo'), onClick: undo },
+      });
     } catch {
       /* 工具不支持 / 网络失败：不打断回答 */
     }
@@ -777,7 +824,8 @@ export function AssistantPage() {
         context: contextMeta,
       });
       // AI 自动判断并保存长期记忆（后台；失败不影响回答）
-      if (lastUser) void autoSaveMemories(lastUser.content, reply);
+      const assistantIndex = (getChat(convId)?.messages.length ?? 1) - 1;
+      if (lastUser) void autoSaveMemories(convId, assistantIndex, lastUser.content, reply);
     } catch (err: unknown) {
       // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
       if (textAcc || thinkAcc) {
@@ -814,8 +862,9 @@ export function AssistantPage() {
     setInput('');
     let convId = activeId;
     if (!convId) {
-      convId = createChat('');
+      convId = createChat('', [], { memoryOff: draftMemoryOff });
       setActiveId(convId);
+      setDraftMemoryOff(false);
     }
     addMessage(convId, { role: 'user', content: text });
     void generate(
@@ -1124,6 +1173,7 @@ export function AssistantPage() {
     const id = createChat(
       conv.title ? `${conv.title} · ${t('assistant.branch')}` : t('assistant.title'),
       conv.messages.slice(0, idx + 1),
+      { memoryOff: conv.memoryOff },
     );
     setActiveId(id);
     setActionIdx(null);
@@ -1163,7 +1213,15 @@ export function AssistantPage() {
     // 工具不可用时的本地兜底：用户自己消息里带线索词的那句；没有就留空让用户手写
     const fallback = extractMemoryCandidates([priorUser], 1)[0]?.text ?? '';
     const req = ++memoryDraftReq.current;
-    setMemoryDraft({ text: fallback, kind: 'fact', pinned: false, loading: true });
+    setMemoryDraft({
+      text: fallback,
+      kind: 'fact',
+      pinned: false,
+      loading: true,
+      chatId: conv?.id,
+      messageIndex: idx,
+      quote: priorUser.slice(0, 240),
+    });
     if (!cfg) {
       setMemoryDraft((d) => (d ? { ...d, loading: false } : d));
       return;
@@ -1202,13 +1260,44 @@ export function AssistantPage() {
     if (!memoryDraft) return;
     const text = memoryDraft.text.trim();
     if (!text) return;
-    void addMemory({ text, kind: memoryDraft.kind, pinned: memoryDraft.pinned }).then((item) => {
-      if (item) {
-        toast.success(t('settings.memoryAdded'));
-        closeMemoryDraft();
-      } else {
+    const draft = memoryDraft;
+    void saveMemory({
+      text,
+      kind: draft.kind,
+      pinned: draft.pinned,
+      ...(draft.chatId && draft.messageIndex != null
+        ? { source: { chatId: draft.chatId, messageIndex: draft.messageIndex, quote: draft.quote ?? '' } }
+        : {}),
+    }).then((res) => {
+      if (!res || res.action === 'duplicate') {
         toast.error(t('settings.memoryDuplicate'));
+        return;
       }
+      const write: MemoryWrite = {
+        id: res.item.id,
+        text: res.item.text,
+        action: res.action,
+        beforeItem: res.beforeItem,
+      };
+      if (draft.chatId && draft.messageIndex != null) {
+        const prev = getChat(draft.chatId)?.messages[draft.messageIndex]?.context?.memoryWrites ?? [];
+        patchMessageContext(draft.chatId, draft.messageIndex, { memoryWrites: [...prev, write] });
+      }
+      toast.success(t('settings.memoryAdded'), {
+        action: {
+          label: t('common.undo'),
+          onClick: () => {
+            void undoMemoryWrite(write);
+            if (draft.chatId && draft.messageIndex != null) {
+              const prev = getChat(draft.chatId)?.messages[draft.messageIndex]?.context?.memoryWrites ?? [];
+              patchMessageContext(draft.chatId, draft.messageIndex, {
+                memoryWrites: prev.filter((w) => w.id !== write.id),
+              });
+            }
+          },
+        },
+      });
+      closeMemoryDraft();
     });
   };
 
@@ -1223,9 +1312,10 @@ export function AssistantPage() {
     abortRef.current?.abort();
   };
 
-  const newChat = () => {
+  const newChat = (memoryOff = false) => {
     stopStream();
     setActiveId(null);
+    setDraftMemoryOff(memoryOff);
     setSidebarOpen(false);
     setMenuId(null);
     setRenamingId(null);
@@ -1394,6 +1484,12 @@ export function AssistantPage() {
     send();
   };
 
+  const memoryOffNow = activeId ? !!conv?.memoryOff : draftMemoryOff;
+  const toggleMemoryOff = () => {
+    if (activeId) setChatMemoryOff(activeId, !memoryOffNow);
+    else setDraftMemoryOff((v) => !v);
+  };
+
   const topBar = (
     <div className="flex min-h-14 shrink-0 items-center gap-2 bg-surface px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
       {aiWorkspace ? (
@@ -1410,7 +1506,15 @@ export function AssistantPage() {
         </button>
       )}
       <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
-      <button onClick={newChat} aria-label={t('assistant.newChat')} className={iconBtn}>
+      <button
+        onClick={toggleMemoryOff}
+        aria-label={t(memoryOffNow ? 'assistant.memoryOff' : 'assistant.memoryOn')}
+        title={t(memoryOffNow ? 'assistant.memoryOffHint' : 'assistant.memoryOnHint')}
+        className={cn(iconBtn, memoryOffNow && 'text-accent')}
+      >
+        {memoryOffNow ? <Ban size={17} /> : <Brain size={17} />}
+      </button>
+      <button onClick={() => newChat()} aria-label={t('assistant.newChat')} className={iconBtn}>
         <Plus size={17} />
       </button>
       <button
@@ -1441,11 +1545,18 @@ export function AssistantPage() {
         className="absolute inset-y-0 right-0 flex w-72 flex-col bg-surface shadow-[-8px_0_30px_rgba(28,25,45,0.12)]"
       >
         <button
-          onClick={newChat}
+          onClick={() => newChat()}
           className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-2xl bg-accent/15 py-2.5 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
         >
           <Plus size={15} />
           {t('assistant.newChat')}
+        </button>
+        <button
+          onClick={() => newChat(true)}
+          className="mx-3 mt-2 flex items-center justify-center gap-2 rounded-2xl bg-surface-hi/60 py-2 text-[12px] font-medium text-ink-2 transition-transform active:scale-[0.98]"
+        >
+          <Ban size={14} />
+          {t('assistant.newChatNoMemory')}
         </button>
         <div className="mx-3 mt-2">
           <input
@@ -1604,6 +1715,7 @@ export function AssistantPage() {
                 key={`${i}-${m.role}`}
                 m={m}
                 idx={i}
+                chatId={conv?.id}
                 active={actionIdx === i}
                 thinkOpen={thinkIdx === i}
                 onAction={setActionIdx}
