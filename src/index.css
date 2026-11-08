@@ -627,3 +627,61 @@ html.theme-cat.dark body::before {
   background-size: auto, auto, 34px 34px;
 }
 
+/* ---------------- Toast（sonner）主题化 ----------------
+ * sonner 的 richColors 默认是固定的绿 / 红 / 蓝 / 黄，与各主题（山桃红、奶油月夜、
+ * 粉团子、骄傲旗…）的色板无关。这里把 toast 表面、文字、边框和圆角统一映射到
+ * 主题令牌，只保留语义图标色：成功 = 主题强调色，提醒 = 次强调色，错误 = 破坏色。
+ * 选择器额外带 [data-sonner-theme] 提高优先级，压过 sonner 注入的浅/深色默认值。 */
+html [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--c-card);
+  --normal-bg-hover: var(--c-surface-hi);
+  --normal-border: var(--c-line);
+  --normal-border-hover: var(--c-line);
+  --normal-text: var(--c-ink);
+
+  --success-bg: var(--c-accent-soft);
+  --success-border: rgb(var(--c-accent-rgb) / 0.28);
+  --success-text: var(--c-on-accent-soft);
+
+  --info-bg: var(--c-surface-hi);
+  --info-border: var(--c-line);
+  --info-text: var(--c-ink);
+
+  --warning-bg: var(--c-accent2-soft);
+  --warning-border: rgb(var(--c-accent2-rgb) / 0.32);
+  --warning-text: var(--c-on-accent2-soft);
+
+  --error-bg: var(--c-surface-hi);
+  --error-border: hsl(var(--destructive) / 0.32);
+  --error-text: var(--c-ink);
+
+  --border-radius: 16px;
+  font-family: inherit;
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='success'] [data-icon] {
+  color: var(--c-accent);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='info'] [data-icon] {
+  color: var(--c-ink-2);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='warning'] [data-icon] {
+  color: var(--c-accent2);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='error'] [data-icon] {
+  color: hsl(var(--destructive));
+}
+
+/* 操作按钮（撤销等）跟应用主按钮一致：主题强调色 + on-accent 文字 */
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-styled='true'] [data-button] {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-styled='true'] [data-button]:hover {
+  opacity: 0.88;
+}
+

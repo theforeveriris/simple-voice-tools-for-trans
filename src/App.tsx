@@ -407,7 +407,6 @@ function App() {
         position="top-center"
         richColors
         theme={isDark ? 'dark' : 'light'}
-        toastOptions={{ style: { borderRadius: '8px' } }}
       />
 
       {/* 原生壳启动页：浏览器/PWA 的启动画面由系统按 manifest 生成，这里只补壳内 */}
