@@ -1515,4 +1515,9 @@ export const fr = {
   'egg.done': 'Retour',
   'settings.presetCat': 'Mochi',
   'toast.catThemeUnlocked': 'Nouveau thème débloqué : Mochi',
+  'assistant.memorySave': 'Mémoriser',
+  'assistant.memoryTitle': 'Enregistrer en mémoire longue durée',
+  'assistant.memoryHint': 'Injectées par pertinence ; les épinglées à chaque tour. Gestion dans Réglages → LLM → Mémoire.',
+  'assistant.ctx.memoryQuery': 'Recherche : {q}',
+  'assistant.ctx.memoryNone': 'Aucune mémoire correspondante',
 } as const;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractMemoryCandidates,
   memoryPromptBlock,
+  memorySearchBlock,
   selectMemories,
   type MemoryItem,
   type MemoryKind,
@@ -58,6 +59,19 @@ describe('memoryPromptBlock', () => {
     expect(block).toContain('[事实] 声音偏中性');
     expect(block).toContain('[注意] 不要用「少女音」');
     expect(block).toContain('【关于用户的长期记忆】');
+  });
+});
+
+describe('memorySearchBlock', () => {
+  it('returns an empty string when the tool finds nothing', () => {
+    expect(memorySearchBlock([], '中性')).toBe('');
+  });
+
+  it('includes the on-demand query and kind labels', () => {
+    const block = memorySearchBlock([item('a', '偏好中性描述', { kind: 'preference' })], '中性');
+    expect(block).toContain('【按需检索到的长期记忆】');
+    expect(block).toContain('检索：中性');
+    expect(block).toContain('[偏好] 偏好中性描述');
   });
 });
 

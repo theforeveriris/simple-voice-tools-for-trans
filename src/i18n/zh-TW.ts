@@ -1506,4 +1506,9 @@ export const zhTW = {
   'egg.done': '回去',
   'settings.presetCat': '粉糰子',
   'toast.catThemeUnlocked': '新主題「粉糰子」已解鎖',
+  'assistant.memorySave': '記住',
+  'assistant.memoryTitle': '儲存為長期記憶',
+  'assistant.memoryHint': '確認後會按相關度注入後續對話；置頂則每輪都注入，可在「設定 → 大模型 → 記憶」管理。',
+  'assistant.ctx.memoryQuery': '按需檢索：{q}',
+  'assistant.ctx.memoryNone': '未命中記憶',
 } as const;

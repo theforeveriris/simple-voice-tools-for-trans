@@ -49,6 +49,20 @@ export function resolveLlmConfig(s: {
 
 type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
+/** 工具定义（OpenAI function / Anthropic tool 共用 JSON Schema） */
+export interface LlmToolSpec {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+/** 一次工具调用（OpenAI tool_call / Anthropic tool_use 归一化） */
+export interface LlmToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
 /** Anthropic Messages API 必须显式给出输出上限 */
 const ANTHROPIC_MAX_TOKENS = 2048;
 
@@ -395,4 +409,137 @@ export async function llmChatStreamMessages(
     : null;
   trackUsage(feature, cfg, system, joined, content, usage);
   return content;
+}
+
+/**
+ * 归一化工具调用：OpenAI 的 message.tool_calls / Anthropic 的 content[].tool_use。
+ * 参数解析失败时返回空对象（由调用方兜底），不因单个脏参数丢掉整轮工具调用。
+ */
+export function parseToolCalls(protocol: LlmProtocol | undefined, data: unknown): LlmToolCall[] {
+  const out: LlmToolCall[] = [];
+  if (protocol === 'anthropic') {
+    const content = (data as { content?: unknown } | null)?.content;
+    if (!Array.isArray(content)) return out;
+    for (const raw of content) {
+      const block = raw as { type?: unknown; id?: unknown; name?: unknown; input?: unknown };
+      if (block.type !== 'tool_use' || typeof block.name !== 'string') continue;
+      out.push({
+        id: typeof block.id === 'string' ? block.id : '',
+        name: block.name,
+        arguments:
+          block.input && typeof block.input === 'object'
+            ? (block.input as Record<string, unknown>)
+            : {},
+      });
+    }
+    return out;
+  }
+  const message = (data as {
+    choices?: { message?: { tool_calls?: unknown } }[];
+  } | null)?.choices?.[0]?.message;
+  const calls = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
+  for (const raw of calls) {
+    const call = raw as { id?: unknown; function?: { name?: unknown; arguments?: unknown } };
+    const fn = call.function;
+    if (!fn || typeof fn.name !== 'string') continue;
+    let args: Record<string, unknown> = {};
+    if (typeof fn.arguments === 'string') {
+      try {
+        const parsed = JSON.parse(fn.arguments) as unknown;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          args = parsed as Record<string, unknown>;
+        }
+      } catch {
+        /* 参数不是合法 JSON：保留空对象，由调用方使用默认查询 */
+      }
+    } else if (fn.arguments && typeof fn.arguments === 'object') {
+      args = fn.arguments as Record<string, unknown>;
+    }
+    out.push({ id: typeof call.id === 'string' ? call.id : '', name: fn.name, arguments: args });
+  }
+  return out;
+}
+
+/** 组装工具请求体（非流式；OpenAI function / Anthropic tool schema） */
+function buildToolBody(
+  cfg: LlmConfig,
+  system: string,
+  user: string,
+  tools: LlmToolSpec[],
+  maxTokens: number,
+  temperature: number,
+) {
+  if (cfg.protocol === 'anthropic') {
+    return {
+      model: cfg.modelId,
+      max_tokens: maxTokens,
+      temperature,
+      ...(system ? { system } : {}),
+      messages: [{ role: 'user', content: user }],
+      tools: tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.parameters,
+      })),
+    };
+  }
+  return {
+    model: cfg.modelId,
+    temperature,
+    max_tokens: maxTokens,
+    stream: false,
+    messages: [
+      ...(system ? [{ role: 'system', content: system }] : []),
+      { role: 'user', content: user },
+    ],
+    tools: tools.map((t) => ({
+      type: 'function',
+      function: { name: t.name, description: t.description, parameters: t.parameters },
+    })),
+    tool_choice: 'auto',
+  };
+}
+
+/**
+ * 非流式工具调用：给模型 tools 与一条 user 消息，返回它选择的工具。
+ * 用于 AI 助手的「按需记忆检索」预检；服务商不支持 tools 时抛错，由调用方回退。
+ */
+export async function llmToolCall(
+  cfg: LlmConfig,
+  system: string,
+  user: string,
+  tools: LlmToolSpec[],
+  opts: {
+    signal?: AbortSignal;
+    feature?: LlmFeature;
+    maxTokens?: number;
+    temperature?: number;
+  } = {},
+): Promise<LlmToolCall[]> {
+  const { signal, feature, maxTokens = 256, temperature = 0 } = opts;
+  const body = buildToolBody(cfg, system, user, tools, maxTokens, temperature);
+  void recordLlmRequest(feature, cfg, body, false);
+  const res = await fetch(chatEndpoint(cfg), {
+    method: 'POST',
+    headers: chatHeaders(cfg),
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) throw new Error(await describeHttpError(res));
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('Response is not valid JSON');
+  }
+  const calls = parseToolCalls(cfg.protocol, data);
+  trackUsage(
+    feature,
+    cfg,
+    system,
+    user,
+    JSON.stringify(calls),
+    extractUsage(cfg, data as { usage?: Record<string, unknown> }),
+  );
+  return calls;
 }

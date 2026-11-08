@@ -1507,4 +1507,9 @@ export const ja = {
   'egg.done': '戻る',
   'settings.presetCat': 'モチ',
   'toast.catThemeUnlocked': '新テーマ「モチ」を解放',
+  'assistant.memorySave': '覚える',
+  'assistant.memoryTitle': '長期メモリーに保存',
+  'assistant.memoryHint': '保存後は関連度に応じて注入されます。ピン留めすると毎回注入され、「設定 → 大規模モデル → メモリー」で管理できます。',
+  'assistant.ctx.memoryQuery': '必要時検索：{q}',
+  'assistant.ctx.memoryNone': '該当するメモリーなし',
 } as const;

@@ -19,6 +19,8 @@ export interface ChatContextMeta {
   docs: { title: string; chars: number }[];
   /** 本轮注入的长期记忆条数 */
   memories?: number;
+  /** 本轮按需记忆检索使用的查询（未触发工具检索时省略） */
+  memoryQuery?: string;
 }
 
 export interface ChatMessage {

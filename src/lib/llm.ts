@@ -12,6 +12,8 @@ export {
   llmChat,
   llmChatStream,
   llmChatStreamMessages,
+  llmToolCall,
+  parseToolCalls,
   testLlmConnection,
   isAbortError,
   extractDataLines,
@@ -19,6 +21,8 @@ export {
   type LlmConfig,
   type LlmProtocol,
   type LlmStreamOptions,
+  type LlmToolSpec,
+  type LlmToolCall,
 } from './llmClient';
 
 // 模型列表 / 上下文识别

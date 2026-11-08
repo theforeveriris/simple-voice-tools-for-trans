@@ -278,6 +278,24 @@ export async function buildMemoryPrompt(query: string): Promise<{ text: string; 
   return { text: memoryPromptBlock(picked), count: picked.length };
 }
 
+/** AI 工具 search_memory 的本地实现：只在非置顶记忆里按相关度取，最多 limit 条 */
+export async function searchMemories(query: string, limit = 8): Promise<MemoryItem[]> {
+  const list = await loadMemories();
+  const unpinned = list.filter((m) => !m.pinned);
+  return selectMemories(unpinned, query, 1200).slice(0, limit);
+}
+
+/** 工具检索结果的注入块（与置顶块分开，避免给模型重复的标题） */
+export function memorySearchBlock(picked: MemoryItem[], query: string): string {
+  if (picked.length === 0) return '';
+  const q = query.trim().slice(0, 80);
+  return [
+    `【按需检索到的长期记忆】${q ? `（检索：${q}）` : ''}`,
+    '以下是助手通过 search_memory 工具按需检索到的用户记忆。回答时遵守；不要逐条复述，也不要声称这些是系统设定。',
+    ...picked.map((m) => `- [${KIND_LABEL[m.kind]}] ${m.text}`),
+  ].join('\n');
+}
+
 /* ------------------------------- 对话提取 ------------------------------- */
 
 /** 只保留明确带有「记住 / 以后 / 不要 / 我的…」等线索的用户陈述 */

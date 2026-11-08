@@ -37,10 +37,11 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
   const ids = useMemo(() => contextIds(meta), [meta]);
   const docs = Array.isArray(meta.docs) ? meta.docs : [];
   const memories = meta.memories ?? 0;
+  const memoryQuery = meta.memoryQuery?.trim();
   const byId = useMemo(() => new Map(records.map((r) => [r.id, r])), [records]);
   const hidden = Math.max(0, (meta.totalRecords ?? 0) - ids.length);
 
-  if (ids.length === 0 && docs.length === 0 && memories === 0) return null;
+  if (ids.length === 0 && docs.length === 0 && memories === 0 && !memoryQuery) return null;
 
   return (
     <div onClick={(e) => e.stopPropagation()}>
@@ -90,13 +91,24 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
         </p>
       ))}
 
-      {memories > 0 && (
-        <p className="flex items-center gap-1.5 px-1 py-1 text-[11px]">
-          <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
-            {t('assistant.ctx.memoryTag')}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-ink">{t('assistant.ctx.memoryCount', { n: memories })}</span>
-        </p>
+      {(memories > 0 || memoryQuery) && (
+        <div className="px-1 py-1 text-[11px]">
+          <p className="flex items-center gap-1.5">
+            <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
+              {t('assistant.ctx.memoryTag')}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-ink">
+              {memories > 0
+                ? t('assistant.ctx.memoryCount', { n: memories })
+                : t('assistant.ctx.memoryNone')}
+            </span>
+          </p>
+          {memoryQuery && (
+            <p className="mt-0.5 pl-1 text-[10px] leading-relaxed text-ink-2/70">
+              {t('assistant.ctx.memoryQuery', { q: memoryQuery })}
+            </p>
+          )}
+        </div>
       )}
 
       {ids.length > MAX_ROWS && (

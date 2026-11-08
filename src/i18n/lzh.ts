@@ -1507,4 +1507,9 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'egg.done': '歸',
   'settings.presetCat': '粉團',
   'toast.catThemeUnlocked': '新題「粉團」已解',
+  'assistant.memorySave': '記此',
+  'assistant.memoryTitle': '存為久記',
+  'assistant.memoryHint': '存後按相關而注入；釘之則每輪皆入，可於「設置 → 大模型 → 久記」理之。',
+  'assistant.ctx.memoryQuery': '按需而檢：{q}',
+  'assistant.ctx.memoryNone': '未得其記',
 };

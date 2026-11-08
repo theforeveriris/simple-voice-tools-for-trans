@@ -20,15 +20,16 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowUp, Brain, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight,
-  Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2,
+  Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { isAbortError, languageName, llmChatStreamMessages } from '@/lib/llm';
+import { isAbortError, languageName, llmChatStreamMessages, llmToolCall, type LlmConfig, type LlmToolSpec } from '@/lib/llm';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
@@ -37,7 +38,7 @@ import {
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
-import { buildMemoryPrompt, addMemories, extractMemoryCandidates } from '@/lib/memory';
+import { buildMemoryPrompt, addMemory, addMemories, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, searchMemories, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind } from '@/lib/memory';
 import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
@@ -49,6 +50,7 @@ import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
 import { ContextPanel } from '@/components/ai/ContextPanel';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
+import { Textarea } from '@/components/ui';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { recorder } from '@/lib/audio/recorder';
@@ -59,6 +61,14 @@ import { cn } from '@/lib/utils';
 
 /** Token 粗估：CJK 1 字 ≈ 1 token，其余 4 字符 ≈ 1 token（与用量统计同一口径） */
 const estTokens = estimateTokens;
+
+/** 记忆类型 → 词典键（气泡「记住」对话框共用设置页的分类） */
+const MEMORY_KIND_KEYS = {
+  fact: 'settings.memoryKindFact',
+  preference: 'settings.memoryKindPreference',
+  requirement: 'settings.memoryKindRequirement',
+  caution: 'settings.memoryKindCaution',
+} as const;
 
 /** 用户可读的错误分类：401/403=密钥、429=限流、超时、网络、5xx=服务端不可用 */
 type ErrorKind = 'auth' | 'rate' | 'timeout' | 'network' | 'server' | 'unknown';
@@ -175,6 +185,7 @@ function systemPrompt(profile: string, history: string, docs = '', extra = '', m
     ASSISTANT_VISUAL_GUIDE,
     profile,
     memory,
+    '如果用户要求你记住某事，或用户陈述了值得长期保留的偏好、要求或注意事项，用一句自包含的话复述要点，并请对方点消息下方的「记住」确认保存；你没有直接写入记忆的工具，不要声称已经记住。',
     history
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
@@ -184,6 +195,72 @@ function systemPrompt(profile: string, history: string, docs = '', extra = '', m
     `使用「${languageName()}」回答。`,
   ].filter(Boolean).join('\n');
 }
+
+/** 记忆检索路由器：只决定是否需要长期记忆，并给出检索词 */
+const MEMORY_ROUTER_SYSTEM = [
+  '你是 AI 助手的记忆检索路由器。只判断：回答用户当前这句话，是否需要用户的长期记忆（个人事实、偏好、要求、注意事项）。',
+  '需要：调用 search_memory，query 用 2–8 个关键词或用户原话中的关键短语。',
+  '不需要：不要调用任何工具，只回复 NO。',
+  '不要回答用户的问题，不要解释。',
+].join('\n');
+
+const MEMORY_SEARCH_TOOL: LlmToolSpec = {
+  name: 'search_memory',
+  description: '按关键词检索用户的长期记忆（个人事实、偏好、要求、注意事项）。当回答依赖用户过去说过的个人信息时调用。',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: '2–8 个关键词，或用户原话中的关键短语' },
+    },
+    required: ['query'],
+  },
+};
+
+/**
+ * 按需记忆：置顶记忆固定注入；非置顶记忆由模型通过 search_memory 工具按需检索。
+ * 服务商不支持 tools / 请求失败时回退旧的「按问题关键词自动注入」，保证仍有上下文。
+ */
+async function resolveMemoryContext(
+  cfg: LlmConfig,
+  history: ChatMessage[],
+  lastUser: ChatMessage | undefined,
+): Promise<{ text: string; count: number; query?: string }> {
+  const list = await loadMemories();
+  const pinned = list.filter((m) => m.pinned);
+  let text = memoryPromptBlock(pinned);
+  let count = pinned.length;
+  let query: string | undefined;
+  if (!lastUser || !list.some((m) => !m.pinned)) return { text, count };
+
+  const recent = history
+    .slice(-4)
+    .map((m) => `${m.role === 'user' ? '用户' : '助手'}：${m.content.slice(0, 400)}`)
+    .join('\n');
+  try {
+    const calls = await llmToolCall(
+      cfg,
+      MEMORY_ROUTER_SYSTEM,
+      `最近对话：\n${recent}\n\n当前问题：${lastUser.content}`,
+      [MEMORY_SEARCH_TOOL],
+      { feature: 'assistant', maxTokens: 200, temperature: 0 },
+    );
+    const call = calls.find((c) => c.name === 'search_memory');
+    if (!call) return { text, count };
+    const q = typeof call.arguments.query === 'string' ? call.arguments.query.trim() : '';
+    query = (q || lastUser.content).slice(0, 120);
+    const found = await searchMemories(query);
+    if (found.length > 0) {
+      text = [text, memorySearchBlock(found, query)].filter(Boolean).join('\n\n');
+      count += found.length;
+    }
+    return { text, count, query };
+  } catch {
+    // 没有工具能力（或预检失败）：退回本轮按问题自动筛选，避免记忆直接失效
+    const fallback = await buildMemoryPrompt(lastUser.content);
+    return { text: fallback.text, count: fallback.count };
+  }
+}
+
 
 /** 气泡操作按钮（模块级：定义在组件体内会让整条消息流每次渲染重挂载） */
 function ActionBtn({ icon: Icon, label, onClick }: { icon: typeof Copy; label: string; onClick: () => void }) {
@@ -265,6 +342,7 @@ const Bubble = memo(function Bubble({
   onCopy,
   onRedo,
   onBranch,
+  onMemory,
 }: {
   m: ChatMessage;
   idx: number;
@@ -279,6 +357,7 @@ const Bubble = memo(function Bubble({
   onCopy: (idx: number) => void;
   onRedo: (idx: number) => void;
   onBranch: (idx: number) => void;
+  onMemory: (idx: number) => void;
 }) {
   useI18n();
   const mine = m.role === 'user';
@@ -355,6 +434,9 @@ const Bubble = memo(function Bubble({
           className="mt-1.5 flex items-center gap-1.5"
         >
           <ActionBtn icon={Copy} label={t('assistant.copy')} onClick={() => onCopy(idx)} />
+          {!mine && !streaming && (
+            <ActionBtn icon={Brain} label={t('assistant.memorySave')} onClick={() => onMemory(idx)} />
+          )}
           {!streaming && <ActionBtn icon={RotateCcw} label={t('assistant.redo')} onClick={() => onRedo(idx)} />}
           {!streaming && <ActionBtn icon={GitBranch} label={t('assistant.branch')} onClick={() => onBranch(idx)} />}
         </motion.div>
@@ -387,6 +469,12 @@ export function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   /** 点按气泡浮出操作行的消息下标 */
   const [actionIdx, setActionIdx] = useState<number | null>(null);
+  /** 「记住」对话框：待确认的长期记忆草稿 */
+  const [memoryDraft, setMemoryDraft] = useState<{
+    text: string;
+    kind: MemoryKind;
+    pinned: boolean;
+  } | null>(null);
   /** 侧边栏两步删除的待确认对话 id */
   const [delId, setDelId] = useState<string | null>(null);
   /** 侧边栏：搜索词 / 展开操作菜单的对话 id / 重命名中的对话 id */
@@ -434,10 +522,12 @@ export function AssistantPage() {
     copy: (idx: number) => void;
     redo: (idx: number) => void;
     branch: (idx: number) => void;
-  }>({ copy: () => {}, redo: () => {}, branch: () => {} });
+    memory: (idx: number) => void;
+  }>({ copy: () => {}, redo: () => {}, branch: () => {}, memory: () => {} });
   const onCopy = useCallback((idx: number) => actionsRef.current.copy(idx), []);
   const onRedo = useCallback((idx: number) => actionsRef.current.redo(idx), []);
   const onBranch = useCallback((idx: number) => actionsRef.current.branch(idx), []);
+  const onMemory = useCallback((idx: number) => actionsRef.current.memory(idx), []);
   const onToggleThink = useCallback((idx: number) => {
     setThinkIdx((cur) => (cur === idx ? null : idx));
   }, []);
@@ -530,11 +620,12 @@ export function AssistantPage() {
       const candidates = extractMemoryCandidates([lastUser.content], 5);
       if (candidates.length > 0) void addMemories(candidates);
     }
-    const docHit = lastUser
-      ? await retrieveDocsDetailed(lastUser.content)
-      : { text: '', docs: [] };
-    // 长期记忆：置顶 + 与本轮问题相关的条目（无记忆时为空串）
-    const memoryHit = await buildMemoryPrompt(lastUser?.content ?? '');
+    const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = lastUser
+      ? retrieveDocsDetailed(lastUser.content)
+      : Promise.resolve({ text: '', docs: [] });
+    // 长期记忆：置顶固定注入；其余由模型按需调用 search_memory，按需注入
+    const memoryHit = await resolveMemoryContext(cfg, history, lastUser);
+    const docHit = await docHitPromise;
     const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraContext, memoryHit.text);
     // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
     const contextMeta: ChatContextMeta = {
@@ -543,6 +634,7 @@ export function AssistantPage() {
       totalRecords: hist.meta.totalRecords,
       docs: docHit.docs,
       memories: memoryHit.count,
+      memoryQuery: memoryHit.query,
     };
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
@@ -965,6 +1057,34 @@ export function AssistantPage() {
     }
   };
 
+  /** 把助手回复存为长期记忆：先弹出可编辑的确认框，避免长文/错误内容直接入库 */
+  const remember = (idx: number) => {
+    const target = conv?.messages[idx];
+    setActionIdx(null);
+    setThinkIdx(null);
+    if (!target || target.role !== 'assistant') return;
+    setMemoryDraft({
+      text: target.content.trim().slice(0, MEMORY_TEXT_MAX),
+      kind: 'fact',
+      pinned: false,
+    });
+  };
+
+  /** 确认保存记忆草稿；重复/空文本给出提示并保留对话框 */
+  const saveMemoryDraft = () => {
+    if (!memoryDraft) return;
+    const text = memoryDraft.text.trim();
+    if (!text) return;
+    void addMemory({ text, kind: memoryDraft.kind, pinned: memoryDraft.pinned }).then((item) => {
+      if (item) {
+        toast.success(t('settings.memoryAdded'));
+        setMemoryDraft(null);
+      } else {
+        toast.error(t('settings.memoryDuplicate'));
+      }
+    });
+  };
+
   const resetConversationView = () => {
     setError(null);
     setActionIdx(null);
@@ -1031,8 +1151,18 @@ export function AssistantPage() {
 
   // 气泡回调保持稳定引用（Bubble 已 memo），始终调用最新实现
   useEffect(() => {
-    actionsRef.current = { copy, redo, branch };
+    actionsRef.current = { copy, redo, branch, memory: remember };
   });
+
+  // 「记住」弹窗：Esc 关闭（自绘层在 AI 页 z-60 之上，Radix 默认 z-50 会被盖住）
+  useEffect(() => {
+    if (!memoryDraft) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setMemoryDraft(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [memoryDraft]);
 
   const retry = () => {
     if (!conv || busy) return;
@@ -1354,6 +1484,7 @@ export function AssistantPage() {
                 onCopy={onCopy}
                 onRedo={onRedo}
                 onBranch={onBranch}
+                onMemory={onMemory}
               />
             ))}
             {busy && (
@@ -1369,6 +1500,7 @@ export function AssistantPage() {
                 onCopy={() => undefined}
                 onRedo={() => undefined}
                 onBranch={() => undefined}
+                onMemory={() => undefined}
               />
             )}
             {error && (
@@ -1518,6 +1650,79 @@ export function AssistantPage() {
       </div>
 
       {sidebarDrawer}
+
+      {/* 把助手回复存为长期记忆：确认 / 编辑 / 分类 / 置顶
+          自绘层而不是 Radix Dialog：AI 页本身 fixed z-[60]，Radix 默认 z-50 会被整页盖住 */}
+      {memoryDraft != null && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('assistant.memoryTitle')}
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+        >
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMemoryDraft(null)}
+          />
+          <div className="relative w-full max-w-lg rounded-3xl bg-card p-5 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.6)]">
+            <h2 className="text-base font-semibold text-ink">{t('assistant.memoryTitle')}</h2>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-2">{t('assistant.memoryHint')}</p>
+            <Textarea
+              value={memoryDraft.text}
+              onChange={(e) => setMemoryDraft((d) => (d ? { ...d, text: e.target.value } : d))}
+              rows={4}
+              maxLength={MEMORY_TEXT_MAX}
+              placeholder={t('settings.memoryPlaceholder')}
+              autoFocus
+              className="mt-3 min-h-0 resize-y rounded-2xl border-black/10 bg-surface-hi text-xs leading-relaxed text-ink"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {MEMORY_KINDS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setMemoryDraft((d) => (d ? { ...d, kind: k } : d))}
+                  className={cn(
+                    'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    memoryDraft.kind === k
+                      ? 'bg-accent-soft text-on-accent-soft'
+                      : 'bg-surface-hi text-ink-2',
+                  )}
+                >
+                  {t(MEMORY_KIND_KEYS[k])}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setMemoryDraft((d) => (d ? { ...d, pinned: !d.pinned } : d))}
+                className={cn(
+                  'ml-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                  memoryDraft.pinned ? 'bg-accent/15 text-accent' : 'bg-surface-hi text-ink-2',
+                )}
+              >
+                <Star size={11} className={memoryDraft.pinned ? 'fill-accent' : undefined} />
+                {t('settings.memoryPin')}
+              </button>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setMemoryDraft(null)}
+                className="px-1 py-2 text-sm font-medium text-ink-2 transition-opacity hover:opacity-70"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={saveMemoryDraft}
+                disabled={!memoryDraft.text.trim()}
+                className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                {t('common.save')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

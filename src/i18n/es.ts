@@ -1515,4 +1515,9 @@ export const es = {
   'egg.done': 'Volver',
   'settings.presetCat': 'Mochi',
   'toast.catThemeUnlocked': 'Nuevo tema desbloqueado: Mochi',
+  'assistant.memorySave': 'Recordar',
+  'assistant.memoryTitle': 'Guardar en memoria a largo plazo',
+  'assistant.memoryHint': 'Se inyectan por relevancia; las fijadas, en cada turno. Gestión en Ajustes → LLM → Memoria.',
+  'assistant.ctx.memoryQuery': 'Búsqueda: {q}',
+  'assistant.ctx.memoryNone': 'Sin memorias coincidentes',
 } as const;

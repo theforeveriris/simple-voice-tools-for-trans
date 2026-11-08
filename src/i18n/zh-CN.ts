@@ -1515,6 +1515,11 @@ export const zhCN = {
   'egg.done': '回去',
   'settings.presetCat': '粉团子',
   'toast.catThemeUnlocked': '新主题「粉团子」已解锁',
+  'assistant.memorySave': '记住',
+  'assistant.memoryTitle': '保存为长期记忆',
+  'assistant.memoryHint': '确认后会按相关度注入后续对话；置顶则每轮都注入，可在「设置 → 大模型 → 记忆」管理。',
+  'assistant.ctx.memoryQuery': '按需检索：{q}',
+  'assistant.ctx.memoryNone': '未命中记忆',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

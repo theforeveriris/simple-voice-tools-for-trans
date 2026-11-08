@@ -1506,4 +1506,9 @@ export const en = {
   'egg.done': 'Back',
   'settings.presetCat': 'Mochi',
   'toast.catThemeUnlocked': 'New theme unlocked: Mochi',
+  'assistant.memorySave': 'Remember',
+  'assistant.memoryTitle': 'Save to long-term memory',
+  'assistant.memoryHint': 'Saved memories are injected by relevance; pinned ones every turn. Manage them in Settings → LLM → Memory.',
+  'assistant.ctx.memoryQuery': 'Memory search: {q}',
+  'assistant.ctx.memoryNone': 'No matching memories',
 } as const;
