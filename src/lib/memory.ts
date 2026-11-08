@@ -235,6 +235,7 @@ export function shouldAutoSaveMemory(userText: string): boolean {
   const text = userText.trim();
   if (!text) return false;
   if (/^(你好|您好|hi|hello|谢谢|感谢|好的|嗯|ok|收到|晚安|早安)[！!。.\s]*$/i.test(text)) return false;
+  if (/^(看看|帮我看看|帮我看|分析|解释|对比|查一下|查看|打开)/.test(text)) return false;
   const cue = /(记住|记得|别忘|我(?:习惯|喜欢|偏好|想要|希望|需要|讨厌|不喜欢|过敏|不能|是|的)|我的|以后|每次|务必|千万别|不要用|别用|叫我|称呼我)/;
   if (cue.test(text)) return true;
   if (/[?？]\s*$/.test(text) || /^(怎么|如何|为什么|什么|哪|是否|能不能|可不可以)/.test(text)) return false;

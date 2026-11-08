@@ -33,6 +33,7 @@ describe('shouldAutoSaveMemory', () => {
     expect(shouldAutoSaveMemory('你好')).toBe(false);
     expect(shouldAutoSaveMemory('VFP 参考分是什么意思？')).toBe(false);
     expect(shouldAutoSaveMemory('我该怎么练习？')).toBe(false);
+    expect(shouldAutoSaveMemory('看看这条记录')).toBe(false);
   });
 });
 

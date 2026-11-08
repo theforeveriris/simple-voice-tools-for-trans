@@ -126,10 +126,15 @@ export function PlanStrip() {
     );
   }
 
+  const openPlanPractice = () => {
+    if (p.nextStep) useStore.getState().updateSettings({ testMode: p.nextStep.mode });
+    useStore.getState().setTab('test');
+  };
+
   return (
     <button
       type="button"
-      onClick={() => useStore.getState().setTab('test')}
+      onClick={openPlanPractice}
       className="mx-3 mb-1 flex items-center gap-2 rounded-2xl bg-card px-3 py-2 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05)] transition-transform active:scale-[0.99]"
     >
       <CalendarRange size={13} className="shrink-0 text-accent" />
