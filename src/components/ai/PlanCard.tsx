@@ -48,15 +48,7 @@ function PlanDots({ done, target }: { done: number; target: number }) {
   );
 }
 
-function ProgressBar({ pct }: { pct: number }) {
-  return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-hi">
-      <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
-
-/** 完整计划卡：只在用户明确查看计划时使用 */
+/** 回答正文底部的计划卡（紧凑版） */
 export function PlanCard({ planId }: { planId?: string }) {
   useI18n();
   const state = usePracticePlan();
@@ -64,39 +56,36 @@ export function PlanCard({ planId }: { planId?: string }) {
   if (!plan) return null;
   const p = planProgress(plan, state.logs);
   return (
-    <div className="mt-1.5 rounded-2xl border border-line/70 bg-card p-3">
+    <div className="mt-3 rounded-xl border border-line/60 bg-card/80 px-2.5 py-1.5">
       <div className="flex items-center gap-1.5">
-        <CalendarRange size={13} className="text-accent" />
-        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink">{plan.title}</span>
-        <span className="rounded-full bg-accent-soft/50 px-1.5 py-0.5 text-[9px] text-on-accent-soft">
+        <CalendarRange size={12} className="shrink-0 text-accent" />
+        <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink">{plan.title}</span>
+        <span className="shrink-0 rounded-full bg-accent-soft/50 px-1.5 py-0.5 text-[8px] text-on-accent-soft">
           {t(FOCUS_KEY[plan.focus])}
         </span>
+        <span className="shrink-0 tabular-nums text-[9px] text-ink-2">
+          {t('assistant.planProgress', { done: p.done, target: p.target })}
+        </span>
       </div>
-      <p className="mt-1 text-[10px] text-ink-2">
+      <p className="mt-0.5 text-[9px] text-ink-2">
         {t('assistant.planMeta', {
           weeks: plan.weeks,
           days: plan.daysPerWeek,
           minutes: plan.minutesPerSession,
         })}
       </p>
-      <div className="mt-2 flex items-center gap-2">
-        <ProgressBar pct={p.pct} />
-        <span className="shrink-0 tabular-nums text-[10px] text-ink-2">
-          {t('assistant.planProgress', { done: p.done, target: p.target })}
-        </span>
-      </div>
       {p.nextStep && (
-        <div className="mt-2 flex items-center gap-2 rounded-xl bg-surface-hi/50 px-2 py-1.5">
-          <Target size={12} className="shrink-0 text-accent" />
-          <span className="min-w-0 flex-1 truncate text-[11px] text-ink">
+        <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-surface-hi/50 px-1.5 py-1">
+          <Target size={10} className="shrink-0 text-accent" />
+          <span className="min-w-0 flex-1 truncate text-[10px] text-ink">
             {t('assistant.planNext')}：{p.nextStep.title}
           </span>
           <button
             type="button"
             onClick={() => startPractice(plan, state.logs)}
-            className="flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-[10px] font-medium text-on-accent"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[9px] font-medium text-on-accent"
           >
-            <Play size={10} />
+            <Play size={9} />
             {t('assistant.planStart')}
           </button>
         </div>

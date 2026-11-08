@@ -85,10 +85,18 @@ export function MemorySavedCard({
   };
 
   return (
-    <div className="mt-2 rounded-xl border border-line/60 bg-card/80 px-2.5 py-2" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-1.5 text-[10px] font-medium text-ink-2">
-        <Brain size={11} className="text-accent" />
+    <div className="mt-2.5 rounded-xl border border-line/60 bg-card/80 px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1.5 text-[9px] font-medium text-ink-2">
+        <Brain size={10} className="text-accent" />
         {t('assistant.memoryChip', { n: active.length })}
+        <button
+          type="button"
+          onClick={undoAll}
+          className="ml-auto inline-flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[8px] font-medium text-ink-2 transition-colors hover:bg-surface-hi"
+        >
+          <Undo2 size={9} />
+          {t('assistant.memoryChipUndo')}
+        </button>
       </div>
 
       {active.map((write) => {
@@ -96,33 +104,33 @@ export function MemorySavedCard({
         const label = actionLabel(write.action);
         if (!item) {
           return (
-            <p key={write.id} className="mt-1 px-0.5 text-[10px] text-ink-2/60">
+            <p key={write.id} className="mt-1 px-0.5 text-[9px] text-ink-2/60">
               {t('assistant.memoryChipDeleted')}
             </p>
           );
         }
         return (
-          <div key={item.id} className="mt-1 rounded-lg bg-surface-hi/40 px-2 py-1.5">
+          <div key={item.id} className="mt-1 rounded-lg bg-surface-hi/40 px-1.5 py-1">
             {editingId === item.id ? (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={2}
-                  className="w-full resize-y rounded-lg border border-line bg-card px-2 py-1 text-[11px] leading-relaxed text-ink outline-none focus:border-accent"
+                  className="w-full resize-y rounded-lg border border-line bg-card px-1.5 py-1 text-[10px] leading-relaxed text-ink outline-none focus:border-accent"
                 />
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setEditingId(null)}
-                    className="px-1 text-[10px] text-ink-2"
+                    className="px-1 text-[9px] text-ink-2"
                   >
                     {t('common.cancel')}
                   </button>
                   <button
                     type="button"
                     onClick={() => saveEdit(item)}
-                    className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-medium text-on-accent"
+                    className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-medium text-on-accent"
                   >
                     {t('common.save')}
                   </button>
@@ -130,14 +138,14 @@ export function MemorySavedCard({
               </div>
             ) : (
               <>
-                <p className="text-[11px] leading-[1.55] text-ink">{item.text}</p>
+                <p className="text-[10px] leading-[1.5] text-ink">{item.text}</p>
                 <div className="mt-0.5 flex items-center gap-1.5">
-                  {label && <span className="text-[9px] text-accent">{label}</span>}
-                  <span className="text-[9px] text-ink-2/70">
+                  {label && <span className="text-[8px] text-accent">{label}</span>}
+                  <span className="text-[8px] text-ink-2/70">
                     {new Date(item.updatedAt).toLocaleDateString()}
                   </span>
                   {item.source?.quote && (
-                    <span className="min-w-0 flex-1 truncate text-[9px] text-ink-2/60">
+                    <span className="min-w-0 flex-1 truncate text-[8px] text-ink-2/60">
                       {t('assistant.memoryChipSource', { quote: item.source.quote })}
                     </span>
                   )}
@@ -146,25 +154,25 @@ export function MemorySavedCard({
                       type="button"
                       onClick={() => togglePin(item)}
                       aria-label={t('settings.memoryPin')}
-                      className={cn('grid size-6 place-items-center rounded-full text-ink-2 hover:bg-surface-hi', item.pinned && 'text-accent')}
+                      className={cn('grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi', item.pinned && 'text-accent')}
                     >
-                      <Star size={11} className={item.pinned ? 'fill-accent' : undefined} />
+                      <Star size={10} className={item.pinned ? 'fill-accent' : undefined} />
                     </button>
                     <button
                       type="button"
                       onClick={() => beginEdit(item)}
                       aria-label={t('common.edit')}
-                      className="grid size-6 place-items-center rounded-full text-ink-2 hover:bg-surface-hi"
+                      className="grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi"
                     >
-                      <Pencil size={11} />
+                      <Pencil size={10} />
                     </button>
                     <button
                       type="button"
                       onClick={() => removeOne(item, write)}
                       aria-label={t('common.delete')}
-                      className="grid size-6 place-items-center rounded-full text-ink-2 hover:bg-surface-hi hover:text-red-500"
+                      className="grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi hover:text-red-500"
                     >
-                      <Trash2 size={11} />
+                      <Trash2 size={10} />
                     </button>
                   </span>
                 </div>
@@ -173,17 +181,6 @@ export function MemorySavedCard({
           </div>
         );
       })}
-
-      <div className="mt-1 flex justify-end">
-        <button
-          type="button"
-          onClick={undoAll}
-          className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-ink-2 transition-colors hover:bg-surface-hi"
-        >
-          <Undo2 size={10} />
-          {t('assistant.memoryChipUndo')}
-        </button>
-      </div>
     </div>
   );
 }

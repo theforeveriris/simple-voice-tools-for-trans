@@ -46,10 +46,6 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
 
   return (
     <div onClick={(e) => e.stopPropagation()}>
-      <p className="mb-1 text-[9px] font-medium uppercase tracking-wide text-ink-2/70">
-        {t('assistant.ctx.injected')}
-      </p>
-
       {ids.slice(0, MAX_ROWS).map((id) => {
         const r = byId.get(id);
         if (!r) {
@@ -69,7 +65,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
               setTab('analysis');
             }}
             aria-label={t('assistant.ctx.openRecord')}
-            className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left text-[11px] transition-colors hover:bg-surface-hi/60"
+            className="flex w-full items-center gap-1.5 rounded-lg px-0 py-1 text-left text-[11px] transition-colors hover:bg-surface-hi/60"
           >
             <span className="shrink-0 rounded bg-accent-soft/60 px-1 py-0.5 text-[9px] text-on-accent-soft">
               {t('assistant.ctx.recordTag')}
@@ -83,7 +79,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
       })}
 
       {docs.map((d, i) => (
-        <p key={`${d.title}-${i}`} className="flex items-center gap-1.5 px-1 py-1 text-[11px]">
+        <p key={`${d.title}-${i}`} className="flex items-center gap-1.5 px-0 py-1 text-[11px]">
           <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
             {t('assistant.ctx.docTag')}
           </span>
@@ -93,7 +89,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
       ))}
 
       {(memories > 0 || memoryQuery) && (
-        <div className="px-1 py-1 text-[11px]">
+        <div className="px-0 py-1 text-[11px]">
           <p className="flex items-center gap-1.5">
             <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
               {t('assistant.ctx.memoryTag')}
@@ -113,7 +109,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
       )}
 
       {toolCalls.length > 0 && (
-        <div className="px-1 py-1">
+        <div className="px-0 py-1">
           {toolCalls.map((tool, i) => (
             <p key={`${tool.name}-${i}`} className="flex items-center gap-1.5 py-1 text-[11px]">
               <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
@@ -130,18 +126,15 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
       )}
 
       {ids.length > MAX_ROWS && (
-        <p className="px-1 pt-1 text-[10px] text-ink-2/70">
+        <p className="px-0 pt-1 text-[10px] text-ink-2/70">
           {t('assistant.ctx.more', { n: ids.length - MAX_ROWS })}
         </p>
       )}
       {hidden > 0 && (
-        <p className="px-1 pt-1 text-[10px] text-ink-2/70">
+        <p className="px-0 pt-1 text-[10px] text-ink-2/70">
           {t('assistant.ctx.aggregateOnly', { n: hidden })}
         </p>
       )}
-      <p className="mt-1.5 border-t border-line/60 px-1 pt-1.5 text-[9px] leading-relaxed text-ink-2/60">
-        {t('assistant.ctx.note')}
-      </p>
     </div>
   );
 }
