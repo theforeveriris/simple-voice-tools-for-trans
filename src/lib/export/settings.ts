@@ -58,7 +58,7 @@ const OPTIONAL_NUMBER_KEYS: Partial<Record<keyof AppSettings, [number, number]>>
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   theme: ['light', 'dark', 'system'],
   navStyle: ['floating', 'classic', 'ai'],
-  huePreset: ['monet', 'pride', 'image'],
+  huePreset: ['monet', 'pride', 'image', 'cat'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'es', 'fr', 'ai'],
   specColormap: ['magma', 'gray', 'accent'],

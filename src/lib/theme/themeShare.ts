@@ -21,7 +21,7 @@ export interface ThemeExport {
 
 /** 收进主题包的字段白名单（不含语言、麦克风、LLM 等非外观项） */
 const THEME_KEYS = [
-  'theme', 'huePreset', 'hue', 'accentHue', 'darkHue',
+  'theme', 'huePreset', 'hue', 'accentHue', 'darkHue', 'catThemeUnlocked',
   'prideFlag', 'prideGlow', 'prideSaturation', 'prideGlassBlur', 'prideDrift',
   'bgImageFocus', 'bgImageBlur', 'bgImageDim', 'bgImageSaturation', 'bgImageOpacity', 'bgImageDrift',
   'specColormap', 'showGrid',
@@ -48,13 +48,13 @@ export function buildThemeExport(settings: AppSettings, name: string): ThemeExpo
 
 const STRING_ENUMS: Partial<Record<ThemeKey, readonly string[]>> = {
   theme: ['light', 'dark', 'system'],
-  huePreset: ['monet', 'pride', 'image'],
+  huePreset: ['monet', 'pride', 'image', 'cat'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   bgImageFocus: ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'],
   specColormap: ['magma', 'gray', 'accent'],
 };
 
-const BOOL_KEYS: readonly ThemeKey[] = ['prideDrift', 'bgImageDrift', 'showGrid'];
+const BOOL_KEYS: readonly ThemeKey[] = ['prideDrift', 'bgImageDrift', 'showGrid', 'catThemeUnlocked'];
 
 const NUMBER_RANGE: Partial<Record<ThemeKey, [number, number]>> = {
   hue: [0, 360],

@@ -29,7 +29,7 @@ export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'es' | 'fr' | 'ai
  * pride：骄傲旗主题（旗帜由 prideFlag 选择，氤氲渐变 + 毛玻璃，参数可调）；
  * image：自定义图片（背景层由图片接管，色板同莫奈逻辑）
  */
-export type HuePreset = 'monet' | 'pride' | 'image';
+export type HuePreset = 'monet' | 'pride' | 'image' | 'cat';
 
 /**
  * 骄傲旗主题的旗帜
@@ -305,8 +305,10 @@ export interface AppSettings {
   theme: ThemeMode;
   /** 界面语言 */
   language: Locale;
-  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），pride 骄傲旗（旗帜见 prideFlag） */
+  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），pride 骄傲旗（旗帜见 prideFlag），cat 彩蛋「粉团子」 */
   huePreset: HuePreset;
+  /** 彩蛋「喵喵练声」首次通关后解锁「粉团子」主题（解锁后预设配色出现第四张卡） */
+  catThemeUnlocked: boolean;
   /* ---------- 骄傲旗主题（huePreset = pride 时生效） ---------- */
   /** 骄傲旗旗帜 */
   prideFlag: PrideFlag;

@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { useStore } from '@/store/useStore';
 import { SettingsSection, SettingRow, NUMBER_INPUT_CLASS, SELECT_TRIGGER_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
-import { FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
+import { CatSwatch, FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
 
 /** 九宫焦点：展示顺序（左上 → 右下）与各方向词条 */
 /** 导航栏样式预览：悬浮胶囊 / 全宽经典底栏 */
@@ -202,7 +202,7 @@ export function AppearancePage({
           {/* 预设配色卡片：色板实时预览（莫奈跟随当前色相，骄傲旗跟随当前旗帜，
               自定义图片显示当前背景图，未选图时为占位图标） */}
           <SettingRow label={t('settings.huePreset')} stacked>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className={cn('grid gap-2.5', settings.catThemeUnlocked ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
               <ThemeCard
                 active={preset === 'monet'}
                 onClick={() => setPreset('monet')}
@@ -230,6 +230,15 @@ export function AppearancePage({
                   </span>
                 )}
               </ThemeCard>
+              {settings.catThemeUnlocked && (
+                <ThemeCard
+                  active={preset === 'cat'}
+                  onClick={() => setPreset('cat')}
+                  label={t('settings.presetCat')}
+                >
+                  <CatSwatch />
+                </ThemeCard>
+              )}
             </div>
           </SettingRow>
           {(preset === 'monet' || preset === 'image') && (
