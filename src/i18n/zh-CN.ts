@@ -1524,6 +1524,9 @@ export const zhCN = {
   'assistant.memoryGenerating': 'AI 正在提炼…',
   'assistant.memoryGenerated': 'AI 已提炼，可修改后保存',
   'assistant.memoryNoCandidate': '没有提炼出可保存的记忆，可以手动填写',
+  'assistant.ctx.toolTag': '工具',
+  'assistant.ctx.toolFailed': '失败',
+  'assistant.toolSearching': '正在查询记录…',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

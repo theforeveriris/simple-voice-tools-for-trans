@@ -21,6 +21,8 @@ export interface ChatContextMeta {
   memories?: number;
   /** 本轮按需记忆检索使用的查询（未触发工具检索时省略） */
   memoryQuery?: string;
+  /** 本轮助手实际执行的数据 / 计划 / 操作工具 */
+  toolCalls?: { name: string; summary: string; ok: boolean; ms: number }[];
 }
 
 export interface ChatMessage {

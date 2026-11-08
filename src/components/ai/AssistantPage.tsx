@@ -30,6 +30,8 @@ import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isAbortError, languageName, llmChatStreamMessages, llmToolCall, type LlmConfig, type LlmToolSpec } from '@/lib/llm';
+import { runAssistantTools } from '@/lib/assistantAgent';
+import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
@@ -40,7 +42,7 @@ import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildMemoryPrompt, addMemory, deleteMemory, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, searchMemories, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind } from '@/lib/memory';
 import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
-import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
+import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
   recordsWithinLastDays, resolveRecordSelectors, reviewRangeDays,
@@ -138,15 +140,6 @@ async function loadAllRecords(): Promise<AnalysisRecord[]> {
   return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
 }
 
-async function loadAssistantContext(
-  budgetTokens: number,
-  settings: Parameters<typeof buildAssistantContext>[1],
-  pinnedIds: string[] = [],
-): Promise<ReturnType<typeof buildAssistantContext>> {
-  const records = await loadAllRecords();
-  return buildAssistantContext(records, settings, budgetTokens, pinnedIds);
-}
-
 /**
  * 助手视觉规范：record:// 原生图表与 genui 组件的选择、语法与设计约束。
  * 这段会进入每次请求的系统提示词，保持结构化、可执行，避免模型输出
@@ -155,7 +148,7 @@ async function loadAssistantContext(
 const ASSISTANT_VISUAL_GUIDE = [
   '【引用记录图表】',
   '- 语法严格为 ![一句说明](record://<记录id>/<kind>)；kind 只能是 pitch（音高）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）。',
-  '- 记录 id 必须来自下方历史清单的「id」字段；没有可用记录时如实说明并请用户提供 id，绝不编造。',
+  '- 记录 id 必须来自下方历史清单的「id」字段或【本轮工具查询结果】；没有可用记录时如实说明并请用户提供 id，绝不编造。',
   '- 图表是证据，不是装饰：放在相关结论之后；每条回复最多 2 张，同一记录最多 2 种图；不要每段都配图，也不要用文字重复图里已能看出的所有数字。',
   '- 说明文字要写「看什么」（如「句中段稳定在 150–170 Hz」），不要只写「图表」「F0 图」。',
   '- 不要用 genui 重画已有原生图表；不要把 record:// 放进 genui 或代码块。',
@@ -173,6 +166,22 @@ const ASSISTANT_VISUAL_GUIDE = [
   '- 数据必须来自历史记录，或明确标注「示例」；不要编造用户数据。',
   '【选择】单条记录的音高/共振峰/能量/元音优先用 record://；多记录对比、趋势、可调参数用 genui；纯文字能讲清就不用图表。',
 ].join('\n');
+
+/**
+ * 查询规划器提示：只决定是否调用只读工具，不负责最终回答。
+ * 用户画像也放在这里，后续计划类工具需要知道训练方向与靶标。
+ */
+function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]): string {
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return [
+    '你是 AI 助手的查询规划器。只判断回答当前问题是否需要读取应用内的记录、文档或计划，并调用相应工具。',
+    `今天是 ${date}。`,
+    buildAssistantProfile(settings),
+    '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
+    '如果问题只是寒暄、常识或不需要应用数据，不要调用任何工具。',
+  ].join('\n');
+}
 
 /** 助手系统提示词：定位与边界 + 历史记录使用规则 + 内置文档摘录 + 长期记忆，按界面语言回答 */
 function systemPrompt(profile: string, history: string, docs = '', extra = '', memory = ''): string {
@@ -462,6 +471,8 @@ export function AssistantPage() {
   const [input, setInput] = useState('');
   /** null = 空闲；否则为流式累积文本 */
   const [streamText, setStreamText] = useState<string | null>(null);
+  /** 工具查询中的状态提示（null = 没有在执行工具） */
+  const [toolNote, setToolNote] = useState<string | null>(null);
   /** 流式思考累积文本（推理模型） */
   const [streamThink, setStreamThink] = useState('');
   /** 展开思考过程的持久化消息下标 */
@@ -506,7 +517,7 @@ export function AssistantPage() {
     const all = conv?.messages ?? [];
     return all.length && all[all.length - 1].draft ? all.slice(0, -1) : all;
   }, [conv]);
-  const busy = streamText !== null;
+  const busy = streamText !== null || toolNote !== null;
   const pinnedIds = conv?.pinnedRecordIds ?? [];
 
   /** 侧边栏搜索：匹配标题或任意一条用户消息 */
@@ -648,28 +659,67 @@ export function AssistantPage() {
         context - convTokens - replyReserve - extraTokens - 512,
       ),
     );
-    const hist = await loadAssistantContext(
-      histBudget,
-      settings,
-      getChat(convId)?.pinnedRecordIds ?? [],
-    );
-    // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setError(null);
+    // 数据工具：先让模型决定是否查记录 / 文档，再组装最终上下文。
+    // 工具可用时不再逐条注入最近记录，只保留画像、聚合与基线，省 token。
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
-    const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = lastUser
+    const records = await loadAllRecords();
+    let toolRun: {
+      supported: boolean;
+      contextText: string;
+      traces: { name: string; summary: string; ok: boolean; ms: number }[];
+      recordIds: string[];
+      docs: { title: string; chars: number }[];
+    } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
+    if (lastUser) {
+      setToolNote(t('assistant.toolSearching'));
+      try {
+        toolRun = await runAssistantTools({
+          cfg,
+          system: toolPlannerSystem(settings),
+          history,
+          userText: lastUser.content,
+          tools: ASSISTANT_DATA_TOOLS,
+          execute: (name, args) => runAssistantDataTool(name, args, { records, settings }),
+          signal: controller.signal,
+        });
+      } finally {
+        setToolNote(null);
+      }
+    }
+    const hist = buildAssistantContext(
+      records,
+      settings,
+      histBudget,
+      getChat(convId)?.pinnedRecordIds ?? [],
+      { includeDetails: !toolRun.supported },
+    );
+    // 内置文档检索：工具没有主动查文档时，再用最近一条用户消息做一次预检索
+    const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = lastUser && toolRun.docs.length === 0
       ? retrieveDocsDetailed(lastUser.content)
       : Promise.resolve({ text: '', docs: [] });
     // 长期记忆：置顶固定注入；其余由模型按需调用 search_memory，按需注入
     const memoryHit = await resolveMemoryContext(cfg, history, lastUser);
     const docHit = await docHitPromise;
-    const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraContext, memoryHit.text);
+    const extraAll = [extraContext, toolRun.contextText].filter(Boolean).join('\n\n');
+    const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraAll, memoryHit.text);
     // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
+    const seenDocs = new Set<string>();
+    const docs = [...docHit.docs, ...toolRun.docs].filter((d) => {
+      if (seenDocs.has(d.title)) return false;
+      seenDocs.add(d.title);
+      return true;
+    });
     const contextMeta: ChatContextMeta = {
-      recordIds: hist.meta.detailIds,
+      recordIds: [...new Set([...hist.meta.detailIds, ...toolRun.recordIds])],
       pinnedIds: hist.meta.pinnedIds,
       totalRecords: hist.meta.totalRecords,
-      docs: docHit.docs,
+      docs,
       memories: memoryHit.count,
       memoryQuery: memoryHit.query,
+      ...(toolRun.traces.length > 0 ? { toolCalls: toolRun.traces } : {}),
     };
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
@@ -678,11 +728,11 @@ export function AssistantPage() {
     // 从最旧开始裁剪；保证 user 开头（Anthropic 要求 user/assistant 交替且以 user 起始）
     while (turns.length > 1 && totalOf(turns) > maxTok) turns = turns.slice(1);
     if (turns[0]?.role !== 'user') turns = turns.slice(1);
-    if (turns.length === 0) return;
+    if (turns.length === 0) {
+      if (abortRef.current === controller) abortRef.current = null;
+      return;
+    }
 
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setError(null);
     setStreamText('');
     setStreamThink('');
     stickRef.current = true;
@@ -1564,9 +1614,15 @@ export function AssistantPage() {
                 onMemory={onMemory}
               />
             ))}
-            {busy && (
+            {toolNote && (
+              <div className="mx-auto flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[11px] text-ink-2 shadow-sm">
+                <Loader2 size={11} className="animate-spin text-accent" />
+                {toolNote}
+              </div>
+            )}
+            {streamText !== null && (
               <Bubble
-                m={{ role: 'assistant', content: streamText ?? '' }}
+                m={{ role: 'assistant', content: streamText }}
                 idx={-1}
                 streaming
                 liveThink={streamThink}

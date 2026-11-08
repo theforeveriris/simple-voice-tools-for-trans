@@ -1524,4 +1524,7 @@ export const fr = {
   'assistant.memoryGenerating': 'L’IA rédige…',
   'assistant.memoryGenerated': 'Rédigé par l’IA ; modifiez avant d’enregistrer.',
   'assistant.memoryNoCandidate': 'Aucune mémoire trouvée ; vous pouvez l’écrire.',
+  'assistant.ctx.toolTag': 'Outil',
+  'assistant.ctx.toolFailed': 'échec',
+  'assistant.toolSearching': 'Recherche des enregistrements…',
 } as const;

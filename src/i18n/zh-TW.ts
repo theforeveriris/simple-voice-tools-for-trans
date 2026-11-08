@@ -1515,4 +1515,7 @@ export const zhTW = {
   'assistant.memoryGenerating': 'AI 正在提煉…',
   'assistant.memoryGenerated': 'AI 已提煉，可修改後儲存',
   'assistant.memoryNoCandidate': '沒有提煉出可儲存的記憶，可以手動填寫',
+  'assistant.ctx.toolTag': '工具',
+  'assistant.ctx.toolFailed': '失敗',
+  'assistant.toolSearching': '正在查詢記錄…',
 } as const;

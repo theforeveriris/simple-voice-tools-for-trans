@@ -1524,4 +1524,7 @@ export const es = {
   'assistant.memoryGenerating': 'La IA está redactando…',
   'assistant.memoryGenerated': 'Redactado por la IA; edítalo antes de guardar.',
   'assistant.memoryNoCandidate': 'No se encontró ninguna memoria; puedes escribirla.',
+  'assistant.ctx.toolTag': 'Herramienta',
+  'assistant.ctx.toolFailed': 'falló',
+  'assistant.toolSearching': 'Buscando registros…',
 } as const;

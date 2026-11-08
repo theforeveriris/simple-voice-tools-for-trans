@@ -1515,4 +1515,7 @@ export const en = {
   'assistant.memoryGenerating': 'AI is drafting…',
   'assistant.memoryGenerated': 'Drafted by AI; edit before saving.',
   'assistant.memoryNoCandidate': 'No memory found; you can write one.',
+  'assistant.ctx.toolTag': 'Tool',
+  'assistant.ctx.toolFailed': 'failed',
+  'assistant.toolSearching': 'Searching records…',
 } as const;

@@ -1516,4 +1516,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.memoryGenerating': 'AI 方理…',
   'assistant.memoryGenerated': 'AI 已理，可改而存',
   'assistant.memoryNoCandidate': '無可存之記，可手書',
+  'assistant.ctx.toolTag': '器',
+  'assistant.ctx.toolFailed': '未成',
+  'assistant.toolSearching': '方查記錄…',
 };
+

@@ -1516,4 +1516,7 @@ export const ja = {
   'assistant.memoryGenerating': 'AI が整理中…',
   'assistant.memoryGenerated': 'AI が下書きしました。編集して保存できます。',
   'assistant.memoryNoCandidate': '保存できるメモリーは見つかりませんでした。手入力できます。',
+  'assistant.ctx.toolTag': 'ツール',
+  'assistant.ctx.toolFailed': '失敗',
+  'assistant.toolSearching': '記録を検索中…',
 } as const;

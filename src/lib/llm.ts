@@ -13,6 +13,7 @@ export {
   llmChatStream,
   llmChatStreamMessages,
   llmToolCall,
+  llmChatToolMessages,
   parseToolCalls,
   testLlmConnection,
   isAbortError,
@@ -23,6 +24,8 @@ export {
   type LlmStreamOptions,
   type LlmToolSpec,
   type LlmToolCall,
+  type LlmToolTurn,
+  type LlmToolChatResult,
 } from './llmClient';
 
 // 模型列表 / 上下文识别
