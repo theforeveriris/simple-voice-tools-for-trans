@@ -1654,20 +1654,23 @@ export function AssistantPage() {
         transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
         className="absolute inset-y-0 right-0 flex w-72 flex-col bg-surface shadow-[-8px_0_30px_rgba(28,25,45,0.12)]"
       >
-        <button
-          onClick={() => newChat()}
-          className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-2xl bg-accent/15 py-2.5 text-sm font-medium text-accent transition-transform active:scale-[0.98]"
-        >
-          <Plus size={15} />
-          {t('assistant.newChat')}
-        </button>
-        <button
-          onClick={() => newChat(true)}
-          className="mx-3 mt-2 flex items-center justify-center gap-2 rounded-2xl bg-surface-hi/60 py-2 text-[12px] font-medium text-ink-2 transition-transform active:scale-[0.98]"
-        >
-          <Ban size={14} />
-          {t('assistant.newChatNoMemory')}
-        </button>
+        <div className="mx-3 mt-3 grid grid-cols-2 gap-1 rounded-2xl bg-surface-hi/50 p-1">
+          <button
+            onClick={() => newChat()}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-accent/15 py-2 text-[12px] font-medium text-accent transition-transform active:scale-[0.98]"
+          >
+            <Plus size={14} />
+            {t('assistant.newChat')}
+          </button>
+          <button
+            onClick={() => newChat(true)}
+            title={t('assistant.memoryOffHint')}
+            className="flex items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-medium text-ink-2 transition-colors hover:bg-card/70 active:scale-[0.98]"
+          >
+            <Ban size={13} />
+            {t('assistant.newChatNoMemory')}
+          </button>
+        </div>
         <div className="mx-3 mt-2">
           <input
             value={chatQuery}
@@ -1677,8 +1680,7 @@ export function AssistantPage() {
             className="w-full rounded-xl bg-surface-hi/60 px-3 py-2 text-[12px] text-ink outline-none placeholder:text-ink-2/60"
           />
         </div>
-        <p className="px-4 pb-1 pt-3 text-[11px] font-medium text-ink-2">{t('assistant.history')}</p>
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-2">
           {visibleChats.length === 0 ? (
             <p className="px-3 py-4 text-xs text-ink-2/70">
               {(chats ?? []).length === 0 ? t('assistant.historyEmpty') : t('assistant.noSearchResult')}
