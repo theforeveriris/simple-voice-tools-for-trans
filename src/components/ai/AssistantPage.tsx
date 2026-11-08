@@ -55,9 +55,9 @@ import {
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
 import { ContextPanel } from '@/components/ai/ContextPanel';
-import { MemorySavedChip } from '@/components/ai/MemorySavedChip';
+import { MemorySavedCard } from '@/components/ai/MemorySavedCard';
 import { ActionCard } from '@/components/ai/ActionCard';
-import { PlanMetaChip, PlanStrip } from '@/components/ai/PlanCard';
+import { PlanCard, PlanStrip } from '@/components/ai/PlanCard';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { Textarea } from '@/components/ui';
 import { useStore } from '@/store/useStore';
@@ -303,6 +303,7 @@ function ThinkBlock({
 }) {
   return (
     <div className="mb-2 rounded-xl bg-black/[0.04] px-2.5 py-2 text-left">
+      {children && <div className="mb-2">{children}</div>}
       {text ? (
         <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-ink-2">
           {text}
@@ -310,7 +311,6 @@ function ThinkBlock({
       ) : live ? (
         <p className="text-[11px] italic leading-relaxed text-ink-2">{t('assistant.thinking')}</p>
       ) : null}
-      {children}
     </div>
   );
 }
@@ -396,11 +396,7 @@ const Bubble = memo(function Bubble({
       {!mine && streaming && think && <ThinkBlock text={think} live />}
       {!mine && !streaming && thinkOpen && (!!m.think || !!m.context) && (
         <ThinkBlock text={m.think ?? ''}>
-          {m.context && (
-            <div className={cn(m.think && 'mt-2 border-t border-line/60 pt-2')}>
-              <ContextPanel meta={m.context} />
-            </div>
-          )}
+          {m.context && <ContextPanel meta={m.context} />}
         </ThinkBlock>
       )}
       {mine
@@ -408,17 +404,19 @@ const Bubble = memo(function Bubble({
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
+      {!mine && !streaming && m.context?.planId && (
+        <PlanCard planId={m.context.planId} />
+      )}
+      {!mine && !streaming && (m.context?.memoryWrites?.length ?? 0) > 0 && (
+        <MemorySavedCard
+          chatId={chatId}
+          messageIndex={idx}
+          writes={m.context?.memoryWrites ?? []}
+        />
+      )}
       {!mine && !streaming && (
         <div className="mt-1.5 flex flex-wrap items-center gap-0.5">
-          {(m.context?.memoryWrites?.length ?? 0) > 0 && (
-            <MemorySavedChip
-              chatId={chatId}
-              messageIndex={idx}
-              writes={m.context?.memoryWrites ?? []}
-            />
-          )}
-          {m.context?.planId && <PlanMetaChip planId={m.context.planId} />}
-          {m.context?.appliedAction && (
+          {m.context?.appliedAction && !m.context?.planId && (
             <ActionCard
               chatId={chatId}
               messageIndex={idx}
