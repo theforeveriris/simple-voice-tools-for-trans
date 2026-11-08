@@ -1680,7 +1680,7 @@ export function AssistantPage() {
             className="w-full rounded-xl bg-surface-hi/60 px-3 py-2 text-[12px] text-ink outline-none placeholder:text-ink-2/60"
           />
         </div>
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-2">
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-2">
           {visibleChats.length === 0 ? (
             <p className="px-3 py-4 text-xs text-ink-2/70">
               {(chats ?? []).length === 0 ? t('assistant.historyEmpty') : t('assistant.noSearchResult')}
