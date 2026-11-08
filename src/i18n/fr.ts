@@ -1520,4 +1520,8 @@ export const fr = {
   'assistant.memoryHint': 'Injectées par pertinence ; les épinglées à chaque tour. Gestion dans Réglages → LLM → Mémoire.',
   'assistant.ctx.memoryQuery': 'Recherche : {q}',
   'assistant.ctx.memoryNone': 'Aucune mémoire correspondante',
+  'assistant.memoryAutoSaved': 'L’IA a mémorisé {n} éléments',
+  'assistant.memoryGenerating': 'L’IA rédige…',
+  'assistant.memoryGenerated': 'Rédigé par l’IA ; modifiez avant d’enregistrer.',
+  'assistant.memoryNoCandidate': 'Aucune mémoire trouvée ; vous pouvez l’écrire.',
 } as const;

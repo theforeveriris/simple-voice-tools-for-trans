@@ -1512,4 +1512,8 @@ export const ja = {
   'assistant.memoryHint': '保存後は関連度に応じて注入されます。ピン留めすると毎回注入され、「設定 → 大規模モデル → メモリー」で管理できます。',
   'assistant.ctx.memoryQuery': '必要時検索：{q}',
   'assistant.ctx.memoryNone': '該当するメモリーなし',
+  'assistant.memoryAutoSaved': 'AI が {n} 件を自動保存しました',
+  'assistant.memoryGenerating': 'AI が整理中…',
+  'assistant.memoryGenerated': 'AI が下書きしました。編集して保存できます。',
+  'assistant.memoryNoCandidate': '保存できるメモリーは見つかりませんでした。手入力できます。',
 } as const;

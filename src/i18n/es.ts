@@ -1520,4 +1520,8 @@ export const es = {
   'assistant.memoryHint': 'Se inyectan por relevancia; las fijadas, en cada turno. Gestión en Ajustes → LLM → Memoria.',
   'assistant.ctx.memoryQuery': 'Búsqueda: {q}',
   'assistant.ctx.memoryNone': 'Sin memorias coincidentes',
+  'assistant.memoryAutoSaved': 'La IA guardó {n} memorias',
+  'assistant.memoryGenerating': 'La IA está redactando…',
+  'assistant.memoryGenerated': 'Redactado por la IA; edítalo antes de guardar.',
+  'assistant.memoryNoCandidate': 'No se encontró ninguna memoria; puedes escribirla.',
 } as const;

@@ -1511,4 +1511,8 @@ export const en = {
   'assistant.memoryHint': 'Saved memories are injected by relevance; pinned ones every turn. Manage them in Settings → LLM → Memory.',
   'assistant.ctx.memoryQuery': 'Memory search: {q}',
   'assistant.ctx.memoryNone': 'No matching memories',
+  'assistant.memoryAutoSaved': 'AI saved {n} memories',
+  'assistant.memoryGenerating': 'AI is drafting…',
+  'assistant.memoryGenerated': 'Drafted by AI; edit before saving.',
+  'assistant.memoryNoCandidate': 'No memory found; you can write one.',
 } as const;

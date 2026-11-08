@@ -1512,4 +1512,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.memoryHint': '存後按相關而注入；釘之則每輪皆入，可於「設置 → 大模型 → 久記」理之。',
   'assistant.ctx.memoryQuery': '按需而檢：{q}',
   'assistant.ctx.memoryNone': '未得其記',
+  'assistant.memoryAutoSaved': 'AI 自記 {n} 條',
+  'assistant.memoryGenerating': 'AI 方理…',
+  'assistant.memoryGenerated': 'AI 已理，可改而存',
+  'assistant.memoryNoCandidate': '無可存之記，可手書',
 };

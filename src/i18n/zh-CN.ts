@@ -1520,6 +1520,10 @@ export const zhCN = {
   'assistant.memoryHint': '确认后会按相关度注入后续对话；置顶则每轮都注入，可在「设置 → 大模型 → 记忆」管理。',
   'assistant.ctx.memoryQuery': '按需检索：{q}',
   'assistant.ctx.memoryNone': '未命中记忆',
+  'assistant.memoryAutoSaved': 'AI 已自动记住 {n} 条',
+  'assistant.memoryGenerating': 'AI 正在提炼…',
+  'assistant.memoryGenerated': 'AI 已提炼，可修改后保存',
+  'assistant.memoryNoCandidate': '没有提炼出可保存的记忆，可以手动填写',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

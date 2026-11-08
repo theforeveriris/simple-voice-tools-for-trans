@@ -1511,4 +1511,8 @@ export const zhTW = {
   'assistant.memoryHint': '確認後會按相關度注入後續對話；置頂則每輪都注入，可在「設定 → 大模型 → 記憶」管理。',
   'assistant.ctx.memoryQuery': '按需檢索：{q}',
   'assistant.ctx.memoryNone': '未命中記憶',
+  'assistant.memoryAutoSaved': 'AI 已自動記住 {n} 條',
+  'assistant.memoryGenerating': 'AI 正在提煉…',
+  'assistant.memoryGenerated': 'AI 已提煉，可修改後儲存',
+  'assistant.memoryNoCandidate': '沒有提煉出可儲存的記憶，可以手動填寫',
 } as const;

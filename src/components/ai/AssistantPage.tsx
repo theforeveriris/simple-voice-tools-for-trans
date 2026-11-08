@@ -38,7 +38,8 @@ import {
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
-import { buildMemoryPrompt, addMemory, addMemories, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, searchMemories, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind } from '@/lib/memory';
+import { buildMemoryPrompt, addMemory, deleteMemory, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, searchMemories, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind } from '@/lib/memory';
+import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, formatRecordLine } from '@/lib/assistantContext';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
@@ -185,7 +186,7 @@ function systemPrompt(profile: string, history: string, docs = '', extra = '', m
     ASSISTANT_VISUAL_GUIDE,
     profile,
     memory,
-    '如果用户要求你记住某事，或用户陈述了值得长期保留的偏好、要求或注意事项，用一句自包含的话复述要点，并请对方点消息下方的「记住」确认保存；你没有直接写入记忆的工具，不要声称已经记住。',
+    '如果用户要求你记住某事，或用户陈述了值得长期保留的偏好、要求或注意事项，用一句自包含的话复述要点；也可以请对方点消息下方的「记住」手动确认。系统会在回答后自动判断是否保存长期记忆；你没有直接写入记忆的工具，不要声称你已经记住。',
     history
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
@@ -469,11 +470,12 @@ export function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   /** 点按气泡浮出操作行的消息下标 */
   const [actionIdx, setActionIdx] = useState<number | null>(null);
-  /** 「记住」对话框：待确认的长期记忆草稿 */
+  /** 「记住」对话框：待确认的长期记忆草稿（loading = AI 正在提炼候选） */
   const [memoryDraft, setMemoryDraft] = useState<{
     text: string;
     kind: MemoryKind;
     pinned: boolean;
+    loading: boolean;
   } | null>(null);
   /** 侧边栏两步删除的待确认对话 id */
   const [delId, setDelId] = useState<string | null>(null);
@@ -483,6 +485,8 @@ export function AssistantPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  /** 「记住」候选请求序号：关闭/重新打开后，忽略上一次迟到的 AI 结果 */
+  const memoryDraftReq = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
@@ -592,6 +596,42 @@ export function AssistantPage() {
     };
   }, []);
 
+  /**
+   * 回答完成后让 AI 自己判断这轮是否值得存入长期记忆；有则直接调 save_memory 入库。
+   * 后台执行，不阻塞回答；工具不支持/失败时静默（用户仍可手动「记住」）。
+   */
+  const autoSaveMemories = async (userText: string, assistantText: string) => {
+    if (!cfg || !assistantText.trim()) return;
+    try {
+      const calls = await llmToolCall(
+        cfg,
+        MEMORY_WRITER_SYSTEM,
+        buildMemoryWriterInput(userText, assistantText),
+        [SAVE_MEMORY_TOOL],
+        { feature: 'assistant', maxTokens: 300, temperature: 0.2 },
+      );
+      const saves = calls
+        .map(parseMemorySaveCall)
+        .filter((x): x is NonNullable<typeof x> => !!x)
+        .slice(0, 3);
+      const ids: string[] = [];
+      for (const s of saves) {
+        const item = await addMemory(s);
+        if (item) ids.push(item.id);
+      }
+      if (ids.length > 0) {
+        toast.success(t('assistant.memoryAutoSaved', { n: ids.length }), {
+          action: {
+            label: t('common.undo'),
+            onClick: () => ids.forEach((id) => void deleteMemory(id)),
+          },
+        });
+      }
+    } catch {
+      /* 工具不支持 / 网络失败：不打断回答 */
+    }
+  };
+
   const generate = async (convId: string, history: ChatMessage[], extraContext = '') => {
     if (!cfg || history.length === 0) return;
     // 上下文预算：历史记录摘要 + 系统提示 + 对话 + 回复余量都要装进窗口。
@@ -615,11 +655,6 @@ export function AssistantPage() {
     );
     // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
-    // 记忆服务：用户明确陈述的事实 / 要求随手收进长期记忆（线索词过滤，重复自动跳过）
-    if (lastUser) {
-      const candidates = extractMemoryCandidates([lastUser.content], 5);
-      if (candidates.length > 0) void addMemories(candidates);
-    }
     const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = lastUser
       ? retrieveDocsDetailed(lastUser.content)
       : Promise.resolve({ text: '', docs: [] });
@@ -691,6 +726,8 @@ export function AssistantPage() {
         draft: false,
         context: contextMeta,
       });
+      // AI 自动判断并保存长期记忆（后台；失败不影响回答）
+      if (lastUser) void autoSaveMemories(lastUser.content, reply);
     } catch (err: unknown) {
       // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
       if (textAcc || thinkAcc) {
@@ -1057,17 +1094,57 @@ export function AssistantPage() {
     }
   };
 
-  /** 把助手回复存为长期记忆：先弹出可编辑的确认框，避免长文/错误内容直接入库 */
+  /** 关闭「记住」弹窗，并让仍在路上的 AI 候选作废 */
+  const closeMemoryDraft = useCallback(() => {
+    memoryDraftReq.current += 1;
+    setMemoryDraft(null);
+  }, []);
+
+  /** 把助手回复存为长期记忆：先让 AI 提炼一条候选，再打开可编辑确认框 */
   const remember = (idx: number) => {
     const target = conv?.messages[idx];
     setActionIdx(null);
     setThinkIdx(null);
     if (!target || target.role !== 'assistant') return;
-    setMemoryDraft({
-      text: target.content.trim().slice(0, MEMORY_TEXT_MAX),
-      kind: 'fact',
-      pinned: false,
-    });
+    const priorUser = [...(conv?.messages ?? [])]
+      .slice(0, idx)
+      .reverse()
+      .find((m) => m.role === 'user')?.content ?? '';
+    // 工具不可用时的本地兜底：用户自己消息里带线索词的那句；没有就留空让用户手写
+    const fallback = extractMemoryCandidates([priorUser], 1)[0]?.text ?? '';
+    const req = ++memoryDraftReq.current;
+    setMemoryDraft({ text: fallback, kind: 'fact', pinned: false, loading: true });
+    if (!cfg) {
+      setMemoryDraft((d) => (d ? { ...d, loading: false } : d));
+      return;
+    }
+    void llmToolCall(
+      cfg,
+      MEMORY_MANUAL_SYSTEM,
+      buildMemoryWriterInput(priorUser, target.content),
+      [SAVE_MEMORY_TOOL],
+      { feature: 'assistant', maxTokens: 240, temperature: 0.2 },
+    )
+      .then((calls) => {
+        if (memoryDraftReq.current !== req) return;
+        const save = calls
+          .map(parseMemorySaveCall)
+          .find((x): x is NonNullable<typeof x> => !!x);
+        setMemoryDraft((d) => (d
+          ? {
+            ...d,
+            text: save?.text ?? d.text,
+            kind: save?.kind ?? d.kind,
+            pinned: save?.pinned ?? d.pinned,
+            loading: false,
+          }
+          : d));
+      })
+      .catch(() => {
+        // 提炼失败保留本地兜底文本，用户仍可编辑保存
+        if (memoryDraftReq.current !== req) return;
+        setMemoryDraft((d) => (d ? { ...d, loading: false } : d));
+      });
   };
 
   /** 确认保存记忆草稿；重复/空文本给出提示并保留对话框 */
@@ -1078,7 +1155,7 @@ export function AssistantPage() {
     void addMemory({ text, kind: memoryDraft.kind, pinned: memoryDraft.pinned }).then((item) => {
       if (item) {
         toast.success(t('settings.memoryAdded'));
-        setMemoryDraft(null);
+        closeMemoryDraft();
       } else {
         toast.error(t('settings.memoryDuplicate'));
       }
@@ -1158,11 +1235,11 @@ export function AssistantPage() {
   useEffect(() => {
     if (!memoryDraft) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setMemoryDraft(null);
+      if (e.key === 'Escape') closeMemoryDraft();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [memoryDraft]);
+  }, [memoryDraft, closeMemoryDraft]);
 
   const retry = () => {
     if (!conv || busy) return;
@@ -1662,17 +1739,28 @@ export function AssistantPage() {
         >
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setMemoryDraft(null)}
+            onClick={closeMemoryDraft}
           />
           <div className="relative w-full max-w-lg rounded-3xl bg-card p-5 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.6)]">
             <h2 className="text-base font-semibold text-ink">{t('assistant.memoryTitle')}</h2>
             <p className="mt-1 text-[11px] leading-relaxed text-ink-2">{t('assistant.memoryHint')}</p>
+            {memoryDraft.loading ? (
+              <p className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-2">
+                <Loader2 size={11} className="animate-spin" />
+                {t('assistant.memoryGenerating')}
+              </p>
+            ) : memoryDraft.text.trim() ? (
+              <p className="mt-1 text-[11px] text-ink-2">{t('assistant.memoryGenerated')}</p>
+            ) : (
+              <p className="mt-1 text-[11px] text-ink-2">{t('assistant.memoryNoCandidate')}</p>
+            )}
             <Textarea
               value={memoryDraft.text}
               onChange={(e) => setMemoryDraft((d) => (d ? { ...d, text: e.target.value } : d))}
               rows={4}
               maxLength={MEMORY_TEXT_MAX}
-              placeholder={t('settings.memoryPlaceholder')}
+              disabled={memoryDraft.loading}
+              placeholder={memoryDraft.loading ? t('assistant.memoryGenerating') : t('settings.memoryPlaceholder')}
               autoFocus
               className="mt-3 min-h-0 resize-y rounded-2xl border-black/10 bg-surface-hi text-xs leading-relaxed text-ink"
             />
@@ -1681,9 +1769,10 @@ export function AssistantPage() {
                 <button
                   key={k}
                   type="button"
+                  disabled={memoryDraft.loading}
                   onClick={() => setMemoryDraft((d) => (d ? { ...d, kind: k } : d))}
                   className={cn(
-                    'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40',
                     memoryDraft.kind === k
                       ? 'bg-accent-soft text-on-accent-soft'
                       : 'bg-surface-hi text-ink-2',
@@ -1694,9 +1783,10 @@ export function AssistantPage() {
               ))}
               <button
                 type="button"
+                disabled={memoryDraft.loading}
                 onClick={() => setMemoryDraft((d) => (d ? { ...d, pinned: !d.pinned } : d))}
                 className={cn(
-                  'ml-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                  'ml-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40',
                   memoryDraft.pinned ? 'bg-accent/15 text-accent' : 'bg-surface-hi text-ink-2',
                 )}
               >
@@ -1706,14 +1796,14 @@ export function AssistantPage() {
             </div>
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
-                onClick={() => setMemoryDraft(null)}
+                onClick={closeMemoryDraft}
                 className="px-1 py-2 text-sm font-medium text-ink-2 transition-opacity hover:opacity-70"
               >
                 {t('common.cancel')}
               </button>
               <button
                 onClick={saveMemoryDraft}
-                disabled={!memoryDraft.text.trim()}
+                disabled={memoryDraft.loading || !memoryDraft.text.trim()}
                 className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-40"
               >
                 {t('common.save')}
