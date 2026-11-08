@@ -87,12 +87,12 @@ export function MemorySavedCard({
   };
 
   return (
-    <div className="mt-3 w-full sm:w-3/5" onClick={(e) => e.stopPropagation()}>
+    <div className="mt-3 w-full rounded-xl border border-line/60 bg-card/80 sm:w-3/5" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-1.5 rounded-xl border border-line/60 bg-card/80 px-2.5 py-2 text-left"
+        className="flex w-full items-center gap-1.5 px-2.5 py-2 text-left"
       >
         <Brain size={10} className="shrink-0 text-accent" />
         <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-ink-2">
@@ -105,7 +105,7 @@ export function MemorySavedCard({
       </button>
 
       {open && (
-        <div className="mt-1.5">
+        <div className="border-t border-line/50 px-2.5 py-1.5">
           <div className="space-y-1">
             {active.map((write) => {
               const item = byId.get(write.id);
@@ -118,7 +118,7 @@ export function MemorySavedCard({
                 );
               }
               return (
-                <div key={item.id} className="rounded-lg py-0.5">
+                <div key={item.id} className="py-0.5">
                   {editingId === item.id ? (
                     <div className="flex flex-col gap-1">
                       <textarea
