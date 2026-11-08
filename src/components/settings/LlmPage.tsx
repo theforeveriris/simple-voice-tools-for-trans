@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Brain, ChevronRight, Layers, Loader2, Sparkles, SquarePen } from 'lucide-react';
+import { ArrowLeft, Brain, ChevronRight, Layers, Loader2, ShieldCheck, Sparkles, SquarePen } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -24,6 +24,7 @@ import { MemoryPage } from './MemoryPage';
 import { useStore } from '@/store/useStore';
 import { useActiveLlmConfig, useLlmProfiles } from '@/lib/llmProfiles';
 import { useMemories } from '@/lib/memory';
+import { Switch } from '@/components/ui';
 import { testLlmConnection } from '@/lib/llm';
 
 export function LlmPage({
@@ -174,7 +175,18 @@ export function LlmPage({
           </button>
         </SettingsSection>
 
-        {/* ⑤ 用量与费用 */}
+        {/* ⑤ AI 写操作权限 */}
+        <SettingsSection icon={ShieldCheck} title={t('settings.assistantWrites')}>
+          <SettingRow label={t('settings.assistantWritesDesc')}>
+            <Switch
+              checked={settings.assistantWrites !== 'off'}
+              onCheckedChange={(v) => update({ assistantWrites: v ? 'confirm' : 'off' })}
+              aria-label={t('settings.assistantWrites')}
+            />
+          </SettingRow>
+        </SettingsSection>
+
+        {/* ⑥ 用量与费用 */}
         <LlmUsageSection settings={settings} />
       </motion.div>
 

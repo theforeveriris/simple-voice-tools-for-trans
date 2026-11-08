@@ -23,6 +23,8 @@ export type AssistantToolOutcome = {
   recordIds?: string[];
   /** 命中的内置文档 */
   docs?: { title: string; chars: number }[];
+  /** 需要用户确认的写操作（一次最多一个） */
+  pendingAction?: import('./assistantActions').AssistantAction;
 };
 
 const MAX_QUERY = 20;

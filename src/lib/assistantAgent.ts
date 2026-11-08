@@ -30,6 +30,8 @@ export interface AssistantToolRun {
   traces: AssistantToolTrace[];
   recordIds: string[];
   docs: { title: string; chars: number }[];
+  /** 本轮提出的待确认写操作 */
+  pendingAction?: import('./assistantActions').AssistantAction;
 }
 
 const EMPTY: AssistantToolRun = {
@@ -95,6 +97,7 @@ export async function runAssistantTools(opts: {
   const recordIdSet = new Set<string>();
   const docs: { title: string; chars: number }[] = [];
   const seenDocs = new Set<string>();
+  let pendingAction: AssistantToolRun['pendingAction'];
   let callsUsed = 0;
   try {
     for (let round = 0; round < maxRounds && callsUsed < maxCalls; round++) {
@@ -133,6 +136,7 @@ export async function runAssistantTools(opts: {
         });
         if (outcome) {
           results.push({ summary: outcome.summary, text: outcome.text });
+          if (outcome.pendingAction && !pendingAction) pendingAction = outcome.pendingAction;
           for (const id of outcome.recordIds ?? []) recordIdSet.add(id);
           for (const doc of outcome.docs ?? []) {
             if (seenDocs.has(doc.title)) continue;
@@ -158,5 +162,5 @@ export async function runAssistantTools(opts: {
       ...blocks,
     ].join('\n\n').slice(0, MAX_CONTEXT_CHARS);
   }
-  return { supported: true, contextText, traces, recordIds: [...recordIds], docs };
+  return { supported: true, contextText, traces, recordIds, docs, ...(pendingAction ? { pendingAction } : {}) };
 }

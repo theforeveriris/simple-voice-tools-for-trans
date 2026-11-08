@@ -7,6 +7,7 @@
 import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import type { MemoryWrite } from './memory';
+import type { AssistantAction } from './assistantActions';
 
 /** 一次生成实际注入的上下文（供气泡下方的「本轮上下文」面板展示） */
 export interface ChatContextMeta {
@@ -26,6 +27,10 @@ export interface ChatContextMeta {
   toolCalls?: { name: string; summary: string; ok: boolean; ms: number }[];
   /** 自动 / 手动保存的长期记忆（渲染「已记住」chip，可撤销） */
   memoryWrites?: MemoryWrite[];
+  /** 等待用户确认的写操作 */
+  pendingAction?: AssistantAction;
+  /** 已执行的写操作摘要（对话里留一条「已修改」记录） */
+  appliedAction?: { summary: string; at: number };
 }
 
 export interface ChatMessage {

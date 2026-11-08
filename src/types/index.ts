@@ -481,6 +481,8 @@ export interface AppSettings {
   practiceReminderTime: string;
   /** 长期记忆：自动保存开关（关闭后仍可用消息下方的手动「记住」） */
   memoryAutoSave: 'auto' | 'off';
+  /** AI 写操作权限：关闭 / 每次确认 */
+  assistantWrites: 'off' | 'confirm';
   /* ---------- AI 翻译语言（语言子页面） ---------- */
   /** 允许 AI 翻译：用实验性功能的大模型把界面翻译成其他语言 */
   aiTranslateEnabled: boolean;

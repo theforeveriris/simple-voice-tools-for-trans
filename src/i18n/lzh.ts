@@ -1539,5 +1539,16 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.memoryDeleteSelected': '刪所擇',
   'settings.memorySource': '所出：{quote}',
   'settings.memoryDeleted': '已刪記',
+  'assistant.actionTitle': 'AI 欲改其設',
+  'assistant.actionConfirm': '可',
+  'assistant.actionCancel': '止',
+  'assistant.actionApplied': '已行',
+  'assistant.actionFailed': '行而未成',
+  'assistant.actionNotSet': '未設',
+  'assistant.actionExport': '出{scope}之記為 CSV',
+  'assistant.actionScopeAll': '凡',
+  'assistant.actionScopeWeek': '近七日',
+  'settings.assistantWrites': 'AI 書寫',
+  'settings.assistantWritesDesc': '許 AI 議改靶標、基線或出記；每事先示確認之卡',
 };
 

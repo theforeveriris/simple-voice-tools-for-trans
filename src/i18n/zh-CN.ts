@@ -1547,6 +1547,17 @@ export const zhCN = {
   'settings.memoryDeleteSelected': '删除选中',
   'settings.memorySource': '来源：{quote}',
   'settings.memoryDeleted': '已删除记忆',
+  'assistant.actionTitle': 'AI 想修改设置',
+  'assistant.actionConfirm': '确认',
+  'assistant.actionCancel': '取消',
+  'assistant.actionApplied': '已执行',
+  'assistant.actionFailed': '执行失败',
+  'assistant.actionNotSet': '未设置',
+  'assistant.actionExport': '导出{scope}的记录为 CSV',
+  'assistant.actionScopeAll': '全部',
+  'assistant.actionScopeWeek': '最近 7 天',
+  'settings.assistantWrites': 'AI 写操作',
+  'settings.assistantWritesDesc': '允许 AI 提议修改靶标、基线或导出记录；每次都会先显示确认卡',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

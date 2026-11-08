@@ -651,7 +651,7 @@ export async function llmChatToolMessages(
           if (m.role === 'assistant' && m.toolCalls?.length) {
             return {
               role: 'assistant',
-              content: m.content || null,
+              content: m.content || '',
               tool_calls: m.toolCalls.map((c) => ({
                 id: c.id,
                 type: 'function',

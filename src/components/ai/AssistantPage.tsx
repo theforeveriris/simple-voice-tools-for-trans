@@ -32,6 +32,7 @@ import { useI18n } from '@/i18n/hook';
 import { isAbortError, languageName, llmChatStreamMessages, llmToolCall, type LlmConfig, type LlmToolSpec } from '@/lib/llm';
 import { runAssistantTools } from '@/lib/assistantAgent';
 import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools';
+import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } from '@/lib/assistantActions';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
@@ -53,6 +54,7 @@ import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
 import { ContextPanel } from '@/components/ai/ContextPanel';
 import { MemorySavedChip } from '@/components/ai/MemorySavedChip';
+import { ActionCard } from '@/components/ai/ActionCard';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { Textarea } from '@/components/ui';
 import { useStore } from '@/store/useStore';
@@ -410,6 +412,14 @@ const Bubble = memo(function Bubble({
           writes={m.context?.memoryWrites ?? []}
         />
       )}
+      {!mine && !streaming && (m.context?.pendingAction || m.context?.appliedAction) && (
+        <ActionCard
+          chatId={chatId}
+          messageIndex={idx}
+          action={m.context?.pendingAction}
+          applied={m.context?.appliedAction}
+        />
+      )}
       {hasMeta && (
         <button
           type="button"
@@ -719,6 +729,7 @@ export function AssistantPage() {
       traces: { name: string; summary: string; ok: boolean; ms: number }[];
       recordIds: string[];
       docs: { title: string; chars: number }[];
+      pendingAction?: AssistantAction;
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
     if (lastUser) {
       setToolNote(t('assistant.toolSearching'));
@@ -728,8 +739,11 @@ export function AssistantPage() {
           system: toolPlannerSystem(settings),
           history,
           userText: lastUser.content,
-          tools: ASSISTANT_DATA_TOOLS,
-          execute: (name, args) => runAssistantDataTool(name, args, { records, settings }),
+          tools: [...ASSISTANT_DATA_TOOLS, ...ASSISTANT_ACTION_TOOLS],
+          execute: async (name, args) => (
+            await runAssistantDataTool(name, args, { records, settings })
+            ?? runAssistantActionTool(name, args, { records, settings })
+          ),
           signal: controller.signal,
         });
       } finally {
@@ -767,6 +781,7 @@ export function AssistantPage() {
       memories: memoryHit.count,
       memoryQuery: memoryHit.query,
       ...(toolRun.traces.length > 0 ? { toolCalls: toolRun.traces } : {}),
+      ...(toolRun.pendingAction ? { pendingAction: toolRun.pendingAction } : {}),
     };
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
