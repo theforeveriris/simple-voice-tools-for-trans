@@ -305,11 +305,11 @@ function ThinkBlock({
     <div className="mb-2 rounded-xl bg-black/[0.04] py-2 text-left">
       {children && <div className="mb-2">{children}</div>}
       {text ? (
-        <p className="max-h-40 overflow-y-auto whitespace-pre-wrap px-2.5 text-[11px] leading-relaxed text-ink-2">
+        <p className="max-h-40 overflow-y-auto whitespace-pre-wrap pr-2.5 text-[11px] leading-relaxed text-ink-2">
           {text}
         </p>
       ) : live ? (
-        <p className="px-2.5 text-[11px] italic leading-relaxed text-ink-2">{t('assistant.thinking')}</p>
+        <p className="pr-2.5 text-[11px] italic leading-relaxed text-ink-2">{t('assistant.thinking')}</p>
       ) : null}
     </div>
   );

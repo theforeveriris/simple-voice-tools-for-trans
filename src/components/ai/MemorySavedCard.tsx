@@ -85,7 +85,7 @@ export function MemorySavedCard({
   };
 
   return (
-    <div className="mt-2.5 rounded-xl border border-line/60 bg-card/80 px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+    <div className="mt-2.5 w-full rounded-xl border border-line/60 bg-card/80 px-2 py-1.5 sm:w-3/5" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-1.5 text-[9px] font-medium text-ink-2">
         <Brain size={10} className="text-accent" />
         {t('assistant.memoryChip', { n: active.length })}

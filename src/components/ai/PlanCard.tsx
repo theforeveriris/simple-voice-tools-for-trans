@@ -56,7 +56,7 @@ export function PlanCard({ planId }: { planId?: string }) {
   if (!plan) return null;
   const p = planProgress(plan, state.logs);
   return (
-    <div className="mt-3 rounded-xl border border-line/60 bg-card/80 px-2.5 py-1.5">
+    <div className="mt-3 w-full rounded-xl border border-line/60 bg-card/80 px-2.5 py-1.5 sm:w-3/5">
       <div className="flex items-center gap-1.5">
         <CalendarRange size={12} className="shrink-0 text-accent" />
         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink">{plan.title}</span>
