@@ -1574,4 +1574,11 @@ export const fr = {
   'reminder.bodyPlan': 'Programme du jour : {step}. Pensez à l’enregistrer après.',
   'assistant.actionPlanCreateTitle': 'L’IA veut créer un plan de pratique',
   'assistant.actionPlanUpdateTitle': 'L’IA veut mettre à jour le plan de pratique',
+  'assistant.attachRecord': 'Joindre un enregistrement',
+  'assistant.attachRecordTitle': 'Joindre un graphique d’enregistrement',
+  'assistant.attachRecordHint': 'Choisissez des enregistrements récents pour envoyer leur graphique et leurs mesures avec le message.',
+  'assistant.attachRecordEmpty': 'Aucun enregistrement pour le moment',
+  'assistant.attachSelected': '{n} sélectionnés',
+  'assistant.attachAlt': 'Enregistrement joint',
+  'assistant.attachAsk': 'Regarde cet enregistrement',
 } as const;

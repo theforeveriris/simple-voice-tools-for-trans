@@ -1574,6 +1574,13 @@ export const zhCN = {
   'reminder.bodyPlan': '今天的计划：{step}。练完记得记录。',
   'assistant.actionPlanCreateTitle': 'AI 想创建练习计划',
   'assistant.actionPlanUpdateTitle': 'AI 想更新练习计划',
+  'assistant.attachRecord': '引用记录',
+  'assistant.attachRecordTitle': '引用记录图表',
+  'assistant.attachRecordHint': '选择最近的记录，把图表和指标一起发给助手。',
+  'assistant.attachRecordEmpty': '还没有可引用的记录',
+  'assistant.attachSelected': '已选 {n} 条',
+  'assistant.attachAlt': '引用的记录',
+  'assistant.attachAsk': '看看这条记录',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

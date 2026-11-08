@@ -1566,4 +1566,11 @@ export const ja = {
   'reminder.bodyPlan': '今日の計画：{step}。終わったら記録しましょう。',
   'assistant.actionPlanCreateTitle': 'AI が練習計画を作成しようとしています',
   'assistant.actionPlanUpdateTitle': 'AI が練習計画を更新しようとしています',
+  'assistant.attachRecord': '記録を添付',
+  'assistant.attachRecordTitle': '記録グラフを添付',
+  'assistant.attachRecordHint': '最近の記録を選び、グラフと指標をメッセージと一緒に送ります。',
+  'assistant.attachRecordEmpty': '添付できる記録がありません',
+  'assistant.attachSelected': '{n} 件選択',
+  'assistant.attachAlt': '添付した記録',
+  'assistant.attachAsk': 'この記録を見てください',
 } as const;

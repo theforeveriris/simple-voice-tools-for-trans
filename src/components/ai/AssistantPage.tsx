@@ -23,7 +23,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Ban, Brain, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight,
+  ArrowUp, Ban, Brain, Check, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight, Paperclip, X,
   Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -39,19 +39,19 @@ import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
   addMessage, createChat, deleteChat, getChat, patchMessageContext, renameChat, saveAssistantDraft, setChatMemoryOff, setMessages,
-  setPinnedRecords, useChats, type ChatContextMeta, type ChatConversation, type ChatMessage,
+  setPinnedRecords, useChats, type ChatAttachment, type ChatContextMeta, type ChatConversation, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
 import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
+import { RecordImage } from '@/lib/assistantCharts';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
   recordsWithinLastDays, resolveRecordSelectors, reviewRangeDays,
   type CommandCompletion, type ParsedCommand,
 } from '@/lib/assistantCommands';
-import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantMessage } from '@/lib/assistantContent';
 import { GenUiBlock } from '@/lib/assistantGenui';
 import { ContextPanel } from '@/components/ai/ContextPanel';
@@ -469,6 +469,20 @@ const Bubble = memo(function Bubble({
           {body}
         </div>
       )}
+      {mine && (m.attachments?.length ?? 0) > 0 && (
+        <div className="mt-1 w-full max-w-[85%]">
+          {m.attachments!.map((a) => (
+            a.kind === 'record' && a.recordId ? (
+              <RecordImage
+                key={a.id}
+                recordId={a.recordId}
+                kind={a.chart ?? 'pitch'}
+                alt={t('assistant.attachAlt')}
+              />
+            ) : null
+          ))}
+        </div>
+      )}
       {active && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
@@ -508,6 +522,10 @@ export function AssistantPage() {
   const [streamText, setStreamText] = useState<string | null>(null);
   /** 工具查询中的状态提示（null = 没有在执行工具） */
   const [toolNote, setToolNote] = useState<string | null>(null);
+  /** 输入框待发送的记录 / 图片附件 */
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  /** 记录选择器（引用某条历史记录的图表） */
+  const [recordPickerOpen, setRecordPickerOpen] = useState(false);
   /** 流式思考累积文本（推理模型） */
   const [streamThink, setStreamThink] = useState('');
   /** 展开思考过程的持久化消息下标 */
@@ -549,6 +567,10 @@ export function AssistantPage() {
   const [commandIndex, setCommandIndex] = useState(0);
   const [commandDismissed, setCommandDismissed] = useState(false);
   const historyRecords = useHistoryStore((s) => s.records);
+  const pickerRecords = useMemo(
+    () => [...historyRecords].sort((a, b) => b.createdAt - a.createdAt).slice(0, 30),
+    [historyRecords],
+  );
 
   const conv = activeId ? chats?.find((c) => c.id === activeId) ?? null : null;
   /** 末尾的流式草稿由「正在生成」气泡显示，列表里隐藏以免重复 */
@@ -725,7 +747,8 @@ export function AssistantPage() {
     setError(null);
     // 数据工具：先让模型决定是否查记录 / 文档，再组装最终上下文。
     // 工具可用时不再逐条注入最近记录，只保留画像、聚合与基线，省 token。
-    const lastUser = [...history].reverse().find((m) => m.role === 'user');
+    const lastUserMsg = [...history].reverse().find((m) => m.role === 'user');
+    const lastUserText = lastUserMsg?.content ?? '';
     const records = await loadAllRecords();
     let toolRun: {
       supported: boolean;
@@ -735,14 +758,14 @@ export function AssistantPage() {
       docs: { title: string; chars: number }[];
       pendingAction?: AssistantAction;
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
-    if (lastUser) {
+    if (lastUserMsg) {
       setToolNote(t('assistant.toolSearching'));
       try {
         toolRun = await runAssistantTools({
           cfg,
           system: toolPlannerSystem(settings),
           history,
-          userText: lastUser.content,
+          userText: lastUserText,
           tools: [...ASSISTANT_DATA_TOOLS, ...ASSISTANT_ACTION_TOOLS, ...PRACTICE_PLAN_TOOLS],
           execute: async (name, args) => (
             await runAssistantDataTool(name, args, { records, settings })
@@ -763,15 +786,23 @@ export function AssistantPage() {
       { includeDetails: !toolRun.supported },
     );
     // 内置文档检索：工具没有主动查文档时，再用最近一条用户消息做一次预检索
-    const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = lastUser && toolRun.docs.length === 0
-      ? retrieveDocsDetailed(lastUser.content)
+    const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = lastUserMsg && toolRun.docs.length === 0
+      ? retrieveDocsDetailed(lastUserText)
       : Promise.resolve({ text: '', docs: [] });
     // 长期记忆：置顶固定注入；其余由模型按需调用 search_memory，按需注入
-    const memoryHit = await resolveMemoryContext(cfg, history, lastUser);
+    const memoryHit = await resolveMemoryContext(cfg, history, lastUserMsg);
     const docHit = await docHitPromise;
     const planState = getPracticePlanState();
     const planSummary = planSummaryForPrompt(planState.plan, planState.logs);
-    const extraAll = [extraContext, toolRun.contextText, planSummary].filter(Boolean).join('\n\n');
+    // 用户随消息引用的记录：把指标和 id 一起注入，图表用 record://
+    const attachmentRecords = (lastUserMsg?.attachments ?? [])
+      .filter((a) => a.kind === 'record' && a.recordId)
+      .map((a) => records.find((r) => r.id === a.recordId))
+      .filter((r): r is AnalysisRecord => !!r);
+    const attachmentText = attachmentRecords
+      .map((r) => `【用户引用的记录】\n${formatRecordLine(r)}`)
+      .join('\n\n');
+    const extraAll = [extraContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
     const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraAll, memoryHit.text);
     // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
     const seenDocs = new Set<string>();
@@ -781,7 +812,11 @@ export function AssistantPage() {
       return true;
     });
     const contextMeta: ChatContextMeta = {
-      recordIds: [...new Set([...hist.meta.detailIds, ...toolRun.recordIds])],
+      recordIds: [...new Set([
+        ...hist.meta.detailIds,
+        ...toolRun.recordIds,
+        ...attachmentRecords.map((r) => r.id),
+      ])],
       pinnedIds: hist.meta.pinnedIds,
       totalRecords: hist.meta.totalRecords,
       docs,
@@ -847,7 +882,7 @@ export function AssistantPage() {
       });
       // AI 自动判断并保存长期记忆（后台；失败不影响回答）
       const assistantIndex = (getChat(convId)?.messages.length ?? 1) - 1;
-      if (lastUser) void autoSaveMemories(convId, assistantIndex, lastUser.content, reply);
+      if (lastUserMsg) void autoSaveMemories(convId, assistantIndex, lastUserMsg.content, reply);
     } catch (err: unknown) {
       // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
       if (textAcc || thinkAcc) {
@@ -878,7 +913,7 @@ export function AssistantPage() {
   };
 
   /** 发送一条文本消息（文本输入、语音和命令共用） */
-  const sendMessage = (raw: string, extraContext = '') => {
+  const sendMessage = (raw: string, extraContext = '', attachments: ChatAttachment[] = []) => {
     const text = raw.trim();
     if (!text || busy || !cfg) return;
     setInput('');
@@ -888,7 +923,12 @@ export function AssistantPage() {
       setActiveId(convId);
       setDraftMemoryOff(false);
     }
-    addMessage(convId, { role: 'user', content: text });
+    addMessage(convId, {
+      role: 'user',
+      content: text,
+      ...(attachments.length > 0 ? { attachments } : {}),
+    });
+    setPendingAttachments([]);
     void generate(
       convId,
       getChat(convId)?.messages ?? [{ role: 'user', content: text }],
@@ -1169,7 +1209,10 @@ export function AssistantPage() {
       void executeCommand(parsed);
       return;
     }
-    sendMessage(input);
+    const text = input.trim() || (pendingAttachments.length > 0 ? t('assistant.attachAsk') : '');
+    if (!text) return;
+    sendMessage(text, '', pendingAttachments);
+    setPendingAttachments([]);
   };
 
   /** 重做：截断到该消息之前重新生成（用户消息会原样重发） */
@@ -1181,8 +1224,16 @@ export function AssistantPage() {
     setThinkIdx(null);
     if (target.role === 'user') {
       setMessages(conv.id, kept);
-      addMessage(conv.id, { role: 'user', content: target.content });
-      void generate(conv.id, [...kept, { role: 'user', content: target.content }]);
+      addMessage(conv.id, {
+        role: 'user',
+        content: target.content,
+        ...(target.attachments?.length ? { attachments: target.attachments } : {}),
+      });
+      void generate(conv.id, [...kept, {
+        role: 'user',
+        content: target.content,
+        ...(target.attachments?.length ? { attachments: target.attachments } : {}),
+      }]);
     } else {
       setMessages(conv.id, kept);
       void generate(conv.id, kept);
@@ -1338,6 +1389,8 @@ export function AssistantPage() {
     stopStream();
     setActiveId(null);
     setDraftMemoryOff(memoryOff);
+    setPendingAttachments([]);
+    setRecordPickerOpen(false);
     setSidebarOpen(false);
     setMenuId(null);
     setRenamingId(null);
@@ -1347,6 +1400,8 @@ export function AssistantPage() {
   const openChat = (id: string) => {
     if (id !== activeId) stopStream();
     setActiveId(id);
+    setPendingAttachments([]);
+    setRecordPickerOpen(false);
     setSidebarOpen(false);
     setMenuId(null);
     setRenamingId(null);
@@ -1403,6 +1458,16 @@ export function AssistantPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [memoryDraft, closeMemoryDraft]);
 
+  // 记录引用弹窗：Esc 关闭
+  useEffect(() => {
+    if (!recordPickerOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setRecordPickerOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [recordPickerOpen]);
+
   const retry = () => {
     if (!conv || busy) return;
     const all = conv.messages;
@@ -1422,7 +1487,8 @@ export function AssistantPage() {
 
   /** 输入栏右侧按钮：有文字/光标 → 发送；空且失焦 → 语音；录音中 → 停止 */
   const voiceTime = `${Math.floor(voiceSec / 60)}:${String(voiceSec % 60).padStart(2, '0')}`;
-  const voiceMode = !busy && !input.trim() && !inputFocused && voiceState === 'idle';
+  const voiceMode = !busy && !input.trim() && !inputFocused && voiceState === 'idle'
+    && pendingAttachments.length === 0;
   const voicePending = voiceState === 'starting' || voiceState === 'processing';
   const commandItems = !busy && !commandDismissed
     ? buildCommandCompletions(input, historyRecords, t)
@@ -1435,7 +1501,7 @@ export function AssistantPage() {
       ? true
       : voiceState === 'recording' || voiceMode
         ? false
-        : !input.trim();
+        : !input.trim() && pendingAttachments.length === 0;
   const composerLabel = busy
     ? t('assistant.stop')
     : voiceState === 'recording'
@@ -1501,7 +1567,7 @@ export function AssistantPage() {
     }
     // 桌面端（精确指针）Enter 发送、Shift+Enter 换行；触屏保留换行，避免误发
     if (busy || voicePending || coarsePointer()) return;
-    if (!input.trim()) return;
+    if (!input.trim() && pendingAttachments.length === 0) return;
     e.preventDefault();
     send();
   };
@@ -1510,6 +1576,20 @@ export function AssistantPage() {
   const toggleMemoryOff = () => {
     if (activeId) setChatMemoryOff(activeId, !memoryOffNow);
     else setDraftMemoryOff((v) => !v);
+  };
+
+  const recordLabel = (id: string): string => {
+    const r = historyRecords.find((x) => x.id === id);
+    if (!r) return t('assistant.ctx.recordTag');
+    const d = new Date(r.createdAt);
+    return `${d.getMonth() + 1}/${d.getDate()} · ${t(`mode.${r.mode ?? 'reading'}`)}`;
+  };
+
+  const toggleRecordAttachment = (r: AnalysisRecord) => {
+    const id = `att_${r.id}`;
+    setPendingAttachments((prev) => (prev.some((a) => a.id === id)
+      ? prev.filter((a) => a.id !== id)
+      : [...prev, { id, kind: 'record', recordId: r.id, chart: 'pitch' }]));
   };
 
   const topBar = (
@@ -1861,7 +1941,36 @@ export function AssistantPage() {
             </div>
           )}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setRecordPickerOpen(true)}
+              aria-label={t('assistant.attachRecord')}
+              title={t('assistant.attachRecord')}
+              className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-ink-2 shadow-[0_2px_10px_rgba(28,25,45,0.06)] transition-transform active:scale-90"
+            >
+              <Paperclip size={16} />
+            </button>
             <div className="min-w-0 flex-1 rounded-2xl bg-card px-3.5 py-2.5 shadow-[0_2px_10px_rgba(28,25,45,0.06)]">
+              {pendingAttachments.length > 0 && (
+                <div className="mb-1.5 flex flex-wrap gap-1">
+                  {pendingAttachments.map((a) => (
+                    <span
+                      key={a.id}
+                      className="flex items-center gap-1 rounded-full bg-surface-hi px-2 py-0.5 text-[10px] text-ink-2"
+                    >
+                      {a.recordId ? recordLabel(a.recordId) : a.name}
+                      <button
+                        type="button"
+                        onClick={() => setPendingAttachments((prev) => prev.filter((x) => x.id !== a.id))}
+                        aria-label={t('common.delete')}
+                        className="text-ink-2/60 hover:text-ink"
+                      >
+                        <X size={9} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <textarea
                 ref={taRef}
                 rows={1}
@@ -1921,6 +2030,80 @@ export function AssistantPage() {
 
       {/* 把助手回复存为长期记忆：确认 / 编辑 / 分类 / 置顶
           自绘层而不是 Radix Dialog：AI 页本身 fixed z-[60]，Radix 默认 z-50 会被整页盖住 */}
+      {recordPickerOpen && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('assistant.attachRecordTitle')}
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setRecordPickerOpen(false)} />
+          <div className="relative flex max-h-[80vh] w-full max-w-lg flex-col rounded-3xl bg-card p-5 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center gap-2">
+              <h2 className="flex-1 text-base font-semibold text-ink">{t('assistant.attachRecordTitle')}</h2>
+              <button
+                type="button"
+                onClick={() => setRecordPickerOpen(false)}
+                aria-label={t('common.close')}
+                className="grid size-8 place-items-center rounded-full text-ink-2 hover:bg-surface-hi"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-2">{t('assistant.attachRecordHint')}</p>
+            <div className="no-scrollbar mt-3 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+              {pickerRecords.length === 0 ? (
+                <p className="py-6 text-center text-[11px] text-ink-2">{t('assistant.attachRecordEmpty')}</p>
+              ) : (
+                pickerRecords.map((r) => {
+                  const chosen = pendingAttachments.some((a) => a.recordId === r.id);
+                  const d = new Date(r.createdAt);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => toggleRecordAttachment(r)}
+                      className={cn(
+                        'flex items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors',
+                        chosen ? 'bg-accent/10' : 'hover:bg-surface-hi/60',
+                      )}
+                    >
+                      <span className={cn(
+                        'grid size-5 shrink-0 place-items-center rounded-md border',
+                        chosen ? 'border-accent bg-accent text-on-accent' : 'border-line text-transparent',
+                      )}>
+                        <Check size={11} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[12px] text-ink">
+                          {d.getMonth() + 1}/{d.getDate()} · {t(`mode.${r.mode ?? 'reading'}`)}
+                        </span>
+                        <span className="block text-[10px] text-ink-2">
+                          {Math.round(r.stats.avgF0)} Hz · {Math.round(r.stats.durationSec)}s
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <span className="mr-auto text-[11px] text-ink-2">
+                {t('assistant.attachSelected', { n: pendingAttachments.length })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setRecordPickerOpen(false)}
+                className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90"
+              >
+                {t('common.ok')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       {memoryDraft != null && createPortal(
         <div
           role="dialog"

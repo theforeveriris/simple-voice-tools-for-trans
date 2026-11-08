@@ -1565,4 +1565,11 @@ export const en = {
   'reminder.bodyPlan': 'Today’s plan: {step}. Remember to log it when done.',
   'assistant.actionPlanCreateTitle': 'AI wants to create a practice plan',
   'assistant.actionPlanUpdateTitle': 'AI wants to update the practice plan',
+  'assistant.attachRecord': 'Attach record',
+  'assistant.attachRecordTitle': 'Attach a record chart',
+  'assistant.attachRecordHint': 'Pick recent recordings to send their chart and metrics with your message.',
+  'assistant.attachRecordEmpty': 'No recordings yet',
+  'assistant.attachSelected': '{n} selected',
+  'assistant.attachAlt': 'Attached record',
+  'assistant.attachAsk': 'Take a look at this recording',
 } as const;

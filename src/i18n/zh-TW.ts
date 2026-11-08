@@ -1565,4 +1565,11 @@ export const zhTW = {
   'reminder.bodyPlan': '今天的計畫：{step}。練完記得記錄。',
   'assistant.actionPlanCreateTitle': 'AI 想建立練習計畫',
   'assistant.actionPlanUpdateTitle': 'AI 想更新練習計畫',
+  'assistant.attachRecord': '引用記錄',
+  'assistant.attachRecordTitle': '引用記錄圖表',
+  'assistant.attachRecordHint': '選擇最近的記錄，把圖表和指標一起傳給助手。',
+  'assistant.attachRecordEmpty': '還沒有可引用的記錄',
+  'assistant.attachSelected': '已選 {n} 條',
+  'assistant.attachAlt': '引用的記錄',
+  'assistant.attachAsk': '看看這條記錄',
 } as const;

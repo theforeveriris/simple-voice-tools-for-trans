@@ -1566,5 +1566,12 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'reminder.bodyPlan': '今日之計：{step}。練畢記之。',
   'assistant.actionPlanCreateTitle': 'AI 欲立練計',
   'assistant.actionPlanUpdateTitle': 'AI 欲更練計',
+  'assistant.attachRecord': '引記錄',
+  'assistant.attachRecordTitle': '引記錄之圖',
+  'assistant.attachRecordHint': '擇近錄，以圖與數並送於助手。',
+  'assistant.attachRecordEmpty': '尚無可引之錄',
+  'assistant.attachSelected': '已擇 {n} 條',
+  'assistant.attachAlt': '所引之錄',
+  'assistant.attachAsk': '視此錄',
 };
 

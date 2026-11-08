@@ -8,6 +8,18 @@ import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import type { MemoryWrite } from './memory';
 import type { AssistantAction } from './assistantActions';
+import type { ImgKind } from './assistantChartRoute';
+
+/** 用户随消息附带的资料；当前版本先支持记录图表，图片字段预留给后续视觉模型 */
+export interface ChatAttachment {
+  id: string;
+  kind: 'record' | 'image';
+  recordId?: string;
+  chart?: ImgKind;
+  dataUrl?: string;
+  mime?: string;
+  name?: string;
+}
 
 /** 一次生成实际注入的上下文（供气泡下方的「本轮上下文」面板展示） */
 export interface ChatContextMeta {
@@ -38,6 +50,8 @@ export interface ChatContextMeta {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** 用户随消息附带的记录图表 / 图片（图片留给后续版本） */
+  attachments?: ChatAttachment[];
   /** 思考过程（推理模型 / thinking 块返回时保存，气泡可展开查看） */
   think?: string;
   /** 流式草稿：生成中节流写入，完成后清除；残留草稿（崩溃/杀进程）读取时转为 interrupted */

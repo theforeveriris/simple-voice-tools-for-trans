@@ -1574,4 +1574,11 @@ export const es = {
   'reminder.bodyPlan': 'Plan de hoy: {step}. Recuerda registrarlo al terminar.',
   'assistant.actionPlanCreateTitle': 'La IA quiere crear un plan de práctica',
   'assistant.actionPlanUpdateTitle': 'La IA quiere actualizar el plan de práctica',
+  'assistant.attachRecord': 'Adjuntar registro',
+  'assistant.attachRecordTitle': 'Adjuntar gráfico de registro',
+  'assistant.attachRecordHint': 'Elige grabaciones recientes para enviar su gráfico y métricas con el mensaje.',
+  'assistant.attachRecordEmpty': 'Aún no hay grabaciones',
+  'assistant.attachSelected': '{n} seleccionados',
+  'assistant.attachAlt': 'Registro adjunto',
+  'assistant.attachAsk': 'Mira esta grabación',
 } as const;
