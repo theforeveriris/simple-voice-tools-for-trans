@@ -1573,4 +1573,5 @@ export const ja = {
   'assistant.attachSelected': '{n} 件選択',
   'assistant.attachAlt': '添付した記録',
   'assistant.attachAsk': 'この記録を見てください',
+  'assistant.planPendingShort': '確認待ち',
 } as const;

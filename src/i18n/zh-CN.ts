@@ -1581,6 +1581,7 @@ export const zhCN = {
   'assistant.attachSelected': '已选 {n} 条',
   'assistant.attachAlt': '引用的记录',
   'assistant.attachAsk': '看看这条记录',
+  'assistant.planPendingShort': '待确认',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

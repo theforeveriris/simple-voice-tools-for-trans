@@ -1581,4 +1581,5 @@ export const es = {
   'assistant.attachSelected': '{n} seleccionados',
   'assistant.attachAlt': 'Registro adjunto',
   'assistant.attachAsk': 'Mira esta grabación',
+  'assistant.planPendingShort': 'Por confirmar',
 } as const;

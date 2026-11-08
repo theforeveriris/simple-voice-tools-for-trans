@@ -1572,4 +1572,5 @@ export const en = {
   'assistant.attachSelected': '{n} selected',
   'assistant.attachAlt': 'Attached record',
   'assistant.attachAsk': 'Take a look at this recording',
+  'assistant.planPendingShort': 'To confirm',
 } as const;

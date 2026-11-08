@@ -1581,4 +1581,5 @@ export const fr = {
   'assistant.attachSelected': '{n} sélectionnés',
   'assistant.attachAlt': 'Enregistrement joint',
   'assistant.attachAsk': 'Regarde cet enregistrement',
+  'assistant.planPendingShort': 'À confirmer',
 } as const;

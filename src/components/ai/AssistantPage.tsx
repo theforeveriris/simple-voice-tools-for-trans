@@ -23,7 +23,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowUp, Ban, Brain, Check, ChevronDown, Copy, Download, GitBranch, Loader2, MoreHorizontal, PanelRight, Paperclip, X,
+  ArrowUp, Ban, Brain, Check, ChevronDown, Copy, Download, GitBranch, ListTree, Loader2, MoreHorizontal, PanelRight, Paperclip, X,
   Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -57,7 +57,7 @@ import { GenUiBlock } from '@/lib/assistantGenui';
 import { ContextPanel } from '@/components/ai/ContextPanel';
 import { MemorySavedChip } from '@/components/ai/MemorySavedChip';
 import { ActionCard } from '@/components/ai/ActionCard';
-import { PlanCard, PlanStrip } from '@/components/ai/PlanCard';
+import { PlanMetaChip, PlanStrip } from '@/components/ai/PlanCard';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { Textarea } from '@/components/ui';
 import { useStore } from '@/store/useStore';
@@ -336,7 +336,7 @@ const MessageBody = memo(function MessageBody({ text }: { text: string }) {
           );
         }
         return (
-          <span key={i} className="block [&>p]:my-1 [&>ul]:my-1.5 [&>ol]:my-1.5 [&_blockquote]:my-2 [&_table]:my-2">
+          <span key={i} className="block">
             {renderMarkdown(p.content)}
           </span>
         );
@@ -408,36 +408,46 @@ const Bubble = memo(function Bubble({
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
-      {!mine && !streaming && (m.context?.memoryWrites?.length ?? 0) > 0 && (
-        <MemorySavedChip
-          chatId={chatId}
-          messageIndex={idx}
-          writes={m.context?.memoryWrites ?? []}
-        />
+      {!mine && !streaming && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-0.5">
+          {(m.context?.memoryWrites?.length ?? 0) > 0 && (
+            <MemorySavedChip
+              chatId={chatId}
+              messageIndex={idx}
+              writes={m.context?.memoryWrites ?? []}
+            />
+          )}
+          {m.context?.planId && <PlanMetaChip planId={m.context.planId} />}
+          {m.context?.appliedAction && (
+            <ActionCard
+              chatId={chatId}
+              messageIndex={idx}
+              applied={m.context.appliedAction}
+            />
+          )}
+          {hasMeta && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleThink(idx);
+              }}
+              aria-expanded={thinkOpen}
+              className="inline-flex h-6 items-center gap-1 rounded-full px-2 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/70 hover:text-ink"
+            >
+              <ListTree size={10} />
+              {m.think ? t('assistant.think') : t('assistant.ctx.title')}
+              <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
+            </button>
+          )}
+        </div>
       )}
-      {!mine && !streaming && (m.context?.pendingAction || m.context?.appliedAction) && (
+      {!mine && !streaming && m.context?.pendingAction && (
         <ActionCard
           chatId={chatId}
           messageIndex={idx}
-          action={m.context?.pendingAction}
-          applied={m.context?.appliedAction}
+          action={m.context.pendingAction}
         />
-      )}
-      {!mine && !streaming && m.context?.planId && <PlanCard planId={m.context.planId} />}
-      {hasMeta && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleThink(idx);
-          }}
-          aria-expanded={thinkOpen}
-          className="mt-2 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-ink-2 transition-colors hover:bg-surface-hi/60 hover:text-ink"
-        >
-          <Brain size={10} />
-          {m.think ? t('assistant.think') : t('assistant.ctx.title')}
-          <ChevronDown size={10} className={cn('transition-transform', thinkOpen && 'rotate-180')} />
-        </button>
       )}
       {!mine && m.interrupted && (
         <p className="mt-1 text-[10px] text-ink-2/70">{t('assistant.interrupted')}</p>
@@ -464,7 +474,7 @@ const Bubble = memo(function Bubble({
       ) : (
         <div
           onClick={onBodyClick}
-          className="w-full text-left text-[13px] leading-relaxed text-ink"
+          className="w-full text-left text-[13px] leading-[1.75] text-ink"
         >
           {body}
         </div>

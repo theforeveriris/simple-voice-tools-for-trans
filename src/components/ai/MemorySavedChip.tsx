@@ -1,9 +1,9 @@
 /**
  * 助手消息下方的「已记住」chip
- * - 自动 / 手动保存的长期记忆都汇总到这条消息的 context.memoryWrites
- * - 展开后可查看正文与来源片段，支持编辑、置顶、删除、整组撤销
+ * - 默认只显示一行状态，点击才浮出明细，不再占一张大卡
+ * - 明细里可编辑 / 置顶 / 删除，整组撤销走底部文字按钮
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Brain, ChevronDown, Pencil, Star, Trash2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -40,8 +40,26 @@ export function MemorySavedChip({
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const wrapRef = useRef<HTMLDivElement>(null);
   const byId = new Map(memories.map((m) => [m.id, m]));
   const active = writes.filter((w) => w.action !== 'duplicate');
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   if (active.length === 0) return null;
 
   const patchWrites = (next: MemoryWrite[]) => {
@@ -87,32 +105,35 @@ export function MemorySavedChip({
   };
 
   return (
-    <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+    <div ref={wrapRef} className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex items-center gap-1 rounded-full bg-accent-soft/45 px-2.5 py-1 text-[10px] font-medium text-on-accent-soft transition-opacity hover:opacity-80"
+        className={cn(
+          'inline-flex h-6 items-center gap-1 rounded-full px-2 text-[10px] font-medium transition-colors',
+          open ? 'bg-surface-hi text-ink' : 'text-ink-2 hover:bg-surface-hi/70',
+        )}
       >
-        <Brain size={11} />
+        <Brain size={11} className="text-accent" />
         {t('assistant.memoryChip', { n: active.length })}
-        <ChevronDown size={11} className={cn('transition-transform', open && 'rotate-180')} />
+        <ChevronDown size={10} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="mt-1.5 flex flex-col gap-1.5 rounded-2xl bg-card p-2.5 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+        <div className="absolute left-0 top-full z-30 mt-1 w-72 max-w-[calc(100vw-3rem)] rounded-2xl border border-line bg-card p-2 shadow-[0_10px_30px_-12px_rgba(28,25,45,0.28),0_2px_14px_rgba(28,25,45,0.06)]">
           {active.map((write) => {
             const item = byId.get(write.id);
             const label = actionLabel(write.action);
             if (!item) {
               return (
-                <p key={write.id} className="px-1 py-0.5 text-[10px] text-ink-2/60">
+                <p key={write.id} className="px-1.5 py-1 text-[10px] text-ink-2/60">
                   {t('assistant.memoryChipDeleted')}
                 </p>
               );
             }
             return (
-              <div key={item.id} className="rounded-xl bg-surface-hi/50 px-2 py-1.5">
+              <div key={item.id} className="group rounded-xl px-1.5 py-1.5 transition-colors hover:bg-surface-hi/55">
                 {editingId === item.id ? (
                   <div className="flex flex-col gap-1.5">
                     <textarea
@@ -140,7 +161,7 @@ export function MemorySavedChip({
                   </div>
                 ) : (
                   <>
-                    <p className="text-[11px] leading-relaxed text-ink">{item.text}</p>
+                    <p className="text-[11px] leading-[1.55] text-ink">{item.text}</p>
                     <div className="mt-0.5 flex items-center gap-1.5">
                       {label && <span className="text-[9px] text-accent">{label}</span>}
                       <span className="text-[9px] text-ink-2/70">
@@ -151,7 +172,7 @@ export function MemorySavedChip({
                           {t('assistant.memoryChipSource', { quote: item.source.quote })}
                         </span>
                       )}
-                      <span className="ml-auto flex items-center gap-1">
+                      <span className="ml-auto flex items-center gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
                         <button
                           type="button"
                           onClick={() => togglePin(item)}
@@ -183,14 +204,16 @@ export function MemorySavedChip({
               </div>
             );
           })}
-          <button
-            type="button"
-            onClick={undoAll}
-            className="flex items-center justify-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-ink-2 transition-colors hover:bg-surface-hi"
-          >
-            <Undo2 size={10} />
-            {t('assistant.memoryChipUndo')}
-          </button>
+          <div className="mt-1 flex justify-end border-t border-line/60 pt-1">
+            <button
+              type="button"
+              onClick={undoAll}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-medium text-ink-2 transition-colors hover:bg-surface-hi"
+            >
+              <Undo2 size={10} />
+              {t('assistant.memoryChipUndo')}
+            </button>
+          </div>
         </div>
       )}
     </div>

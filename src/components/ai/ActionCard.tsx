@@ -37,11 +37,11 @@ export function ActionCard({
 
   if (applied) {
     return (
-      <div className="mt-1.5 flex items-center gap-1.5 rounded-full bg-surface-hi/60 px-2.5 py-1 text-[10px] text-ink-2">
-        <CheckCircle2 size={11} className="text-accent" />
-        <span className="font-medium text-ink">{t('assistant.actionApplied')}</span>
+      <span className="inline-flex h-6 max-w-full items-center gap-1 rounded-full bg-surface-hi/60 px-2 text-[10px] text-ink-2">
+        <CheckCircle2 size={10} className="shrink-0 text-accent" />
+        <span className="shrink-0 font-medium text-ink">{t('assistant.actionApplied')}</span>
         <span className="min-w-0 truncate">{applied.summary}</span>
-      </div>
+      </span>
     );
   }
   if (!action) return null;
@@ -63,9 +63,10 @@ export function ActionCard({
       toast.error(res.error ?? t('assistant.actionFailed'));
       return;
     }
+    const isPlan = action.kind === 'createPlan' || action.kind === 'updatePlan';
     patch({
       pendingAction: undefined,
-      appliedAction: { summary: action.summary, at: Date.now() },
+      ...(isPlan ? {} : { appliedAction: { summary: action.summary, at: Date.now() } }),
       ...(res.planId ? { planId: res.planId } : {}),
     });
     toast.success(t('assistant.actionApplied'), res.undo
@@ -126,20 +127,20 @@ export function ActionCard({
       : t('assistant.actionTitle');
 
   return (
-    <div className="mt-1.5 rounded-2xl border border-accent/20 bg-card px-3 py-2.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink">
-        <ShieldAlert size={13} className="text-accent" />
+    <div className="mt-1.5 rounded-2xl border border-accent/20 bg-card px-2.5 py-2">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium text-ink">
+        <ShieldAlert size={12} className="text-accent" />
         {title}
       </div>
-      <div className={cn('mt-1 text-[11px] leading-relaxed text-ink-2', action.kind === 'setTarget' && 'text-ink')}>
+      <div className={cn('mt-1 text-[10px] leading-relaxed text-ink-2', action.kind === 'setTarget' && 'text-ink')}>
         {preview}
       </div>
-      <div className="mt-2 flex items-center justify-end gap-2">
+      <div className="mt-1.5 flex items-center justify-end gap-2">
         <button
           type="button"
           disabled={busy}
           onClick={() => patch({ pendingAction: undefined })}
-          className="px-1.5 py-1 text-[11px] font-medium text-ink-2 transition-opacity hover:opacity-70 disabled:opacity-40"
+          className="px-1.5 py-1 text-[10px] font-medium text-ink-2 transition-opacity hover:opacity-70 disabled:opacity-40"
         >
           {t('assistant.actionCancel')}
         </button>
@@ -147,9 +148,9 @@ export function ActionCard({
           type="button"
           disabled={busy}
           onClick={confirm}
-          className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-[10px] font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {busy && <Loader2 size={11} className="animate-spin" />}
+          {busy && <Loader2 size={10} className="animate-spin" />}
           {t('assistant.actionConfirm')}
         </button>
       </div>

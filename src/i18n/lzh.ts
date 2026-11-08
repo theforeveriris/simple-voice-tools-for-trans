@@ -1573,5 +1573,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.attachSelected': '已擇 {n} 條',
   'assistant.attachAlt': '所引之錄',
   'assistant.attachAsk': '視此錄',
+  'assistant.planPendingShort': '待可',
 };
 

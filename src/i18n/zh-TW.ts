@@ -1572,4 +1572,5 @@ export const zhTW = {
   'assistant.attachSelected': '已選 {n} 條',
   'assistant.attachAlt': '引用的記錄',
   'assistant.attachAsk': '看看這條記錄',
+  'assistant.planPendingShort': '待確認',
 } as const;
