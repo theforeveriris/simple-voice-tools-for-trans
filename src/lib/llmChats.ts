@@ -31,6 +31,8 @@ export interface ChatContextMeta {
   pendingAction?: AssistantAction;
   /** 已执行的写操作摘要（对话里留一条「已修改」记录） */
   appliedAction?: { summary: string; at: number };
+  /** 本轮涉及的练习计划（渲染 PlanCard） */
+  planId?: string;
 }
 
 export interface ChatMessage {

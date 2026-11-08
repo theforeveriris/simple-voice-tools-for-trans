@@ -10,10 +10,17 @@ import { recordsWithinLastDays } from '@/lib/assistantCommands';
 import { downloadText, recordsToSummaryCsv } from '@/lib/export/csv';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
+import { createPracticePlan, clearPracticePlan, getPracticePlanState, updatePracticePlan, type PlanFocus } from '@/lib/practicePlan';
 import type { LlmToolSpec } from '@/lib/llm';
 import type { AssistantToolOutcome } from '@/lib/assistantTools';
 
-export type AssistantActionKind = 'setTarget' | 'setBaseline' | 'export' | 'open';
+export type AssistantActionKind =
+  | 'setTarget'
+  | 'setBaseline'
+  | 'createPlan'
+  | 'updatePlan'
+  | 'export'
+  | 'open';
 
 export interface AssistantAction {
   id: string;
@@ -31,6 +38,14 @@ export interface AssistantActionContext {
   settings: AppSettings;
   records: AnalysisRecord[];
 }
+
+const FOCUS_LABEL: Record<PlanFocus, string> = {
+  pitch: '音高',
+  resonance: '共鸣',
+  stability: '稳定',
+  range: '音域',
+  habit: '习惯',
+};
 
 function genId(): string {
   return `a_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -96,6 +111,56 @@ export function createAssistantAction(
     };
   }
 
+  if (kind === 'createPlan') {
+    const focuses: PlanFocus[] = ['pitch', 'resonance', 'stability', 'range', 'habit'];
+    const focus = typeof args.focus === 'string' && focuses.includes(args.focus as PlanFocus)
+      ? args.focus as PlanFocus
+      : null;
+    const title = typeof args.title === 'string' ? args.title.trim().slice(0, 80) : '';
+    const weeks = asNumber(args.weeks);
+    const daysPerWeek = asNumber(args.daysPerWeek);
+    const minutesPerSession = asNumber(args.minutesPerSession);
+    if (!focus || !title || weeks == null || daysPerWeek == null || minutesPerSession == null
+      || weeks < 1 || weeks > 52 || daysPerWeek < 1 || daysPerWeek > 7
+      || minutesPerSession < 2 || minutesPerSession > 60) {
+      return { error: '计划需要标题、重点、1–52 周、每周 1–7 次、每次 2–60 分钟。' };
+    }
+    return {
+      action: {
+        ...base,
+        kind: 'createPlan',
+        args: { title, focus, weeks, daysPerWeek, minutesPerSession },
+        summary: `创建计划「${title}」：${FOCUS_LABEL[focus]}，每周 ${daysPerWeek} 次，每次约 ${minutesPerSession} 分钟`,
+        before: {},
+      },
+    };
+  }
+
+  if (kind === 'updatePlan') {
+    const plan = getPracticePlanState().plan;
+    if (!plan) return { error: '当前没有可更新的练习计划。' };
+    const patch: Record<string, unknown> = {};
+    if (args.status === 'active' || args.status === 'paused' || args.status === 'done') patch.status = args.status;
+    if (typeof args.title === 'string' && args.title.trim()) patch.title = args.title.trim().slice(0, 80);
+    if (typeof args.daysPerWeek === 'number' && args.daysPerWeek >= 1 && args.daysPerWeek <= 7) patch.daysPerWeek = Math.round(args.daysPerWeek);
+    if (typeof args.minutesPerSession === 'number' && args.minutesPerSession >= 2 && args.minutesPerSession <= 60) patch.minutesPerSession = Math.round(args.minutesPerSession);
+    if (Object.keys(patch).length === 0) return { error: '没有可更新的计划字段。' };
+    return {
+      action: {
+        ...base,
+        kind: 'updatePlan',
+        args: { id: plan.id, ...patch },
+        summary: `更新计划「${plan.title}」：${Object.entries(patch).map(([k, v]) => `${k}=${String(v)}`).join('，')}`,
+        before: {
+          title: plan.title,
+          status: plan.status,
+          daysPerWeek: plan.daysPerWeek,
+          minutesPerSession: plan.minutesPerSession,
+        },
+      },
+    };
+  }
+
   if (kind === 'export') {
     const scope = args.scope === 'all' ? 'all' : 'last7';
     const picked = scope === 'all' ? ctx.records : recordsWithinLastDays(ctx.records, 7);
@@ -132,7 +197,7 @@ export function createAssistantAction(
 /** 用户确认后执行；返回 toast 文案与可选撤销函数 */
 export async function applyAssistantAction(
   action: AssistantAction,
-): Promise<{ ok: boolean; error?: string; undo?: () => void }> {
+): Promise<{ ok: boolean; error?: string; undo?: () => void; planId?: string }> {
   const store = useStore.getState();
   if (store.settings.assistantWrites === 'off') {
     return { ok: false, error: 'AI 写入权限已关闭。' };
@@ -162,6 +227,40 @@ export async function applyAssistantAction(
     return {
       ok: true,
       undo: () => store.updateSettings({ baselineRecordId: before.recordId ?? undefined }),
+    };
+  }
+
+  if (action.kind === 'createPlan') {
+    const focus = action.args.focus as PlanFocus;
+    const plan = createPracticePlan({
+      title: typeof action.args.title === 'string' ? action.args.title : undefined,
+      focus,
+      weeks: Number(action.args.weeks) || 4,
+      daysPerWeek: Number(action.args.daysPerWeek) || 3,
+      minutesPerSession: Number(action.args.minutesPerSession) || 10,
+    });
+    return { ok: true, planId: plan.id, undo: () => clearPracticePlan() };
+  }
+
+  if (action.kind === 'updatePlan') {
+    const before = action.before as {
+      title?: string;
+      status?: 'active' | 'paused' | 'done';
+      daysPerWeek?: number;
+      minutesPerSession?: number;
+    };
+    const patch = {
+      ...(typeof action.args.status === 'string' ? { status: action.args.status as 'active' | 'paused' | 'done' } : {}),
+      ...(typeof action.args.title === 'string' ? { title: action.args.title } : {}),
+      ...(typeof action.args.daysPerWeek === 'number' ? { daysPerWeek: action.args.daysPerWeek } : {}),
+      ...(typeof action.args.minutesPerSession === 'number' ? { minutesPerSession: action.args.minutesPerSession } : {}),
+    };
+    const plan = updatePracticePlan(patch);
+    if (!plan) return { ok: false, error: '当前没有可更新的练习计划。' };
+    return {
+      ok: true,
+      planId: plan.id,
+      undo: () => updatePracticePlan(before),
     };
   }
 

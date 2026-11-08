@@ -48,6 +48,20 @@ describe('createAssistantAction', () => {
     expect(createAssistantAction('export', { scope: 'last7' }, { settings, records: [] }).error).toContain('没有记录');
   });
 
+  it('creates a practice plan action', () => {
+    const res = createAssistantAction('createPlan', {
+      title: '六周音高',
+      focus: 'pitch',
+      weeks: 6,
+      daysPerWeek: 3,
+      minutesPerSession: 10,
+    }, ctx);
+    expect(res.action?.kind).toBe('createPlan');
+    expect(res.action?.summary).toContain('六周音高');
+    expect(res.action?.summary).toContain('音高');
+    expect(createAssistantAction('createPlan', { title: 'x', focus: 'nope', weeks: 6, daysPerWeek: 3, minutesPerSession: 10 }, ctx).error).toContain('计划');
+  });
+
   it('respects the write permission setting', () => {
     const off = { ...ctx, settings: { ...settings, assistantWrites: 'off' } as unknown as AppSettings };
     expect(createAssistantAction('setTarget', { min: 150, max: 250 }, off).error).toContain('关闭');

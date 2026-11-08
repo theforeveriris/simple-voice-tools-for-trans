@@ -46,7 +46,11 @@ export function ActionCard({
   }
   if (!action) return null;
 
-  const patch = (next: { pendingAction?: AssistantAction; appliedAction?: { summary: string; at: number } }) => {
+  const patch = (next: {
+    pendingAction?: AssistantAction;
+    appliedAction?: { summary: string; at: number };
+    planId?: string;
+  }) => {
     if (chatId) patchMessageContext(chatId, messageIndex, next);
   };
 
@@ -62,6 +66,7 @@ export function ActionCard({
     patch({
       pendingAction: undefined,
       appliedAction: { summary: action.summary, at: Date.now() },
+      ...(res.planId ? { planId: res.planId } : {}),
     });
     toast.success(t('assistant.actionApplied'), res.undo
       ? { action: { label: t('common.undo'), onClick: res.undo } }
@@ -97,13 +102,34 @@ export function ActionCard({
         })}
       </span>
     );
+  } else if (action.kind === 'createPlan') {
+    preview = (
+      <span className="flex flex-col gap-0.5">
+        <span className="font-medium text-ink">{String(args.title ?? '')}</span>
+        <span>
+          {t('assistant.actionPlanSummary', {
+            weeks: String(args.weeks ?? ''),
+            days: String(args.daysPerWeek ?? ''),
+            minutes: String(args.minutesPerSession ?? ''),
+          })}
+        </span>
+      </span>
+    );
+  } else if (action.kind === 'updatePlan') {
+    preview = <span>{action.summary}</span>;
   }
+
+  const title = action.kind === 'createPlan'
+    ? t('assistant.actionPlanCreateTitle')
+    : action.kind === 'updatePlan'
+      ? t('assistant.actionPlanUpdateTitle')
+      : t('assistant.actionTitle');
 
   return (
     <div className="mt-1.5 rounded-2xl border border-accent/20 bg-card px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink">
         <ShieldAlert size={13} className="text-accent" />
-        {t('assistant.actionTitle')}
+        {title}
       </div>
       <div className={cn('mt-1 text-[11px] leading-relaxed text-ink-2', action.kind === 'setTarget' && 'text-ink')}>
         {preview}

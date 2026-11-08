@@ -33,6 +33,8 @@ import { isAbortError, languageName, llmChatStreamMessages, llmToolCall, type Ll
 import { runAssistantTools } from '@/lib/assistantAgent';
 import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools';
 import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } from '@/lib/assistantActions';
+import { PRACTICE_PLAN_TOOLS, runPracticePlanTool } from '@/lib/practicePlanTools';
+import { getPracticePlanState, planSummaryForPrompt } from '@/lib/practicePlan';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
@@ -55,6 +57,7 @@ import { GenUiBlock } from '@/lib/assistantGenui';
 import { ContextPanel } from '@/components/ai/ContextPanel';
 import { MemorySavedChip } from '@/components/ai/MemorySavedChip';
 import { ActionCard } from '@/components/ai/ActionCard';
+import { PlanCard, PlanStrip } from '@/components/ai/PlanCard';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
 import { Textarea } from '@/components/ui';
 import { useStore } from '@/store/useStore';
@@ -420,6 +423,7 @@ const Bubble = memo(function Bubble({
           applied={m.context?.appliedAction}
         />
       )}
+      {!mine && !streaming && m.context?.planId && <PlanCard planId={m.context.planId} />}
       {hasMeta && (
         <button
           type="button"
@@ -739,10 +743,11 @@ export function AssistantPage() {
           system: toolPlannerSystem(settings),
           history,
           userText: lastUser.content,
-          tools: [...ASSISTANT_DATA_TOOLS, ...ASSISTANT_ACTION_TOOLS],
+          tools: [...ASSISTANT_DATA_TOOLS, ...ASSISTANT_ACTION_TOOLS, ...PRACTICE_PLAN_TOOLS],
           execute: async (name, args) => (
             await runAssistantDataTool(name, args, { records, settings })
-            ?? runAssistantActionTool(name, args, { records, settings })
+            ?? await runAssistantActionTool(name, args, { records, settings })
+            ?? runPracticePlanTool(name, args, { records, settings })
           ),
           signal: controller.signal,
         });
@@ -764,7 +769,9 @@ export function AssistantPage() {
     // 长期记忆：置顶固定注入；其余由模型按需调用 search_memory，按需注入
     const memoryHit = await resolveMemoryContext(cfg, history, lastUser);
     const docHit = await docHitPromise;
-    const extraAll = [extraContext, toolRun.contextText].filter(Boolean).join('\n\n');
+    const planState = getPracticePlanState();
+    const planSummary = planSummaryForPrompt(planState.plan, planState.logs);
+    const extraAll = [extraContext, toolRun.contextText, planSummary].filter(Boolean).join('\n\n');
     const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraAll, memoryHit.text);
     // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
     const seenDocs = new Set<string>();
@@ -1704,6 +1711,7 @@ export function AssistantPage() {
   return (
     <div className={shellClass}>
       {topBar}
+      <PlanStrip />
 
       {/* 消息流 */}
       <div ref={scrollRef} onScroll={() => {

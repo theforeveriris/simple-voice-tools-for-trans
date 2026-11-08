@@ -123,6 +123,7 @@ export function weeklyReportKey(cfg: LlmConfig, records: AnalysisRecord[], promp
     new Date().toDateString(),
     prompt?.goal ?? null,
     prompt?.ageGroup ?? null,
+    prompt?.planSummary ?? null,
     (prompt?.extraRules ?? []).map((r) => r.trim()).filter(Boolean),
     prompt?.promptOverride?.trim() ?? null,
     week.map(recordFingerprint),

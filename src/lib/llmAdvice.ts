@@ -259,6 +259,8 @@ export interface LlmPromptOptions {
   goal?: UserGoal;
   /** 用户年龄段，影响基频 / 共振峰参考范围口径 */
   ageGroup?: AgeGroup;
+  /** 当前练习计划摘要（周报据此评估执行情况） */
+  planSummary?: string;
 }
 
 /**
@@ -490,6 +492,7 @@ export function buildWeeklyPayload(records: AnalysisRecord[], now = Date.now(), 
     if (ctx.ageGroup) meta.push(`ageGroup: ${ctx.ageGroup}`);
     parts.push(`User context: ${meta.join(', ')}`);
   }
+  if (ctx?.planSummary) parts.push(`Practice plan:\n${ctx.planSummary}`);
   parts.push(`Answer language: ${languageName()}`);
   return parts.join('\n');
 }

@@ -15,6 +15,7 @@ import type { PermissionStatus as NativePermissionStatus } from '@capacitor/loca
 type NativePermissionState = NativePermissionStatus['display'];
 import { isNative } from '@/lib/platform';
 import { useHistoryStore } from '@/store/useHistoryStore';
+import { nextPracticeStep } from '@/lib/practicePlan';
 import { t } from '@/i18n';
 
 /** 原生通知固定 id：同 id 重复发送自动替换，模拟 Web 端 tag 去重 */
@@ -103,18 +104,20 @@ function firedKey(): string {
 /** 发一条提醒通知；点击聚焦应用 */
 export function showPracticeReminder(): void {
   if (!reminderSupported()) return;
+  const step = nextPracticeStep();
+  const body = step ? t('reminder.bodyPlan', { step: step.title }) : t('reminder.body');
   if (isNative) {
     void ensureChannel().then(() => LocalNotifications.schedule({
       notifications: [{
         id: NATIVE_NOTIF_ID,
         title: 'Simple Voice Tool for Trans',
-        body: t('reminder.body'),
+        body,
         channelId: NATIVE_CHANNEL_ID,
       }],
     })).catch(() => {});
     return;
   }
-  void webNotify(t('reminder.body'));
+  void webNotify(body);
 }
 
 /**

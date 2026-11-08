@@ -1558,6 +1558,22 @@ export const zhCN = {
   'assistant.actionScopeWeek': '最近 7 天',
   'settings.assistantWrites': 'AI 写操作',
   'settings.assistantWritesDesc': '允许 AI 提议修改靶标、基线或导出记录；每次都会先显示确认卡',
+  'assistant.planFocusPitch': '音高',
+  'assistant.planFocusResonance': '共鸣',
+  'assistant.planFocusStability': '稳定',
+  'assistant.planFocusRange': '音域',
+  'assistant.planFocusHabit': '习惯',
+  'assistant.planMeta': '{weeks} 周 · 每周 {days} 次 · 每次约 {minutes} 分钟',
+  'assistant.planProgress': '{done}/{target} 次',
+  'assistant.planNext': '下一步',
+  'assistant.planStart': '去练习',
+  'assistant.planLogged': '已记录一次练习',
+  'assistant.planPendingRecord': '这次录音算哪一步？',
+  'assistant.planSkip': '不记录',
+  'assistant.actionPlanSummary': '{weeks} 周，每周 {days} 次，每次约 {minutes} 分钟',
+  'reminder.bodyPlan': '今天的计划：{step}。练完记得记录。',
+  'assistant.actionPlanCreateTitle': 'AI 想创建练习计划',
+  'assistant.actionPlanUpdateTitle': 'AI 想更新练习计划',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

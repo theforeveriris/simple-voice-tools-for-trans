@@ -12,6 +12,7 @@ import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
 import { useHistoryStore } from './useHistoryStore';
+import { autoLogPracticeForRecord } from '@/lib/practicePlan';
 import { persistLlmApiKey } from './startup';
 
 interface AppState {
@@ -120,6 +121,7 @@ export const useStore = create<AppState>()(
         // 音频解码 + 嗓音质量计算（失败时自动降级为无音频记录）
         const { record, audio } = await recorder.finishRecord(raw);
         useHistoryStore.getState().addRecord(record, audio ?? undefined);
+        autoLogPracticeForRecord(record);
         // 实验性：本地自动备份（选择了文件夹时按天写入，内部自行节流）
         void maybeAutoBackup('record');
         set({ currentAnalysis: record, pendingAutoReplay: get().settings.autoReplay && audio != null });

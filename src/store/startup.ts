@@ -19,6 +19,7 @@ import { setAlgoParams } from '@/lib/audio/algoParams';
 import { setSiRenameEnabled } from '@/i18n';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import { addProfile, profilesReady } from '@/lib/llmProfiles';
+import { loadPracticePlan } from '@/lib/practicePlan';
 import { t } from '@/i18n';
 import { useStore } from './useStore';
 
@@ -111,6 +112,7 @@ export function runStartupSideEffects(): void {
     await restoreApiKey();
     await migrateLlmProfiles();
   })();
+  void loadPracticePlan();
 }
 
 /** API Key 变更同步写入 IDB kv（updateSettings 调用；内存态仅为解析配置用） */
