@@ -4,7 +4,7 @@
  * - PlanCard：完整计划卡，只在明确展开时使用
  */
 import { useEffect, useRef, useState } from 'react';
-import { CalendarRange, ChevronRight, Play, Target, X } from 'lucide-react';
+import { ArrowRight, CalendarRange, ChevronDown, ChevronRight, Target, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -48,46 +48,58 @@ function PlanDots({ done, target }: { done: number; target: number }) {
   );
 }
 
-/** 回答正文底部的计划卡（紧凑版） */
+/** 回答正文底部的计划卡：默认折叠成一行，点击展开明细 */
 export function PlanCard({ planId }: { planId?: string }) {
   useI18n();
   const state = usePracticePlan();
+  const [open, setOpen] = useState(false);
   const plan = state.plan && (!planId || state.plan.id === planId) ? state.plan : null;
   if (!plan) return null;
   const p = planProgress(plan, state.logs);
   return (
-    <div className="mt-3 w-full rounded-xl border border-line/60 bg-card/80 px-2.5 py-1.5 sm:w-3/5">
-      <div className="flex items-center gap-1.5">
+    <div className="mt-3 w-full rounded-xl border border-line/60 bg-card/80 sm:w-3/5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 px-2.5 py-2 text-left"
+      >
         <CalendarRange size={12} className="shrink-0 text-accent" />
         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink">{plan.title}</span>
-        <span className="shrink-0 rounded-full bg-accent-soft/50 px-1.5 py-0.5 text-[8px] text-on-accent-soft">
-          {t(FOCUS_KEY[plan.focus])}
-        </span>
         <span className="shrink-0 tabular-nums text-[9px] text-ink-2">
           {t('assistant.planProgress', { done: p.done, target: p.target })}
         </span>
-      </div>
-      <p className="mt-0.5 text-[9px] text-ink-2">
-        {t('assistant.planMeta', {
-          weeks: plan.weeks,
-          days: plan.daysPerWeek,
-          minutes: plan.minutesPerSession,
-        })}
-      </p>
-      {p.nextStep && (
-        <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-surface-hi/50 px-1.5 py-1">
-          <Target size={10} className="shrink-0 text-accent" />
-          <span className="min-w-0 flex-1 truncate text-[10px] text-ink">
-            {t('assistant.planNext')}：{p.nextStep.title}
-          </span>
-          <button
-            type="button"
-            onClick={() => startPractice(plan, state.logs)}
-            className="flex shrink-0 items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[9px] font-medium text-on-accent"
-          >
-            <Play size={9} />
-            {t('assistant.planStart')}
-          </button>
+        <ChevronDown
+          size={11}
+          className={cn('shrink-0 text-ink-2/60 transition-transform', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <div className="border-t border-line/50 px-2.5 py-1.5">
+          <p className="text-[9px] text-ink-2">
+            {t(FOCUS_KEY[plan.focus])} · {t('assistant.planMeta', {
+              weeks: plan.weeks,
+              days: plan.daysPerWeek,
+              minutes: plan.minutesPerSession,
+            })}
+          </p>
+          {p.nextStep && (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <Target size={10} className="shrink-0 text-accent" />
+              <span className="min-w-0 flex-1 truncate text-[10px] text-ink">
+                {t('assistant.planNext')}：{p.nextStep.title}
+              </span>
+              <button
+                type="button"
+                onClick={() => startPractice(plan, state.logs)}
+                className="flex shrink-0 items-center gap-0.5 text-[9px] font-medium text-accent transition-opacity hover:opacity-70"
+              >
+                {t('assistant.planStart')}
+                <ArrowRight size={9} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

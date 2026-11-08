@@ -1,10 +1,10 @@
 /**
  * AI 回答正文底部的「已记住」卡片
- * - 不再用消息下方的悬浮 chip / popover
- * - 直接显示写入的记忆，支持编辑 / 置顶 / 删除 / 整组撤销
+ * - 默认折叠成一行，点击展开明细
+ * - 展开后可直接编辑 / 置顶 / 删除 / 整组撤销
  */
 import { useState } from 'react';
-import { Brain, Pencil, Star, Trash2, Undo2 } from 'lucide-react';
+import { Brain, ChevronDown, Pencil, Star, Trash2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -37,11 +37,13 @@ export function MemorySavedCard({
 }) {
   useI18n();
   const memories = useMemories();
+  const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const byId = new Map(memories.map((m) => [m.id, m]));
   const active = writes.filter((w) => w.action !== 'duplicate');
   if (active.length === 0) return null;
+  const summary = byId.get(active[0].id)?.text ?? '';
 
   const patchWrites = (next: MemoryWrite[]) => {
     if (chatId) patchMessageContext(chatId, messageIndex, { memoryWrites: next });
@@ -82,105 +84,129 @@ export function MemorySavedCard({
   const undoAll = () => {
     for (const write of active) void undoMemoryWrite(write);
     patchWrites([]);
+    setOpen(false);
   };
 
   return (
-    <div className="mt-2.5 w-full rounded-xl border border-line/60 bg-card/80 px-2 py-1.5 sm:w-3/5" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-1.5 text-[9px] font-medium text-ink-2">
-        <Brain size={10} className="text-accent" />
-        {t('assistant.memoryChip', { n: active.length })}
-        <button
-          type="button"
-          onClick={undoAll}
-          className="ml-auto inline-flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[8px] font-medium text-ink-2 transition-colors hover:bg-surface-hi"
-        >
-          <Undo2 size={9} />
-          {t('assistant.memoryChipUndo')}
-        </button>
-      </div>
+    <div className="mt-2.5 w-full rounded-xl border border-line/60 bg-card/80 sm:w-3/5" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left"
+      >
+        <Brain size={10} className="shrink-0 text-accent" />
+        <span className="shrink-0 text-[9px] font-medium text-ink-2">
+          {t('assistant.memoryChip', { n: active.length })}
+        </span>
+        {!open && summary && (
+          <span className="min-w-0 flex-1 truncate text-[9px] text-ink-2/65">{summary}</span>
+        )}
+        {open && <span className="flex-1" />}
+        <ChevronDown
+          size={11}
+          className={cn('shrink-0 text-ink-2/60 transition-transform', open && 'rotate-180')}
+        />
+      </button>
 
-      {active.map((write) => {
-        const item = byId.get(write.id);
-        const label = actionLabel(write.action);
-        if (!item) {
-          return (
-            <p key={write.id} className="mt-1 px-0.5 text-[9px] text-ink-2/60">
-              {t('assistant.memoryChipDeleted')}
-            </p>
-          );
-        }
-        return (
-          <div key={item.id} className="mt-1 rounded-lg bg-surface-hi/40 px-1.5 py-1">
-            {editingId === item.id ? (
-              <div className="flex flex-col gap-1">
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  rows={2}
-                  className="w-full resize-y rounded-lg border border-line bg-card px-1.5 py-1 text-[10px] leading-relaxed text-ink outline-none focus:border-accent"
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(null)}
-                    className="px-1 text-[9px] text-ink-2"
-                  >
-                    {t('common.cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => saveEdit(item)}
-                    className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-medium text-on-accent"
-                  >
-                    {t('common.save')}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p className="text-[10px] leading-[1.5] text-ink">{item.text}</p>
-                <div className="mt-0.5 flex items-center gap-1.5">
-                  {label && <span className="text-[8px] text-accent">{label}</span>}
-                  <span className="text-[8px] text-ink-2/70">
-                    {new Date(item.updatedAt).toLocaleDateString()}
-                  </span>
-                  {item.source?.quote && (
-                    <span className="min-w-0 flex-1 truncate text-[8px] text-ink-2/60">
-                      {t('assistant.memoryChipSource', { quote: item.source.quote })}
-                    </span>
+      {open && (
+        <div className="border-t border-line/50 py-1.5 pl-6 pr-2">
+          <div className="space-y-1">
+            {active.map((write) => {
+              const item = byId.get(write.id);
+              const label = actionLabel(write.action);
+              if (!item) {
+                return (
+                  <p key={write.id} className="px-0.5 text-[9px] text-ink-2/60">
+                    {t('assistant.memoryChipDeleted')}
+                  </p>
+                );
+              }
+              return (
+                <div key={item.id} className="rounded-lg py-0.5">
+                  {editingId === item.id ? (
+                    <div className="flex flex-col gap-1">
+                      <textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        rows={2}
+                        className="w-full resize-y rounded-lg border border-line bg-card px-1.5 py-1 text-[10px] leading-relaxed text-ink outline-none focus:border-accent"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(null)}
+                          className="px-1 text-[9px] text-ink-2"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveEdit(item)}
+                          className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-medium text-on-accent"
+                        >
+                          {t('common.save')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[10px] leading-[1.5] text-ink">{item.text}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        {label && <span className="text-[8px] text-accent">{label}</span>}
+                        <span className="text-[8px] text-ink-2/70">
+                          {new Date(item.updatedAt).toLocaleDateString()}
+                        </span>
+                        {item.source?.quote && (
+                          <span className="min-w-0 flex-1 truncate text-[8px] text-ink-2/60">
+                            {t('assistant.memoryChipSource', { quote: item.source.quote })}
+                          </span>
+                        )}
+                        <span className="ml-auto flex items-center gap-0.5 opacity-70">
+                          <button
+                            type="button"
+                            onClick={() => togglePin(item)}
+                            aria-label={t('settings.memoryPin')}
+                            className={cn('grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi', item.pinned && 'text-accent')}
+                          >
+                            <Star size={10} className={item.pinned ? 'fill-accent' : undefined} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => beginEdit(item)}
+                            aria-label={t('common.edit')}
+                            className="grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi"
+                          >
+                            <Pencil size={10} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeOne(item, write)}
+                            aria-label={t('common.delete')}
+                            className="grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi hover:text-red-500"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </span>
+                      </div>
+                    </>
                   )}
-                  <span className="ml-auto flex items-center gap-0.5 opacity-70">
-                    <button
-                      type="button"
-                      onClick={() => togglePin(item)}
-                      aria-label={t('settings.memoryPin')}
-                      className={cn('grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi', item.pinned && 'text-accent')}
-                    >
-                      <Star size={10} className={item.pinned ? 'fill-accent' : undefined} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => beginEdit(item)}
-                      aria-label={t('common.edit')}
-                      className="grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi"
-                    >
-                      <Pencil size={10} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeOne(item, write)}
-                      aria-label={t('common.delete')}
-                      className="grid size-5 place-items-center rounded-full text-ink-2 hover:bg-surface-hi hover:text-red-500"
-                    >
-                      <Trash2 size={10} />
-                    </button>
-                  </span>
                 </div>
-              </>
-            )}
+              );
+            })}
           </div>
-        );
-      })}
+          <div className="mt-1 flex justify-end">
+            <button
+              type="button"
+              onClick={undoAll}
+              className="inline-flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[8px] font-medium text-ink-2 transition-colors hover:bg-surface-hi"
+            >
+              <Undo2 size={9} />
+              {t('assistant.memoryChipUndo')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
