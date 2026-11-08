@@ -43,7 +43,6 @@ export function MemorySavedCard({
   const byId = new Map(memories.map((m) => [m.id, m]));
   const active = writes.filter((w) => w.action !== 'duplicate');
   if (active.length === 0) return null;
-  const summary = byId.get(active[0].id)?.text ?? '';
 
   const patchWrites = (next: MemoryWrite[]) => {
     if (chatId) patchMessageContext(chatId, messageIndex, { memoryWrites: next });
@@ -88,21 +87,17 @@ export function MemorySavedCard({
   };
 
   return (
-    <div className="mt-2.5 w-full rounded-xl border border-line/60 bg-card/80 sm:w-3/5" onClick={(e) => e.stopPropagation()}>
+    <div className="mt-3 w-full sm:w-3/5" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left"
+        className="flex w-full items-center gap-1.5 rounded-xl border border-line/60 bg-card/80 px-2.5 py-2 text-left"
       >
         <Brain size={10} className="shrink-0 text-accent" />
-        <span className="shrink-0 text-[9px] font-medium text-ink-2">
+        <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-ink-2">
           {t('assistant.memoryChip', { n: active.length })}
         </span>
-        {!open && summary && (
-          <span className="min-w-0 flex-1 truncate text-[9px] text-ink-2/65">{summary}</span>
-        )}
-        {open && <span className="flex-1" />}
         <ChevronDown
           size={11}
           className={cn('shrink-0 text-ink-2/60 transition-transform', open && 'rotate-180')}
@@ -110,7 +105,7 @@ export function MemorySavedCard({
       </button>
 
       {open && (
-        <div className="border-t border-line/50 py-1.5 pl-6 pr-2">
+        <div className="mt-1.5">
           <div className="space-y-1">
             {active.map((write) => {
               const item = byId.get(write.id);
