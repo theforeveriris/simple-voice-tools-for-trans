@@ -37,6 +37,8 @@ export interface AssistantToolRun {
   traces: AssistantToolTrace[];
   recordIds: string[];
   docs: { title: string; chars: number }[];
+  /** 跨对话检索命中的来源 */
+  chatRefs?: import('./llmChats').ChatRef[];
   /** 本轮提出的待确认写操作 */
   pendingAction?: import('./assistantActions').AssistantAction;
   /** 本轮提出的待用户选择问题 */
@@ -183,6 +185,8 @@ export async function runAssistantTools(opts: {
   const recordIdSet = new Set<string>();
   const docs: { title: string; chars: number }[] = [];
   const seenDocs = new Set<string>();
+  const chatRefs: import('./llmChats').ChatRef[] = [];
+  const seenChatRefs = new Set<string>();
   const toolByName = new Map(tools.map((tool) => [tool.name, tool]));
   const repairAttempts = new Map<string, number>();
   let pendingAction: AssistantToolRun['pendingAction'];
@@ -262,6 +266,12 @@ export async function runAssistantTools(opts: {
         seenDocs.add(doc.title);
         docs.push(doc);
       }
+      for (const ref of outcome.chatRefs ?? []) {
+        const key = `${ref.chatId}:${ref.messageIndex}`;
+        if (seenChatRefs.has(key)) continue;
+        seenChatRefs.add(key);
+        chatRefs.push(ref);
+      }
     }
     return !!pendingChoice || !!pendingChoiceSet;
   };
@@ -325,6 +335,7 @@ export async function runAssistantTools(opts: {
     traces,
     recordIds,
     docs,
+    ...(chatRefs.length > 0 ? { chatRefs } : {}),
     ...(pendingAction ? { pendingAction } : {}),
     ...(pendingChoice ? { pendingChoice } : {}),
     ...(pendingChoiceSet ? { pendingChoiceSet } : {}),

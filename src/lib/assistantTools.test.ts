@@ -120,6 +120,29 @@ describe('runAssistantDataTool', () => {
     expect(out!.text).toContain('metric 无效');
   });
 
+  it('searches related conversations and returns chat refs', async () => {
+    const withChats = {
+      ...ctx,
+      chats: [
+        {
+          id: 'c1',
+          title: '六周音高计划',
+          createdAt: Date.UTC(2026, 10, 1),
+          updatedAt: Date.UTC(2026, 10, 1),
+          messages: [
+            { role: 'user' as const, content: '上次说的音高练习是什么？' },
+            { role: 'assistant' as const, content: '从长音开始。' },
+          ],
+        },
+      ],
+      currentChatId: 'current',
+    };
+    const out = await runAssistantDataTool('search_chats', { query: '音高练习' }, withChats);
+    expect(out!.summary).toBe('参考对话：1 个');
+    expect(out!.text).toContain('六周音高计划');
+    expect(out!.chatRefs?.[0]).toMatchObject({ chatId: 'c1', messageIndex: 0 });
+  });
+
   it('handles unknown ids and empty queries', async () => {
     expect((await runAssistantDataTool('get_record', { id: 'missing' }, ctx))!.summary).toBe('读取记录：未找到');
     expect((await runAssistantDataTool('query_records', { from: '2030-01-01' }, ctx))!.summary).toBe('查询记录：0 条');

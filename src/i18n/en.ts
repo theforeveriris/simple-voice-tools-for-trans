@@ -1594,4 +1594,5 @@ export const en = {
   'assistant.chartCompare': 'Comparison',
   'assistant.askAboutThis': 'Discuss this with the assistant',
   'assistant.handoffPrompt': 'Help me interpret this recording',
+  'assistant.chatRefs': 'Related chats',
 } as const;

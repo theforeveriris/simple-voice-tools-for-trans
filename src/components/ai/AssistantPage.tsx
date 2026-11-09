@@ -59,7 +59,7 @@ import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
   addMessage, createChat, deleteChat, getChat, patchMessageContext, renameChat, saveAssistantDraft, setChatMemoryOff, setChatSummary, setMessages,
-  setPinnedRecords, useChats, type ChatAttachment, type ChatContextMeta, type ChatConversation, type ChatMessage,
+  setPinnedRecords, useChats, type ChatAttachment, type ChatContextMeta, type ChatConversation, type ChatMessage, type ChatRef,
 } from '@/lib/llmChats';
 import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chatSummary';
 import { renderMarkdown } from '@/lib/markdown';
@@ -213,6 +213,7 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     buildAssistantProfile(settings),
     '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
     '趋势、均值、中位数、波动、靶标命中率、本周 vs 上周、与基线比较，必须调用 get_trends；不要心算这些数字。',
+    '用户问「上次说过 / 之前聊过 / 那个练习」时，调用 search_chats 检索历史对话；不要凭空回忆。',
     '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
     '如果要一次问 2–4 个互不依赖的问题，改用 ask_choice_set：一张卡片分页展示，用户答完一次提交；如果下一题取决于上一题答案，继续用 ask_choice 逐轮询问。',
     '如果用户要求「演示/测试选择器」「连续问多轮问题」「多轮提问」，也必须调用 ask_choice 或 ask_choice_set 真实发起选择；不要生成 HTML、<details>、<script>、按钮代码或 Markdown 复选框来模拟。',
@@ -434,6 +435,37 @@ const MessageBody = memo(function MessageBody({ text }: { text: string }) {
   );
 });
 
+/** 跨对话检索来源卡：点一下跳到原对话的消息位置 */
+function ChatRefsCard({ refs, onOpen }: { refs: ChatRef[]; onOpen: (ref: ChatRef) => void }) {
+  useI18n();
+  return (
+    <div className="mt-3 w-full rounded-xl border border-line/60 bg-card/80 px-2.5 py-2 sm:w-3/5">
+      <p className="flex items-center gap-1 text-[9px] font-medium text-ink-2">
+        <ListTree size={10} className="text-accent" />
+        {t('assistant.chatRefs')}
+      </p>
+      <div className="mt-1 space-y-1">
+        {refs.map((ref) => {
+          const date = new Date(ref.createdAt);
+          return (
+            <button
+              key={`${ref.chatId}-${ref.messageIndex}`}
+              type="button"
+              onClick={() => onOpen(ref)}
+              className="block w-full rounded-lg border border-line/45 px-2 py-1.5 text-left transition-colors hover:bg-surface-hi/50"
+            >
+              <span className="block truncate text-[10px] font-medium text-ink">{ref.title}</span>
+              <span className="mt-0.5 block truncate text-[8.5px] text-ink-2">
+                {date.getMonth() + 1}/{date.getDate()} · {ref.snippet}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** 消息气泡（模块级 + memo：流式时只有正在生成的那一条重渲染） */
 const Bubble = memo(function Bubble({
   m,
@@ -451,9 +483,13 @@ const Bubble = memo(function Bubble({
   onMemory,
   onResolveChoice,
   onResolveChoiceSet,
+  onOpenChat,
+  anchorIndex,
 }: {
   m: ChatMessage;
   idx: number;
+  /** 消息在对话里的真实下标（跨对话跳转锚点） */
+  anchorIndex?: number;
   chatId?: string;
   streaming?: boolean;
   liveThink?: string;
@@ -469,6 +505,7 @@ const Bubble = memo(function Bubble({
   onMemory: (idx: number) => void;
   onResolveChoice: (idx: number, choice: PendingChoice, result: ChoiceResult) => void;
   onResolveChoiceSet: (idx: number, set: PendingChoiceSet, result: ChoiceSetResult) => void;
+  onOpenChat: (chatId: string, messageIndex: number) => void;
 }) {
   useI18n();
   const mine = m.role === 'user';
@@ -481,6 +518,7 @@ const Bubble = memo(function Bubble({
     || (ctx.memories ?? 0) > 0
     || !!ctx.memoryQuery
     || (ctx.toolCalls?.length ?? 0) > 0
+    || (ctx.chatRefs?.length ?? 0) > 0
   );
   const hasMeta = !streaming && (!!m.think || hasContext);
   const onBodyClick = () => onAction(streaming ? null : active ? null : idx);
@@ -523,6 +561,12 @@ const Bubble = memo(function Bubble({
           writes={m.context?.memoryWrites ?? []}
         />
       )}
+      {!mine && !streaming && (m.context?.chatRefs?.length ?? 0) > 0 && (
+        <ChatRefsCard
+          refs={m.context!.chatRefs!}
+          onOpen={(ref) => onOpenChat(ref.chatId, ref.messageIndex)}
+        />
+      )}
       {!mine && !streaming && (
         <div className="mt-1.5 flex flex-wrap items-center gap-0.5">
           {m.context?.appliedAction && !m.context?.planId && (
@@ -562,7 +606,10 @@ const Bubble = memo(function Bubble({
     </>
   );
   return (
-    <div className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
+    <div
+      className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}
+      data-message-index={anchorIndex}
+    >
       {!mine && (
         <span className="mb-2 flex items-center gap-1.5">
           <span className="grid size-6 place-items-center rounded-full bg-accent/15 text-accent">
@@ -694,6 +741,8 @@ export function AssistantPage() {
   const voiceActiveRef = useRef(false);
   const [commandIndex, setCommandIndex] = useState(0);
   const [commandDismissed, setCommandDismissed] = useState(false);
+  /** 跨对话跳转：目标消息下标，渲染后滚动并清除 */
+  const [jumpIndex, setJumpIndex] = useState<number | null>(null);
   const historyRecords = useHistoryStore((s) => s.records);
   const assistantHandoff = useStore((s) => s.assistantHandoff);
   const setAssistantHandoff = useStore((s) => s.setAssistantHandoff);
@@ -726,6 +775,15 @@ export function AssistantPage() {
   }, [conv]);
   const busy = streamText !== null || toolNote !== null;
   const pinnedIds = conv?.pinnedRecordIds ?? [];
+
+  // 跨对话来源跳转：等目标对话渲染后再滚动
+  useEffect(() => {
+    if (jumpIndex == null) return;
+    const el = document.querySelector<HTMLElement>(`[data-message-index="${jumpIndex}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setJumpIndex(null);
+  }, [jumpIndex, activeId, messages.length]);
 
   /** 侧边栏搜索：匹配标题或任意一条用户消息 */
   const visibleChats = useMemo(() => {
@@ -907,6 +965,7 @@ export function AssistantPage() {
       traces: { name: string; summary: string; ok: boolean; ms: number }[];
       recordIds: string[];
       docs: { title: string; chars: number }[];
+      chatRefs?: ChatRef[];
       pendingAction?: AssistantAction;
       pendingChoice?: PendingChoice;
       pendingChoiceSet?: PendingChoiceSet;
@@ -927,7 +986,7 @@ export function AssistantPage() {
             ASSISTANT_CHOICE_SET_TOOL,
           ],
           execute: async (name, args) => (
-            await runAssistantDataTool(name, args, { records, settings })
+            await runAssistantDataTool(name, args, { records, settings, chats: chats ?? [], currentChatId: convId })
             ?? await runAssistantActionTool(name, args, { records, settings })
             ?? await runPracticePlanTool(name, args, { records, settings })
             ?? runAssistantChoiceTool(name, args)
@@ -1073,6 +1132,7 @@ export function AssistantPage() {
       memories: memoryHit.count,
       memoryQuery: memoryHit.query,
       ...(toolRun.traces.length > 0 ? { toolCalls: toolRun.traces } : {}),
+      ...(toolRun.chatRefs && toolRun.chatRefs.length > 0 ? { chatRefs: toolRun.chatRefs } : {}),
       ...(toolRun.pendingAction ? { pendingAction: toolRun.pendingAction } : {}),
     };
 
@@ -1184,6 +1244,15 @@ export function AssistantPage() {
       if (abortRef.current === controller) abortRef.current = null;
     }
   };
+
+  /** 跨对话来源：切换对话并滚动到原消息 */
+  const openChatAt = useCallback((chatId: string, messageIndex: number) => {
+    setActionIdx(null);
+    setThinkIdx(null);
+    setSidebarOpen(false);
+    setActiveId(chatId);
+    setJumpIndex(messageIndex);
+  }, []);
 
   /** 选择器解决：把结果写回原消息，追加一条用户选择消息并自动续聊 */
   const resolveChoice = (messageIndex: number, choice: PendingChoice, result: ChoiceResult) => {
@@ -2168,6 +2237,8 @@ export function AssistantPage() {
                 onMemory={onMemory}
                 onResolveChoice={resolveChoice}
                 onResolveChoiceSet={resolveChoiceSet}
+                onOpenChat={openChatAt}
+                anchorIndex={i}
               />
             ))}
             {toolNote && (
@@ -2192,6 +2263,7 @@ export function AssistantPage() {
                 onMemory={() => undefined}
                 onResolveChoice={() => undefined}
                 onResolveChoiceSet={() => undefined}
+                onOpenChat={() => undefined}
               />
             )}
             {error && (

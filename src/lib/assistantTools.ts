@@ -8,6 +8,8 @@
 import type { AnalysisRecord, AppSettings, TestMode } from '@/types';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import type { LlmToolSpec } from '@/lib/llm';
+import type { ChatConversation, ChatRef } from './llmChats';
+import { searchChats } from './chatSearch';
 import {
   computeTrend,
   formatTrendText,
@@ -27,6 +29,9 @@ export type AssistantToolContext = {
   settings: Pick<AppSettings, 'targetEnabled' | 'targetF0Min' | 'targetF0Max'> & {
     baselineRecordId?: string | null;
   };
+  /** 本地对话列表（search_chats 用） */
+  chats?: ChatConversation[];
+  currentChatId?: string;
 };
 
 export type AssistantToolOutcome = {
@@ -38,6 +43,8 @@ export type AssistantToolOutcome = {
   recordIds?: string[];
   /** 命中的内置文档 */
   docs?: { title: string; chars: number }[];
+  /** 跨对话检索命中的参考对话 */
+  chatRefs?: ChatRef[];
   /** 需要用户确认的写操作（一次最多一个） */
   pendingAction?: import('./assistantActions').AssistantAction;
   /** 需要用户选择的问题（一次最多一个） */
@@ -143,6 +150,19 @@ export const ASSISTANT_DATA_TOOLS: LlmToolSpec[] = [
         },
       },
       required: ['metric'],
+    },
+  },
+  {
+    name: 'search_chats',
+    description:
+      '在用户的历史对话里检索「上次说过 / 之前聊过 / 那个练习」这类情节记忆。返回对话标题、日期、消息片段和 chatId；只查本地文本，不查录音数据。',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '2–8 个关键词，或用户原话中的关键短语' },
+        limit: { type: 'integer', minimum: 1, maximum: 8, description: '最多返回几个对话，默认 5' },
+      },
+      required: ['query'],
     },
   },
 ];
@@ -311,6 +331,50 @@ async function searchDocs(args: Record<string, unknown>): Promise<AssistantToolO
   };
 }
 
+/** 跨对话情节检索：只返回本地片段，不把整段历史塞进上下文 */
+function searchChatTool(args: Record<string, unknown>, ctx: AssistantToolContext): AssistantToolOutcome {
+  const query = typeof args.query === 'string' ? args.query.trim() : '';
+  if (!query) return { text: '查询词为空。', summary: '参考对话：0 个' };
+  const limit = typeof args.limit === 'number' && Number.isFinite(args.limit)
+    ? Math.max(1, Math.min(8, Math.round(args.limit)))
+    : 5;
+  const hits = searchChats(ctx.chats ?? [], query, {
+    excludeId: ctx.currentChatId,
+    limit,
+  });
+  if (hits.length === 0) {
+    return {
+      text: `没有找到与「${query}」相关的历史对话。`,
+      summary: '参考对话：0 个',
+    };
+  }
+  const chatRefs: ChatRef[] = hits.map((hit) => {
+    const snippet = hit.snippets[0];
+    return {
+      chatId: hit.chatId,
+      title: hit.title,
+      createdAt: hit.createdAt,
+      messageIndex: snippet?.messageIndex ?? 0,
+      snippet: snippet?.text ?? hit.title,
+    };
+  });
+  const lines = [
+    `找到 ${hits.length} 个相关历史对话（只列片段）：`,
+    ...hits.map((hit, i) => {
+      const date = new Date(hit.createdAt).toISOString().slice(0, 10);
+      const snippets = hit.snippets
+        .map((snippet) => `   ${snippet.role === 'user' ? '用户' : '助手'}：${snippet.text}`)
+        .join('\n');
+      return `${i + 1}. ${hit.title}（${date}）\n${snippets}`;
+    }),
+  ];
+  return {
+    text: lines.join('\n'),
+    summary: `参考对话：${hits.length} 个`,
+    chatRefs,
+  };
+}
+
 /** 趋势工具：所有数字由 computeTrend 计算，模型只负责解释 */
 function getTrends(args: Record<string, unknown>, ctx: AssistantToolContext): AssistantToolOutcome {
   const metric = isTrendMetric(args.metric) ? args.metric : null;
@@ -359,6 +423,8 @@ export async function runAssistantDataTool(
       return searchDocs(args);
     case 'get_trends':
       return getTrends(args, ctx);
+    case 'search_chats':
+      return searchChatTool(args, ctx);
     default:
       return null;
   }

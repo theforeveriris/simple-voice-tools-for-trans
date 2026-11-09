@@ -1595,4 +1595,5 @@ export const ja = {
   'assistant.chartCompare': '比較',
   'assistant.askAboutThis': 'この記録をアシスタントと話す',
   'assistant.handoffPrompt': 'この記録を解釈して',
+  'assistant.chatRefs': '関連する会話',
 } as const;

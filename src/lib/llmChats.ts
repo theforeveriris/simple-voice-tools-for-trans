@@ -22,6 +22,15 @@ export interface ChatAttachment {
   name?: string;
 }
 
+/** 跨对话检索命中的参考对话 */
+export interface ChatRef {
+  chatId: string;
+  title: string;
+  createdAt: number;
+  messageIndex: number;
+  snippet: string;
+}
+
 /** 一次生成实际注入的上下文（供气泡下方的「本轮上下文」面板展示） */
 export interface ChatContextMeta {
   /** 明细与固定记录里真正写进提示词的记录 id */
@@ -56,6 +65,8 @@ export interface ChatContextMeta {
   choiceSetResult?: ChoiceSetResult;
   /** 关键数字校验结果：repaired = 已按工具结果修正，flagged = 仍有未验证数字 */
   numericCheck?: 'repaired' | 'flagged';
+  /** 跨对话检索命中的参考对话 */
+  chatRefs?: ChatRef[];
 }
 
 export interface ChatMessage {

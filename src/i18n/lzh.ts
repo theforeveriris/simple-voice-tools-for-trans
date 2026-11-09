@@ -1595,5 +1595,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.chartCompare': '較',
   'assistant.askAboutThis': '與助手論此',
   'assistant.handoffPrompt': '為我解此錄',
+  'assistant.chatRefs': '相關談',
 };
 

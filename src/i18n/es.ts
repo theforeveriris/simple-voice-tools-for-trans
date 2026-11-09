@@ -1603,4 +1603,5 @@ export const es = {
   'assistant.chartCompare': 'Comparación',
   'assistant.askAboutThis': 'Hablar de esta grabación',
   'assistant.handoffPrompt': 'Ayúdame a interpretar esta grabación',
+  'assistant.chatRefs': 'Conversaciones relacionadas',
 } as const;

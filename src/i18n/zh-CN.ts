@@ -1603,6 +1603,7 @@ export const zhCN = {
   'assistant.chartCompare': '对比',
   'assistant.askAboutThis': '和助手聊这次',
   'assistant.handoffPrompt': '帮我解读这次记录',
+  'assistant.chatRefs': '参考对话',
 } as const;
 
 export type DictKey = keyof typeof zhCN;
