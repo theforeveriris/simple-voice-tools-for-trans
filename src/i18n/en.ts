@@ -1592,4 +1592,6 @@ export const en = {
   'assistant.ctx.numberTag': 'Numbers',
   'assistant.chartTrend': 'Trend',
   'assistant.chartCompare': 'Comparison',
+  'assistant.askAboutThis': 'Discuss this with the assistant',
+  'assistant.handoffPrompt': 'Help me interpret this recording',
 } as const;

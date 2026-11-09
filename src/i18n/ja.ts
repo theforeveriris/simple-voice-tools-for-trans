@@ -1593,4 +1593,6 @@ export const ja = {
   'assistant.ctx.numberTag': '数値',
   'assistant.chartTrend': '推移',
   'assistant.chartCompare': '比較',
+  'assistant.askAboutThis': 'この記録をアシスタントと話す',
+  'assistant.handoffPrompt': 'この記録を解釈して',
 } as const;

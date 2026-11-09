@@ -1601,6 +1601,8 @@ export const zhCN = {
   'assistant.ctx.numberTag': '数字',
   'assistant.chartTrend': '趋势',
   'assistant.chartCompare': '对比',
+  'assistant.askAboutThis': '和助手聊这次',
+  'assistant.handoffPrompt': '帮我解读这次记录',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

@@ -15,6 +15,12 @@ import { useHistoryStore } from './useHistoryStore';
 import { autoLogPracticeForRecord } from '@/lib/practicePlan';
 import { persistLlmApiKey } from './startup';
 
+interface AssistantHandoff {
+  recordId: string;
+  prompt?: string;
+  at: number;
+}
+
 interface AppState {
   /** 当前页面 */
   currentTab: ViewType;
@@ -27,6 +33,9 @@ interface AppState {
   /** 当前展示的分析记录（录音完成后或从历史打开） */
   currentAnalysis: AnalysisRecord | null;
   setCurrentAnalysis: (record: AnalysisRecord | null) => void;
+  /** 分析页 → 助手的一次性交接：记录 id + 预填提示 */
+  assistantHandoff: AssistantHandoff | null;
+  setAssistantHandoff: (handoff: AssistantHandoff | null) => void;
   /** 录完自动回放：分析页挂载音频后消费并清除 */
   pendingAutoReplay: boolean;
   clearPendingAutoReplay: () => void;
@@ -61,6 +70,8 @@ export const useStore = create<AppState>()(
 
       currentAnalysis: null,
       setCurrentAnalysis: (record) => set({ currentAnalysis: record }),
+      assistantHandoff: null,
+      setAssistantHandoff: (handoff) => set({ assistantHandoff: handoff }),
       pendingAutoReplay: false,
       clearPendingAutoReplay: () => set({ pendingAutoReplay: false }),
 

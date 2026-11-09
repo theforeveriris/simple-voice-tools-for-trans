@@ -1601,4 +1601,6 @@ export const fr = {
   'assistant.ctx.numberTag': 'Nombres',
   'assistant.chartTrend': 'Tendance',
   'assistant.chartCompare': 'Comparaison',
+  'assistant.askAboutThis': 'En parler avec l’assistant',
+  'assistant.handoffPrompt': 'Aide-moi à interpréter cet enregistrement',
 } as const;

@@ -1592,4 +1592,6 @@ export const zhTW = {
   'assistant.ctx.numberTag': '數字',
   'assistant.chartTrend': '趨勢',
   'assistant.chartCompare': '對比',
+  'assistant.askAboutThis': '和助手聊這次',
+  'assistant.handoffPrompt': '幫我解讀這次記錄',
 } as const;

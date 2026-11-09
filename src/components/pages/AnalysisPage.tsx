@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileSpreadsheet, Pencil, RefreshCw, Share2 } from 'lucide-react';
+import { FileSpreadsheet, MessageCircle, Pencil, RefreshCw, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -77,6 +77,8 @@ type RangedKind = 'pitch' | 'formant' | 'energy' | 'spec' | 'vrp';
 export function AnalysisPage() {
   useI18n();
   const record = useStore((s) => s.currentAnalysis);
+  const setTab = useStore((s) => s.setTab);
+  const setAssistantHandoff = useStore((s) => s.setAssistantHandoff);
   const syncChartRange = useStore((s) => s.settings.syncChartRange);
   const baselineId = useStore((s) => s.settings.baselineRecordId);
   const settings = useStore((s) => s.settings);
@@ -384,6 +386,21 @@ export function AnalysisPage() {
       )}
 
       {/* 训练建议：放在全部图表之后 */}
+      <button
+        type="button"
+        onClick={() => {
+          setAssistantHandoff({
+            recordId: record.id,
+            prompt: t('assistant.handoffPrompt'),
+            at: Date.now(),
+          });
+          setTab('assistant');
+        }}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line/60 bg-card px-4 py-3 text-[12px] font-medium text-ink transition-colors hover:border-accent"
+      >
+        <MessageCircle size={14} className="text-accent" />
+        {t('assistant.askAboutThis')}
+      </button>
       <AdviceCard records={[record]} />
 
       </>)}

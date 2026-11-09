@@ -695,10 +695,28 @@ export function AssistantPage() {
   const [commandIndex, setCommandIndex] = useState(0);
   const [commandDismissed, setCommandDismissed] = useState(false);
   const historyRecords = useHistoryStore((s) => s.records);
+  const assistantHandoff = useStore((s) => s.assistantHandoff);
+  const setAssistantHandoff = useStore((s) => s.setAssistantHandoff);
   const pickerRecords = useMemo(
     () => [...historyRecords].sort((a, b) => b.createdAt - a.createdAt).slice(0, 30),
     [historyRecords],
   );
+
+  // 分析页「和助手聊这次」：一次性消费交接，附上记录并预填问题
+  useEffect(() => {
+    if (!assistantHandoff) return;
+    const record = historyRecords.find((r) => r.id === assistantHandoff.recordId);
+    setAssistantHandoff(null);
+    if (!record) return;
+    setPendingAttachments((prev) => (
+      prev.some((a) => a.recordId === record.id)
+        ? prev
+        : [...prev, { id: `att_${record.id}`, kind: 'record', recordId: record.id, chart: 'pitch' }]
+    ));
+    setInput((prev) => (
+      prev.trim() ? prev : (assistantHandoff.prompt ?? t('assistant.handoffPrompt'))
+    ));
+  }, [assistantHandoff, historyRecords, setAssistantHandoff]);
 
   const conv = activeId ? chats?.find((c) => c.id === activeId) ?? null : null;
   /** 末尾的流式草稿由「正在生成」气泡显示，列表里隐藏以免重复 */
@@ -877,6 +895,11 @@ export function AssistantPage() {
     // 工具可用时不再逐条注入最近记录，只保留画像、聚合与基线，省 token。
     const lastUserMsg = [...history].reverse().find((m) => m.role === 'user');
     const lastUserText = lastUserMsg?.content ?? '';
+    const page = useStore.getState();
+    const pageRecord = page.lastTab === 'analysis' ? page.currentAnalysis : null;
+    const pageContext = pageRecord
+      ? `【当前页面】用户刚从分析页进入；当前记录 id=${pageRecord.id}（${new Date(pageRecord.createdAt).toLocaleDateString()} · ${t(`mode.${pageRecord.mode ?? 'reading'}`)}）。用户说「这个 / 刚才 / 这条」时指这条记录。`
+      : '';
     const records = await loadAllRecords();
     let toolRun: {
       supported: boolean;
@@ -959,7 +982,7 @@ export function AssistantPage() {
     const attachmentText = attachmentRecords
       .map((r) => `【用户引用的记录】\n${formatRecordLine(r)}`)
       .join('\n\n');
-    const baseExtra = [extraContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
+    const baseExtra = [extraContext, pageContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
     const storedChat = getChat(convId);
     // 只有完整历史才能安全使用/更新摘要；redo / retry 传的是切片，跳过摘要
     const canSummarize = !!storedChat && storedChat.messages === history;
@@ -1042,6 +1065,7 @@ export function AssistantPage() {
         ...hist.meta.detailIds,
         ...toolRun.recordIds,
         ...attachmentRecords.map((r) => r.id),
+        ...(pageRecord ? [pageRecord.id] : []),
       ])],
       pinnedIds: hist.meta.pinnedIds,
       totalRecords: hist.meta.totalRecords,
