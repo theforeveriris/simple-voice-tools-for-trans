@@ -5,15 +5,22 @@
  * 最终回答仍走原有流式对话，工具结果作为系统上下文注入，保证首字延迟和
  * 现有 UI 不变。服务商不支持 tools 时静默返回 supported=false，调用方回退
  * 到预注入上下文。
+ *
+ * 工程约束：
+ * - 同一轮全是只读工具时并行执行（有副作用 / 需要用户交互的调用仍串行）；
+ * - 每个工具都有超时，用户中止时通过 AbortSignal 尽快退出；
+ * - 参数按 tool schema 做轻量校验，非法时把错误回填给模型修正一次。
  */
 import {
   llmChatToolMessages,
   isAbortError,
   type LlmConfig,
+  type LlmToolCall,
   type LlmToolSpec,
   type LlmToolTurn,
 } from './llm';
 import type { AssistantToolOutcome } from './assistantTools';
+import { validateToolArgs } from './assistantToolValidation';
 
 export interface AssistantToolTrace {
   name: string;
@@ -47,15 +54,109 @@ const EMPTY: AssistantToolRun = {
 };
 
 const MAX_CONTEXT_CHARS = 8000;
+const MAX_ROUNDS = 3;
+const MAX_CALLS = 6;
+const READ_ONLY_CONCURRENCY = 4;
+const DEFAULT_TOOL_TIMEOUT_MS = 8000;
+
+/**
+ * 只读、无副作用的工具：同一轮可以并行。
+ * 副作用工具（propose_action / create_plan / log_practice / ask_choice…）不能并行，
+ * 否则可能出现“用户还没确认就执行了下一个动作”。
+ */
+const READ_ONLY_TOOLS = new Set([
+  'query_records',
+  'get_record',
+  'compare_records',
+  'search_docs',
+  'search_memory',
+  'get_plan',
+  'get_trends',
+  'search_chats',
+]);
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/** 失败 trace 的短摘要：参数 / 未知 / 超时保留原因，其余统一「执行失败」 */
+function failureSummary(failure: string): string {
+  if (
+    failure.startsWith('工具参数')
+    || failure.startsWith('未知工具')
+    || failure.startsWith('工具超时')
+  ) {
+    return failure.length > 60 ? `${failure.slice(0, 57)}…` : failure;
+  }
+  return '执行失败';
+}
+
+function abortError(): Error {
+  const err = new Error('Aborted');
+  err.name = 'AbortError';
+  return err;
+}
+
+/** 给工具执行加超时，并监听上层中止信号 */
+function withToolTimeout<T>(
+  task: Promise<T>,
+  ms: number,
+  signal: AbortSignal | undefined,
+  label: string,
+): Promise<T> {
+  if (signal?.aborted) return Promise.reject(abortError());
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+      fn();
+    };
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error(`工具超时：${label}（>${ms}ms）`)));
+    }, ms);
+    const onAbort = () => finish(() => reject(abortError()));
+    signal?.addEventListener('abort', onAbort, { once: true });
+    task.then(
+      (value) => finish(() => resolve(value)),
+      (err) => finish(() => reject(err)),
+    );
+  });
+}
+
+/** 限制并发地执行一组任务，结果保持输入顺序 */
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const index = next++;
+      if (index >= items.length) return;
+      out[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+interface CallResult {
+  call: LlmToolCall;
+  outcome: AssistantToolOutcome | null;
+  failure: string;
+  ms: number;
 }
 
 /**
  * @param opts.history 最近几轮对话（不含 system），用于理解「那上周呢」这类追问
  * @param opts.userText 当前用户问题
  * @param opts.execute 本地工具执行器；返回 null 表示未知工具
+ * @param opts.toolTimeoutMs 单个工具超时，默认 8 秒
  */
 export async function runAssistantTools(opts: {
   cfg: LlmConfig;
@@ -63,51 +164,110 @@ export async function runAssistantTools(opts: {
   history: { role: 'user' | 'assistant'; content: string }[];
   userText: string;
   tools: LlmToolSpec[];
-  execute: (name: string, args: Record<string, unknown>) => Promise<AssistantToolOutcome | null>;
+  execute: (
+    name: string,
+    args: Record<string, unknown>,
+    ctx: { signal?: AbortSignal },
+  ) => Promise<AssistantToolOutcome | null>;
   signal?: AbortSignal;
-  maxRounds?: number;
-  maxCalls?: number;
+  toolTimeoutMs?: number;
 }): Promise<AssistantToolRun> {
-  const {
-    cfg,
-    system,
-    history,
-    userText,
-    tools,
-    execute,
-    signal,
-    maxRounds = 3,
-    maxCalls = 6,
-  } = opts;
-  if (tools.length === 0 || !userText.trim()) return EMPTY;
-
-  const transcript = history
-    .slice(-6)
-    .map((m) => `${m.role === 'user' ? '用户' : '助手'}：${m.content.slice(0, 600)}`)
-    .join('\n');
+  const { cfg, system, history, userText, tools, execute, signal } = opts;
+  const timeoutMs = opts.toolTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   const messages: LlmToolTurn[] = [
-    {
-      role: 'user',
-      content: [
-        transcript ? `【最近对话】\n${transcript}` : '',
-        `【当前问题】\n${userText.slice(0, 1200)}`,
-        '请判断回答这个问题是否需要查询应用内的记录或文档。需要就调用工具；不需要就不要再调用。不要直接回答用户。',
-      ].filter(Boolean).join('\n\n'),
-    },
+    ...history,
+    { role: 'user', content: userText },
   ];
-
   const traces: AssistantToolTrace[] = [];
   const results: { summary: string; text: string }[] = [];
   const recordIdSet = new Set<string>();
   const docs: { title: string; chars: number }[] = [];
   const seenDocs = new Set<string>();
+  const toolByName = new Map(tools.map((tool) => [tool.name, tool]));
+  const repairAttempts = new Map<string, number>();
   let pendingAction: AssistantToolRun['pendingAction'];
   let pendingChoice: AssistantToolRun['pendingChoice'];
   let pendingChoiceSet: AssistantToolRun['pendingChoiceSet'];
   let callsUsed = 0;
   let halt = false;
+
+  /** 执行一次调用：校验 → 超时包装 → 捕获失败 */
+  const executeOne = async (call: LlmToolCall): Promise<CallResult> => {
+    const started = Date.now();
+    const spec = toolByName.get(call.name);
+    if (!spec) {
+      return {
+        call,
+        outcome: null,
+        failure: `未知工具：${call.name}`,
+        ms: Date.now() - started,
+      };
+    }
+    const argError = validateToolArgs(spec, call.arguments);
+    if (argError) {
+      const attempts = (repairAttempts.get(call.name) ?? 0) + 1;
+      repairAttempts.set(call.name, attempts);
+      return {
+        call,
+        outcome: null,
+        failure: attempts <= 1
+          ? `工具参数无效：${argError}。请修正参数后重试。`
+          : `工具参数仍未修正：${argError}。已停止重试。`,
+        ms: Date.now() - started,
+      };
+    }
+    try {
+      const outcome = await withToolTimeout(
+        execute(call.name, call.arguments, { signal }),
+        timeoutMs,
+        signal,
+        call.name,
+      );
+      return { call, outcome, failure: '', ms: Date.now() - started };
+    } catch (err) {
+      if (signal?.aborted || isAbortError(err)) throw abortError();
+      return {
+        call,
+        outcome: null,
+        failure: errorText(err),
+        ms: Date.now() - started,
+      };
+    }
+  };
+
+  /** 把一次执行结果回填到消息、trace、上下文；返回是否应停止后续轮次 */
+  const processResult = (result: CallResult): boolean => {
+    const { call, outcome, failure } = result;
+    const text = outcome?.text ?? `工具执行失败：${failure || '无结果'}`;
+    messages.push({
+      role: 'tool',
+      toolCallId: call.id,
+      toolName: call.name,
+      content: text.slice(0, 6000),
+    });
+    traces.push({
+      name: call.name,
+      summary: outcome?.summary ?? failureSummary(failure),
+      ok: outcome != null,
+      ms: result.ms,
+    });
+    if (outcome) {
+      results.push({ summary: outcome.summary, text: outcome.text });
+      if (outcome.pendingAction && !pendingAction) pendingAction = outcome.pendingAction;
+      if (outcome.pendingChoice && !pendingChoice) pendingChoice = outcome.pendingChoice;
+      if (outcome.pendingChoiceSet && !pendingChoiceSet) pendingChoiceSet = outcome.pendingChoiceSet;
+      for (const id of outcome.recordIds ?? []) recordIdSet.add(id);
+      for (const doc of outcome.docs ?? []) {
+        if (seenDocs.has(doc.title)) continue;
+        seenDocs.add(doc.title);
+        docs.push(doc);
+      }
+    }
+    return !!pendingChoice || !!pendingChoiceSet;
+  };
+
   try {
-    for (let round = 0; round < maxRounds && callsUsed < maxCalls; round++) {
+    for (let round = 0; round < MAX_ROUNDS && callsUsed < MAX_CALLS; round++) {
       const res = await llmChatToolMessages(cfg, system, messages, tools, {
         signal,
         feature: 'assistant',
@@ -116,50 +276,30 @@ export async function runAssistantTools(opts: {
       });
       if (res.toolCalls.length === 0) break;
       messages.push({ role: 'assistant', content: res.content, toolCalls: res.toolCalls });
-      for (const call of res.toolCalls) {
-        if (callsUsed >= maxCalls) break;
-        callsUsed++;
-        const started = Date.now();
-        let outcome: AssistantToolOutcome | null = null;
-        let failure = '';
-        try {
-          outcome = await execute(call.name, call.arguments);
-          if (!outcome) failure = `未知工具：${call.name}`;
-        } catch (err) {
-          failure = errorText(err);
-        }
-        const text = outcome?.text ?? `工具执行失败：${failure || '无结果'}`;
-        messages.push({
-          role: 'tool',
-          toolCallId: call.id,
-          toolName: call.name,
-          content: text.slice(0, 6000),
-        });
-        traces.push({
-          name: call.name,
-          summary: outcome?.summary ?? '执行失败',
-          ok: outcome != null,
-          ms: Date.now() - started,
-        });
-        if (outcome) {
-          results.push({ summary: outcome.summary, text: outcome.text });
-          if (outcome.pendingAction && !pendingAction) pendingAction = outcome.pendingAction;
-          if (outcome.pendingChoice && !pendingChoice) {
-            pendingChoice = outcome.pendingChoice;
+
+      const accepted = res.toolCalls.slice(0, Math.max(0, MAX_CALLS - callsUsed));
+      callsUsed += accepted.length;
+      const allReadOnly = accepted.length > 1
+        && accepted.every((call) => READ_ONLY_TOOLS.has(call.name));
+
+      if (allReadOnly) {
+        // 只读工具互不依赖：并行执行，再按原始顺序回填，保证消息顺序稳定
+        const batch = await runWithConcurrency(accepted, READ_ONLY_CONCURRENCY, executeOne);
+        for (const result of batch) {
+          if (processResult(result)) {
             halt = true;
-          }
-          if (outcome.pendingChoiceSet && !pendingChoiceSet) {
-            pendingChoiceSet = outcome.pendingChoiceSet;
-            halt = true;
-          }
-          for (const id of outcome.recordIds ?? []) recordIdSet.add(id);
-          for (const doc of outcome.docs ?? []) {
-            if (seenDocs.has(doc.title)) continue;
-            seenDocs.add(doc.title);
-            docs.push(doc);
+            break;
           }
         }
-        if (halt) break;
+      } else {
+        // 副作用工具 / 需要用户交互：严格串行，并在暂停时停止后续调用
+        for (const call of accepted) {
+          const result = await executeOne(call);
+          if (processResult(result)) {
+            halt = true;
+            break;
+          }
+        }
       }
       if (halt) break;
     }
