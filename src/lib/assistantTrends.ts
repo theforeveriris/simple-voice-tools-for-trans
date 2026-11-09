@@ -5,6 +5,7 @@
  * 均值、中位数、波动、斜率和命中率，模型只负责解释，避免心算数字偏差。
  */
 import type { AnalysisRecord, TestMode } from '@/types';
+import { deltaIsSignificant, type MdcMetric } from './measurement';
 
 export const TREND_METRICS = [
   'f0',
@@ -45,6 +46,7 @@ export interface TrendResult {
   std: number | null;
   slopePerWeek: number | null;
   delta: number | null;
+  deltaSignificant: boolean | null;
   percent: number | null;
   targetHitRate: number | null;
   previousDelta: number | null;
@@ -90,6 +92,21 @@ const METRIC_DIGITS: Record<TrendMetric, number> = {
 
 const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
+
+const TREND_MDC: Partial<Record<TrendMetric, MdcMetric>> = {
+  f0: 'medianF0',
+  f1: 'avgF1',
+  f2: 'avgF2',
+  jitter: 'jitter',
+  shimmer: 'shimmer',
+  hnr: 'hnr',
+  cpps: 'cpps',
+  inTarget: 'inTarget',
+};
+
+export function trendMdcMetric(metric: TrendMetric): MdcMetric | null {
+  return TREND_MDC[metric] ?? null;
+}
 
 export function isTrendMetric(value: unknown): value is TrendMetric {
   return typeof value === 'string' && (TREND_METRICS as readonly string[]).includes(value);
@@ -235,6 +252,8 @@ export function computeTrend(
 
   const slope = slopePerWeek(valued.map((entry) => entry.record), values);
   const delta = values.length >= 2 ? values[values.length - 1] - values[0] : null;
+  const mdc = trendMdcMetric(metric);
+  const deltaSignificant = delta != null && mdc ? deltaIsSignificant(mdc, delta) : null;
   const first = values[0];
   const percent = delta != null && first != null && Math.abs(first) > 1e-9
     ? (delta / Math.abs(first)) * 100
@@ -263,6 +282,7 @@ export function computeTrend(
     std: summary?.std ?? null,
     slopePerWeek: slope,
     delta,
+    deltaSignificant,
     percent,
     targetHitRate,
     previousDelta: summary && previousMean != null ? summary.mean - previousMean : null,
@@ -283,6 +303,12 @@ export function formatTrendText(result: TrendResult, options: TrendOptions = {})
   const range = result.dates.length > 0
     ? `（${result.dates[0]} → ${result.dates[result.dates.length - 1]}）`
     : '';
+  const mdc = trendMdcMetric(result.metric);
+  const mark = (value: number | null): string => (
+    value != null && mdc && !deltaIsSignificant(mdc, value)
+      ? '（基本持平，在测量波动范围内）'
+      : ''
+  );
   const lines = [
     `趋势：${label}（最近 ${options.lastN ?? 8} 条${mode}）`,
     `样本：${result.count}/${result.selected} 条有数据${range}`,
@@ -294,7 +320,7 @@ export function formatTrendText(result: TrendResult, options: TrendOptions = {})
     lines.push(`范围 ${fmt(result.min!, result.metric)}–${fmt(result.max!, result.metric)} ${unit} / 标准差 ${fmt(result.std!, result.metric)} ${unit}`);
     if (result.delta != null && result.percent != null) {
       const sign = result.delta >= 0 ? '+' : '';
-      lines.push(`首末变化 ${sign}${fmt(result.delta, result.metric)} ${unit}（${sign}${result.percent.toFixed(1)}%）`);
+      lines.push(`首末变化 ${sign}${fmt(result.delta, result.metric)} ${unit}（${sign}${result.percent.toFixed(1)}%）${mark(result.delta)}`);
     }
     lines.push(result.slopePerWeek == null
       ? '每周斜率：样本不足，无法计算'
@@ -304,11 +330,11 @@ export function formatTrendText(result: TrendResult, options: TrendOptions = {})
     }
     if (result.previousDelta != null) {
       const sign = result.previousDelta >= 0 ? '+' : '';
-      lines.push(`均值相比上一周期 ${sign}${fmt(result.previousDelta, result.metric)} ${unit}`);
+      lines.push(`均值相比上一周期 ${sign}${fmt(result.previousDelta, result.metric)} ${unit}${mark(result.previousDelta)}`);
     }
     if (result.baselineDelta != null) {
       const sign = result.baselineDelta >= 0 ? '+' : '';
-      lines.push(`均值相比基线 ${sign}${fmt(result.baselineDelta, result.metric)} ${unit}`);
+      lines.push(`均值相比基线 ${sign}${fmt(result.baselineDelta, result.metric)} ${unit}${mark(result.baselineDelta)}`);
     }
     if (result.recordIds.length > 0) {
       lines.push(`记录 id：${result.recordIds.join(', ')}`);

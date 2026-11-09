@@ -15,6 +15,12 @@ import {
   trendMetricLabel,
   type TrendCompare,
 } from './assistantTrends';
+import {
+  assessRecordQuality,
+  deltaIsSignificant,
+  qualityLabel,
+  type MdcMetric,
+} from './measurement';
 
 export type AssistantToolContext = {
   records: AnalysisRecord[];
@@ -169,6 +175,10 @@ function summaryLine(r: AnalysisRecord): string {
   if (st.avgF1 != null && st.avgF2 != null) parts.push(`F1/F2 ${fmt(st.avgF1)}/${fmt(st.avgF2)} Hz`);
   if (st.f2f1GapMedianHz != null) parts.push(`F2−F1 ${fmt(st.f2f1GapMedianHz)} Hz`);
   if (st.breathiness != null) parts.push(`气声 ${fmt(st.breathiness, 2)}`);
+  const quality = assessRecordQuality(r);
+  if (quality.level !== 'ok') {
+    parts.push(`数据质量${qualityLabel(quality.level)}${quality.reasons.length > 0 ? `（${quality.reasons.slice(0, 2).join('；')}）` : ''}`);
+  }
   return `- ${parts.join(' ｜ ')}`;
 }
 
@@ -199,6 +209,8 @@ function detailText(r: AnalysisRecord): string {
   if (st.breathiness != null) quality.push(`气声 ${fmt(st.breathiness, 2)}`);
   if (st.h1h2Db != null) quality.push(`H1−H2 ${fmt(st.h1h2Db, 1)} dB`);
   if (quality.length) lines.push(`嗓音质量：${quality.join(' / ')}`);
+  const recordQuality = assessRecordQuality(r);
+  lines.push(`数据质量：${qualityLabel(recordQuality.level)}${recordQuality.reasons.length > 0 ? `（${recordQuality.reasons.join('；')}）` : ''}`);
   lines.push(`可用图表：pitch / formant / energy / vowel`);
   if (r.note?.trim()) lines.push(`备注：${r.note.trim().slice(0, 200)}`);
   return lines.join('\n');
@@ -266,16 +278,18 @@ function compareRecords(args: Record<string, unknown>, ctx: AssistantToolContext
     `A：${dateLabel(a.createdAt)} · ${modeLabel(a.mode)}（id=${a.id}）`,
     `B：${dateLabel(b.createdAt)} · ${modeLabel(b.mode)}（id=${b.id}）`,
   ];
-  const delta = (label: string, av: number | null | undefined, bv: number | null | undefined, unit: string, digits = 0) => {
+  const delta = (label: string, av: number | null | undefined, bv: number | null | undefined, unit: string, digits = 0, mdc?: MdcMetric) => {
     if (av == null || bv == null) return;
-    lines.push(`${label}：${fmt(av, digits)} → ${fmt(bv, digits)} ${unit}（${signed(bv - av, digits)}）`);
+    const diff = bv - av;
+    const note = mdc && !deltaIsSignificant(mdc, diff) ? '（基本持平，在测量波动范围内）' : '';
+    lines.push(`${label}：${fmt(av, digits)} → ${fmt(bv, digits)} ${unit}（${signed(diff, digits)}）${note}`);
   };
-  delta('F0 中位', a.stats.medianF0, b.stats.medianF0, 'Hz');
+  delta('F0 中位', a.stats.medianF0, b.stats.medianF0, 'Hz', 0, 'medianF0');
   delta('F0 P10', a.stats.p10F0, b.stats.p10F0, 'Hz');
   delta('F0 P90', a.stats.p90F0, b.stats.p90F0, 'Hz');
-  delta('靶标命中率', a.stats.inTargetPct, b.stats.inTargetPct, '%');
-  delta('F1', a.stats.avgF1, b.stats.avgF1, 'Hz');
-  delta('F2', a.stats.avgF2, b.stats.avgF2, 'Hz');
+  delta('靶标命中率', a.stats.inTargetPct, b.stats.inTargetPct, '%', 0, 'inTarget');
+  delta('F1', a.stats.avgF1, b.stats.avgF1, 'Hz', 0, 'avgF1');
+  delta('F2', a.stats.avgF2, b.stats.avgF2, 'Hz', 0, 'avgF2');
   delta('F2−F1', a.stats.f2f1GapMedianHz, b.stats.f2f1GapMedianHz, 'Hz');
   delta('气声指数', a.stats.breathiness, b.stats.breathiness, '', 2);
   return {

@@ -85,6 +85,18 @@ describe('runAssistantDataTool', () => {
     expect(out!.recordIds).toEqual(['a', 'b']);
   });
 
+  it('marks small deltas as measurement noise', async () => {
+    const closeCtx = {
+      ...ctx,
+      records: [
+        record('a', Date.UTC(2026, 10, 1, 10), 'reading', { medianF0: 160 }),
+        record('b', Date.UTC(2026, 10, 3, 10), 'reading', { medianF0: 166 }),
+      ],
+    };
+    const out = await runAssistantDataTool('compare_records', { a: 'a', b: 'b' }, closeCtx);
+    expect(out!.text).toContain('基本持平，在测量波动范围内');
+  });
+
   it('computes trends with code-side stats', async () => {
     const out = await runAssistantDataTool('get_trends', { metric: 'f0', lastN: 2 }, ctx);
     expect(out!.summary).toBe('趋势：F0 中位 · 2 条');
