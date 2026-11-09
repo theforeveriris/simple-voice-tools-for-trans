@@ -65,7 +65,7 @@ import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chat
 import { detectSafetyLevel } from '@/lib/safety';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
-import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, isMemoryVisible, looksLikeInstruction, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryItem, type MemoryKind, type MemoryWrite } from '@/lib/memory';
+import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, isMemoryVisible, isSmallTalk, looksLikeInstruction, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryItem, type MemoryKind, type MemoryWrite } from '@/lib/memory';
 import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_CHOICE_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
 import { CompareImage, RecordImage, TrendImage } from '@/lib/assistantCharts';
@@ -314,6 +314,10 @@ async function resolveMemoryContext(
   let count = pinned.length;
   let query: string | undefined;
   if (!lastUser || !list.some((m) => !m.pinned && isMemoryVisible(m, options))) {
+    return { text, count, items: picked };
+  }
+  // 纯寒暄/感谢不调用记忆路由器，避免无意义的小模型请求
+  if (isSmallTalk(lastUser.content)) {
     return { text, count, items: picked };
   }
 
@@ -997,7 +1001,7 @@ export function AssistantPage() {
       pendingChoice?: PendingChoice;
       pendingChoiceSet?: PendingChoiceSet;
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
-    if (lastUserMsg && !privateChat) {
+    if (lastUserMsg && !privateChat && !isSmallTalk(lastUserText)) {
       setToolNote(t('assistant.toolSearching'));
       const executeTool = async (name: string, args: Record<string, unknown>) => (
         await runAssistantDataTool(name, args, { records, settings, chats: chats ?? [], currentChatId: convId })

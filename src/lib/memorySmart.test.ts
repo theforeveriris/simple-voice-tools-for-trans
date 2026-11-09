@@ -31,9 +31,42 @@ describe('shouldAutoSaveMemory', () => {
   it('skips greetings and pure questions', async () => {
     const { shouldAutoSaveMemory } = await fresh();
     expect(shouldAutoSaveMemory('你好')).toBe(false);
+    expect(shouldAutoSaveMemory('你好啊')).toBe(false);
+    expect(shouldAutoSaveMemory('谢谢啦')).toBe(false);
+    expect(shouldAutoSaveMemory('哈哈')).toBe(false);
+    expect(shouldAutoSaveMemory('好的～')).toBe(false);
+    expect(shouldAutoSaveMemory('今天天气不错')).toBe(false);
     expect(shouldAutoSaveMemory('VFP 参考分是什么意思？')).toBe(false);
     expect(shouldAutoSaveMemory('我该怎么练习？')).toBe(false);
     expect(shouldAutoSaveMemory('看看这条记录')).toBe(false);
+  });
+
+  it('still accepts short self-introductions and training constraints', async () => {
+    const { shouldAutoSaveMemory } = await fresh();
+    expect(shouldAutoSaveMemory('我叫小林')).toBe(true);
+    expect(shouldAutoSaveMemory('早餐前适合练十分钟')).toBe(true);
+  });
+});
+
+describe('low-value memories', () => {
+  it('rejects meta descriptions that say nothing was saved', async () => {
+    const { saveMemory, loadMemories, isLowValueMemoryText } = await fresh();
+    expect(isLowValueMemoryText('用户向助手打招呼，未提供值得长期保存的具体信息。')).toBe(true);
+    expect(await saveMemory({ text: '用户向助手打招呼，未提供值得长期保存的具体信息。' })).toBeNull();
+    expect(await loadMemories()).toHaveLength(0);
+  });
+
+  it('drops old low-value rows when loading storage', async () => {
+    h.stored = [{
+      id: 'old-hello',
+      text: '用户向助手打招呼，未提供值得长期保存的具体信息。',
+      kind: 'fact',
+      pinned: false,
+      createdAt: 1,
+      updatedAt: 1,
+    }];
+    const { loadMemories } = await fresh();
+    expect(await loadMemories()).toHaveLength(0);
   });
 });
 

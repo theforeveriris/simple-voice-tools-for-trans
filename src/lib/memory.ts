@@ -145,7 +145,7 @@ function sanitize(raw: unknown): MemoryItem[] {
     if (!r || typeof r !== 'object') continue;
     const o = r as Record<string, unknown>;
     const text = typeof o.text === 'string' ? sanitizeMemoryText(o.text) : '';
-    if (!text || seen.has(text)) continue;
+    if (!text || isLowValueMemoryText(text) || seen.has(text)) continue;
     seen.add(text);
     const sourceRaw = o.source && typeof o.source === 'object' ? o.source as Record<string, unknown> : null;
     const source = sourceRaw && typeof sourceRaw.chatId === 'string' && typeof sourceRaw.quote === 'string'
@@ -236,7 +236,7 @@ export async function addMemory(input: {
 }): Promise<MemoryItem | null> {
   await loadMemories();
   const text = sanitizeMemoryText(input.text);
-  if (!text) return null;
+  if (!text || isLowValueMemoryText(text)) return null;
   const list = items ?? [];
   if (list.some((m) => m.text === text)) return null;
   const now = Date.now();
@@ -291,17 +291,42 @@ function hasNegation(text: string): boolean {
 }
 
 /**
+ * 纯寒暄 / 感谢 / 确认 / 表情：不值得调用写作模型。
+ * 先去掉空白、标点和符号，再匹配；这样「你好啊」「谢谢啦」「好的～」都能拦住。
+ */
+export function isSmallTalk(text: string): boolean {
+  const compact = text.replace(/[\s\p{P}\p{S}]+/gu, '').toLowerCase();
+  if (!compact) return true;
+  if (/^(?:你好|您好|嗨|哈喽|哈啰|早安|早上好|晚上好|晚安|谢谢|感谢|多谢|好的|好|嗯|哦|噢|ok|okay|收到|明白|知道了|辛苦|再见|拜拜|hi|hello|hey|thanks|thankyou|goodmorning|goodnight|bye)(?:啊|呀|哈|啦|呢|吧|哦|噢|嘛|喔|哟|咯|喽|~|～)*$/i.test(compact)) {
+    return true;
+  }
+  return /^(?:哈+|呵+|嘿+|em+|666+|👍+|🙏+|❤️+)$/i.test(compact);
+}
+
+/**
+ * 模型有时会为了「说明没有信息」而调用 save_memory；这类元描述不是记忆。
+ */
+export function isLowValueMemoryText(text: string): boolean {
+  return /(未提供|没有(?:提供|值得)|无(?:具体|值得)|不值得|没有可保存|无长期|只是(?:打招呼|寒暄|问候)|打招呼|寒暄|没有具体信息|not provide|no (?:useful|specific|long-term) information|nothing (?:worth|to) sav|just a greeting|small talk)/i.test(text);
+}
+
+/**
  * 自动保存前的轻量门控：纯寒暄、纯提问跳过，含线索词或陈述句才调用写作模型。
  * 只是减少无意义调用，最终是否保存仍由模型判断。
  */
 export function shouldAutoSaveMemory(userText: string): boolean {
   const text = userText.trim();
   if (!text) return false;
-  if (/^(你好|您好|hi|hello|谢谢|感谢|好的|嗯|ok|收到|晚安|早安)[！!。.\s]*$/i.test(text)) return false;
+  if (isSmallTalk(text)) return false;
   if (/^(看看|帮我看看|帮我看|分析|解释|对比|查一下|查看|打开)/.test(text)) return false;
-  const cue = /(记住|记得|别忘|我(?:习惯|喜欢|偏好|想要|希望|需要|讨厌|不喜欢|过敏|不能|是|的)|我的|以后|每次|务必|千万别|不要用|别用|叫我|称呼我)/;
+  const cue = /(记住|记得|别忘|我(?:习惯|喜欢|偏好|想要|希望|需要|讨厌|不喜欢|过敏|不能|是|的)|我的|以后|每次|务必|千万别|不要用|别用|叫我|称呼我|我叫|我的名字)/;
   if (cue.test(text)) return true;
+  if (text.length < 6) return false;
   if (/[?？]\s*$/.test(text) || /^(怎么|如何|为什么|什么|哪|是否|能不能|可不可以)/.test(text)) return false;
+  // 与用户本人 / 训练 / 声音无关的普通陈述不进入自动记忆
+  if (!/(我|我的|自己|以后|每次|习惯|喜欢|想要|希望|需要|不要|别|记住|目标|练习|训练|练|分钟|小时|每周|每天|声音|音高|共鸣|嗓音|喉咙|疲劳|过敏|面试|演讲|电话|会议)/.test(text)) {
+    return false;
+  }
   return text.length <= 160;
 }
 
@@ -323,7 +348,7 @@ export async function saveMemory(input: {
 }): Promise<MemorySaveResult | null> {
   await loadMemories();
   const text = sanitizeMemoryText(input.text);
-  if (!text) return null;
+  if (!text || isLowValueMemoryText(text)) return null;
   const list = items ?? [];
   const norm = normalizeMemoryText(text);
   const exact = list.find((m) => normalizeMemoryText(m.text) === norm);
@@ -496,7 +521,7 @@ export async function addMemories(list: { text: string; kind: MemoryKind }[]): P
   const fresh: MemoryItem[] = [];
   for (const c of list) {
     const text = sanitizeMemoryText(c.text);
-    if (!text || existing.has(text) || looksLikeInstruction(text)) continue;
+    if (!text || existing.has(text) || looksLikeInstruction(text) || isLowValueMemoryText(text)) continue;
     existing.add(text);
     fresh.push({
       id: genId(),
