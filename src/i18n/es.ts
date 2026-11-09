@@ -1618,4 +1618,7 @@ export const es = {
   'assistant.privateOffHint': 'Chat privado activo; haz clic para salir',
   'assistant.privateBadge': 'Privado',
   'assistant.crisisReply': 'Parece que lo estás pasando muy mal. Dejo las sugerencias de entrenamiento por ahora. No tienes que cargar con esto a solas: si estás en peligro inmediato, contacta con los servicios de emergencia o una línea de crisis, y con alguien de confianza. Cuando estés más a salvo, hablamos de la voz.',
+  'settings.llmAuxProfile': 'Perfil auxiliar',
+  'settings.llmAuxProfileDesc': 'Planificación, recuperación de memoria, resúmenes y corrección de números usan este perfil. Vacío sigue el perfil activo.',
+  'settings.llmAuxProfileSame': 'Seguir el perfil activo',
 } as const;

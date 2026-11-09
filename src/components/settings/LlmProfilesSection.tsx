@@ -106,6 +106,28 @@ export function LlmProfilesSection({
         {t('settings.llmProfileNew')}
       </button>
 
+      {profiles != null && profiles.length > 0 && (
+        <div className="mt-1 flex items-center justify-between gap-2 rounded-2xl bg-surface-hi/50 px-2.5 py-2">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-ink">{t('settings.llmAuxProfile')}</p>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-ink-2">
+              {t('settings.llmAuxProfileDesc')}
+            </p>
+          </div>
+          <select
+            value={settings.llmAuxProfileId ?? ''}
+            onChange={(e) => update({ llmAuxProfileId: e.target.value || undefined })}
+            aria-label={t('settings.llmAuxProfile')}
+            className="max-w-32 shrink-0 rounded-xl border border-black/10 bg-card px-2 py-1.5 text-[11px] text-ink outline-none"
+          >
+            <option value="">{t('settings.llmAuxProfileSame')}</option>
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {sheet && (
         <ProfileSheet
           profile={sheet.mode === 'edit' ? profiles?.find((p) => p.id === sheet.id) ?? null : null}

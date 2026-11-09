@@ -695,6 +695,7 @@ export function AssistantPage() {
   const lastTab = useStore((s) => s.lastTab);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const cfg = useActiveLlmConfig(activeProfileId);
+  const auxCfg = useActiveLlmConfig(settings.llmAuxProfileId ?? activeProfileId);
   const chats = useChats();
   /** null = 尚未开始对话（发送第一条时创建） */
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -893,7 +894,8 @@ export function AssistantPage() {
     assistantText: string,
     origin?: ChatMessage['origin'],
   ) => {
-    if (!cfg || !assistantText.trim()) return;
+    const writerCfg = auxCfg ?? cfg;
+    if (!writerCfg || !assistantText.trim()) return;
     const settings = useStore.getState().settings;
     if (settings.memoryAutoSave === 'off') return;
     const chat = getChat(chatId);
@@ -903,7 +905,7 @@ export function AssistantPage() {
     if (!fromChoice && !shouldAutoSaveMemory(userText)) return;
     try {
       const calls = await llmToolCall(
-        cfg,
+        writerCfg,
         fromChoice ? MEMORY_CHOICE_WRITER_SYSTEM : MEMORY_WRITER_SYSTEM,
         buildMemoryWriterInput(userText, assistantText),
         [SAVE_MEMORY_TOOL],
@@ -988,28 +990,35 @@ export function AssistantPage() {
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
     if (lastUserMsg && !privateChat) {
       setToolNote(t('assistant.toolSearching'));
+      const executeTool = async (name: string, args: Record<string, unknown>) => (
+        await runAssistantDataTool(name, args, { records, settings, chats: chats ?? [], currentChatId: convId })
+        ?? await runAssistantActionTool(name, args, { records, settings })
+        ?? await runPracticePlanTool(name, args, { records, settings })
+        ?? runAssistantChoiceTool(name, args)
+        ?? runAssistantChoiceSetTool(name, args)
+      );
+      const runPlanner = (plannerCfg: LlmConfig) => runAssistantTools({
+        cfg: plannerCfg,
+        system: toolPlannerSystem(settings),
+        history,
+        userText: lastUserText,
+        tools: [
+          ...ASSISTANT_DATA_TOOLS,
+          ...ASSISTANT_ACTION_TOOLS,
+          ...PRACTICE_PLAN_TOOLS,
+          ASSISTANT_CHOICE_TOOL,
+          ASSISTANT_CHOICE_SET_TOOL,
+        ],
+        execute: executeTool,
+        signal: controller.signal,
+      });
       try {
-        toolRun = await runAssistantTools({
-          cfg,
-          system: toolPlannerSystem(settings),
-          history,
-          userText: lastUserText,
-          tools: [
-            ...ASSISTANT_DATA_TOOLS,
-            ...ASSISTANT_ACTION_TOOLS,
-            ...PRACTICE_PLAN_TOOLS,
-            ASSISTANT_CHOICE_TOOL,
-            ASSISTANT_CHOICE_SET_TOOL,
-          ],
-          execute: async (name, args) => (
-            await runAssistantDataTool(name, args, { records, settings, chats: chats ?? [], currentChatId: convId })
-            ?? await runAssistantActionTool(name, args, { records, settings })
-            ?? await runPracticePlanTool(name, args, { records, settings })
-            ?? runAssistantChoiceTool(name, args)
-            ?? runAssistantChoiceSetTool(name, args)
-          ),
-          signal: controller.signal,
-        });
+        const plannerCfg = auxCfg ?? cfg;
+        toolRun = await runPlanner(plannerCfg);
+        // 辅助档案不支持工具 / 调用失败时，回退主档案重试一次
+        if (!toolRun.supported && plannerCfg !== cfg && !controller.signal.aborted) {
+          toolRun = await runPlanner(cfg);
+        }
       } finally {
         setToolNote(null);
       }
@@ -1054,7 +1063,7 @@ export function AssistantPage() {
     const planState = getPracticePlanState();
     const memoryHit = privateChat
       ? { text: '', count: 0, items: [] }
-      : await resolveMemoryContext(cfg, history, lastUserMsg, {
+      : await resolveMemoryContext(auxCfg ?? cfg, history, lastUserMsg, {
         chatId: convId,
         planId: planState.plan?.id,
       });
@@ -1123,7 +1132,7 @@ export function AssistantPage() {
       maxTok = Math.max(1024, context - (estTokens(sys) + replyReserve));
       // 后台生成正式摘要，下一轮替换本地摘录
       const covered = summaryThrough;
-      void summarizeChat(cfg, chunk, previous, controller.signal)
+      void summarizeChat(auxCfg ?? cfg, chunk, previous, controller.signal)
         .then((text) => {
           if (!text) return;
           const latest = getChat(convId)?.summary;
@@ -1219,7 +1228,7 @@ export function AssistantPage() {
         const claims = findUnverifiedClaims(reply, sources);
         if (claims.length > 0) {
           try {
-            const repaired = await repairNumericAnswer(cfg, reply, claims, sources, controller.signal);
+            const repaired = await repairNumericAnswer(auxCfg ?? cfg, reply, claims, sources, controller.signal);
             const remaining = repaired ? findUnverifiedClaims(repaired, sources) : claims;
             if (repaired && remaining.length < claims.length) {
               finalReply = remaining.length === 0
@@ -1765,12 +1774,13 @@ export function AssistantPage() {
       messageIndex: idx,
       quote: priorUser.slice(0, 240),
     });
-    if (!cfg) {
+    const manualCfg = auxCfg ?? cfg;
+    if (!manualCfg) {
       setMemoryDraft((d) => (d ? { ...d, loading: false } : d));
       return;
     }
     void llmToolCall(
-      cfg,
+      manualCfg,
       MEMORY_MANUAL_SYSTEM,
       buildMemoryWriterInput(priorUser, target.content),
       [SAVE_MEMORY_TOOL],

@@ -471,6 +471,8 @@ export interface AppSettings {
   llmPromptOverride?: string;
   /** 大模型配置：当前应用的配置档案 id（档案与 Key 存 IDB kv，见 lib/llmProfiles.ts） */
   llmActiveProfileId?: string;
+  /** 辅助任务（规划 / 记忆 / 摘要 / 数字修正）使用的档案；空 = 跟随活动档案 */
+  llmAuxProfileId?: string;
   /** 大模型配置：用量费用估算——每百万 tokens 输入单价（0/未填 = 不折算；货币单位自定） */
   llmPriceIn?: number;
   /** 大模型配置：用量费用估算——每百万 tokens 输出单价 */

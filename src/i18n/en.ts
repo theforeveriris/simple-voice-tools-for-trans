@@ -1609,4 +1609,7 @@ export const en = {
   'assistant.privateOffHint': 'Private chat is on; click to leave',
   'assistant.privateBadge': 'Private',
   'assistant.crisisReply': 'It sounds like you\'re going through something really hard. I\'ll pause the training advice for now. You don\'t have to carry this alone: if you\'re in immediate danger, contact your local emergency services or a crisis line, and reach out to someone you trust. When you feel safer, we can talk about voice again.',
+  'settings.llmAuxProfile': 'Auxiliary profile',
+  'settings.llmAuxProfileDesc': 'Planning, memory retrieval, summaries, and number repair use this profile. Empty follows the active profile.',
+  'settings.llmAuxProfileSame': 'Follow active profile',
 } as const;

@@ -1610,4 +1610,7 @@ export const ja = {
   'assistant.privateOffHint': 'プライベート会話中です。クリックで終了',
   'assistant.privateBadge': 'プライベート',
   'assistant.crisisReply': '今はとてもつらい状態のように聞こえます。トレーニングの提案は一旦止めます。ひとりで抱え込まないでください。今すぐ危険がある場合は、地域の救急や相談窓口へ、信頼できる人にも連絡してください。安全になってから、声のことをゆっくり話しましょう。',
+  'settings.llmAuxProfile': '補助タスクのプロファイル',
+  'settings.llmAuxProfileDesc': '計画、記憶検索、要約、数値修正にこのプロファイルを使います。空欄ならアクティブなプロファイルに従います。',
+  'settings.llmAuxProfileSame': 'アクティブに従う',
 } as const;

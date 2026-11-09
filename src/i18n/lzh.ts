@@ -1610,5 +1610,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.privateOffHint': '今為私談；點之則罷',
   'assistant.privateBadge': '私',
   'assistant.crisisReply': '聞汝今甚苦，吾且止訓練之議。汝不必獨任：若有急危，當聯絡本地急救或危機熱線，亦可尋可信之人相伴。待安，再徐徐論聲。',
+  'settings.llmAuxProfile': '輔任之檔',
+  'settings.llmAuxProfileDesc': '謀劃、憶檢、摘要、正數，皆用此檔；空則從活動之檔。',
+  'settings.llmAuxProfileSame': '從活動檔',
 };
 

@@ -52,7 +52,10 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const memoryAutoSave = useStore((s) => s.settings.memoryAutoSave);
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
-  const cfg = useActiveLlmConfig(activeProfileId);
+  const auxProfileId = useStore((s) => s.settings.llmAuxProfileId);
+  const mainCfg = useActiveLlmConfig(activeProfileId);
+  const auxCfg = useActiveLlmConfig(auxProfileId);
+  const cfg = auxCfg ?? mainCfg;
   const updateSettings = useStore((s) => s.updateSettings);
 
   /** 只展示 active；已合并 / 已过期进入历史区 */

@@ -1609,4 +1609,7 @@ export const zhTW = {
   'assistant.privateOffHint': '目前為私密對話；點擊退出',
   'assistant.privateBadge': '私密',
   'assistant.crisisReply': '聽起來你現在很難受，我先停一下訓練建議。你不需要獨自扛著：如果現在有立即危險，請聯絡當地急救或危機熱線，也可以找一位你信任的人陪著你。等你安全一些，我們再慢慢聊聲音的事。',
+  'settings.llmAuxProfile': '輔助任務檔案',
+  'settings.llmAuxProfileDesc': '規劃、記憶檢索、摘要和數字修正使用這個檔案；留空跟隨活動檔案。',
+  'settings.llmAuxProfileSame': '跟隨活動檔案',
 } as const;
