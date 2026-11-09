@@ -78,6 +78,8 @@ export interface ChatMessage {
   choice?: ChoiceResult;
   /** 用户对多问题卡的回答摘要（渲染 chip 用） */
   choiceLabel?: string;
+  /** 这条用户消息是选择卡自动追加的合成消息 */
+  origin?: 'choice' | 'choice_set';
   /** 思考过程（推理模型 / thinking 块返回时保存，气泡可展开查看） */
   think?: string;
   /** 流式草稿：生成中节流写入，完成后清除；残留草稿（崩溃/杀进程）读取时转为 interrupted */

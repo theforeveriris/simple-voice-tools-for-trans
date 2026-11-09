@@ -57,6 +57,20 @@ export const MEMORY_MANUAL_SYSTEM = [
   '用 save_memory 工具提交；不要回答用户，不要解释。',
 ].join('\n');
 
+/**
+ * 选择卡答案的记忆整理提示：
+ * 选择卡是 AI 主动追问的合成答案，其中很多是临时选择（先看哪个示例、下一步做什么）。
+ * 只允许稳定偏好进入长期记忆，避免把交互过程当成用户陈述。
+ */
+export const MEMORY_CHOICE_WRITER_SYSTEM = [
+  '你在帮用户整理一次选择卡回答中的长期偏好。',
+  '只保存稳定、可复用的信息：训练方向 / 重点、目标音区或听感、每次时长、每周频率、长期禁忌或限制。',
+  '不要保存临时选择：先看哪个示例、先做哪一步、演示选项、页面跳转、一次性的下一步。',
+  '只保存用户明确选中的内容；不确定就不调用工具。',
+  '最多保存一条，写成简洁、自包含的中文陈述（不超过 80 字），kind 优先 preference 或 requirement。',
+  '用 save_memory 工具提交；不要回答用户，不要解释。',
+].join('\n');
+
 /** 一轮对话整理输入（控制长度，避免把整段历史再发一遍） */
 export function buildMemoryWriterInput(userText: string, assistantText: string): string {
   return [

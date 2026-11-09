@@ -65,7 +65,7 @@ import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chat
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
-import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
+import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_CHOICE_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
 import { CompareImage, RecordImage, TrendImage } from '@/lib/assistantCharts';
 import {
@@ -882,16 +882,18 @@ export function AssistantPage() {
     messageIndex: number,
     userText: string,
     assistantText: string,
+    origin?: ChatMessage['origin'],
   ) => {
     if (!cfg || !assistantText.trim()) return;
     const settings = useStore.getState().settings;
     if (settings.memoryAutoSave === 'off') return;
     if (getChat(chatId)?.memoryOff) return;
-    if (!shouldAutoSaveMemory(userText)) return;
+    const fromChoice = origin === 'choice' || origin === 'choice_set';
+    if (!fromChoice && !shouldAutoSaveMemory(userText)) return;
     try {
       const calls = await llmToolCall(
         cfg,
-        MEMORY_WRITER_SYSTEM,
+        fromChoice ? MEMORY_CHOICE_WRITER_SYSTEM : MEMORY_WRITER_SYSTEM,
         buildMemoryWriterInput(userText, assistantText),
         [SAVE_MEMORY_TOOL],
         { feature: 'assistant', maxTokens: 300, temperature: 0.2 },
@@ -899,7 +901,7 @@ export function AssistantPage() {
       const saves = calls
         .map(parseMemorySaveCall)
         .filter((x): x is NonNullable<typeof x> => !!x)
-        .slice(0, 3);
+        .slice(0, fromChoice ? 1 : 3);
       const writes: MemoryWrite[] = [];
       for (const s of saves) {
         const res = await saveMemory({
@@ -1215,7 +1217,7 @@ export function AssistantPage() {
       });
       // AI 自动判断并保存长期记忆（后台；失败不影响回答）
       const assistantIndex = (getChat(convId)?.messages.length ?? 1) - 1;
-      if (lastUserMsg) void autoSaveMemories(convId, assistantIndex, lastUserMsg.content, finalReply);
+      if (lastUserMsg) void autoSaveMemories(convId, assistantIndex, lastUserMsg.content, finalReply, lastUserMsg.origin);
     } catch (err: unknown) {
       // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
       if (textAcc || thinkAcc) {
@@ -1267,6 +1269,7 @@ export function AssistantPage() {
       role: 'user',
       content: buildChoiceUserMessage(choice, result),
       choice: userResult,
+      origin: 'choice',
     });
     void generate(conv.id, getChat(conv.id)?.messages ?? [], '');
   };
@@ -1288,6 +1291,7 @@ export function AssistantPage() {
       role: 'user',
       content: buildChoiceSetUserMessage(set, result),
       choiceLabel: label,
+      origin: 'choice_set',
     });
     void generate(conv.id, getChat(conv.id)?.messages ?? [], '');
   };
