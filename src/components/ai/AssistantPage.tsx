@@ -1734,6 +1734,7 @@ export function AssistantPage() {
       {
         memoryOff: conv.memoryOff,
         ...(conv.privacy ? { privacy: conv.privacy } : {}),
+        ...(conv.privacy === 'private' ? { privateSince: 0 } : {}),
       },
     );
     setActiveId(id);

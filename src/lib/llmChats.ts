@@ -249,7 +249,7 @@ function truncate(text: string, max: number): string {
 export function createChat(
   title: string,
   messages: ChatMessage[] = [],
-  opts: { memoryOff?: boolean; privacy?: ChatPrivacy } = {},
+  opts: { memoryOff?: boolean; privacy?: ChatPrivacy; privateSince?: number } = {},
 ): string {
   const now = Date.now();
   const conv: ChatConversation = {
@@ -260,6 +260,9 @@ export function createChat(
     messages,
     ...(opts.memoryOff ? { memoryOff: true } : {}),
     ...(opts.privacy && opts.privacy !== 'normal' ? { privacy: opts.privacy } : {}),
+    ...(opts.privacy === 'private'
+      ? { privateSince: opts.privateSince ?? 0 }
+      : {}),
   };
   // 加载未完成时也先建立内存列表：其余写操作都有 !chats 守卫会静默丢消息，
   // 这里放行后 ensureLoaded 按 id 合并，新对话不会被读到的旧数据覆盖
