@@ -32,6 +32,8 @@ export interface AssistantToolRun {
   docs: { title: string; chars: number }[];
   /** 本轮提出的待确认写操作 */
   pendingAction?: import('./assistantActions').AssistantAction;
+  /** 本轮提出的待用户选择问题 */
+  pendingChoice?: import('./assistantChoice').PendingChoice;
 }
 
 const EMPTY: AssistantToolRun = {
@@ -98,7 +100,9 @@ export async function runAssistantTools(opts: {
   const docs: { title: string; chars: number }[] = [];
   const seenDocs = new Set<string>();
   let pendingAction: AssistantToolRun['pendingAction'];
+  let pendingChoice: AssistantToolRun['pendingChoice'];
   let callsUsed = 0;
+  let halt = false;
   try {
     for (let round = 0; round < maxRounds && callsUsed < maxCalls; round++) {
       const res = await llmChatToolMessages(cfg, system, messages, tools, {
@@ -137,6 +141,10 @@ export async function runAssistantTools(opts: {
         if (outcome) {
           results.push({ summary: outcome.summary, text: outcome.text });
           if (outcome.pendingAction && !pendingAction) pendingAction = outcome.pendingAction;
+          if (outcome.pendingChoice && !pendingChoice) {
+            pendingChoice = outcome.pendingChoice;
+            halt = true;
+          }
           for (const id of outcome.recordIds ?? []) recordIdSet.add(id);
           for (const doc of outcome.docs ?? []) {
             if (seenDocs.has(doc.title)) continue;
@@ -144,7 +152,9 @@ export async function runAssistantTools(opts: {
             docs.push(doc);
           }
         }
+        if (halt) break;
       }
+      if (halt) break;
     }
   } catch (err) {
     if (isAbortError(err)) throw err;
@@ -162,5 +172,13 @@ export async function runAssistantTools(opts: {
       ...blocks,
     ].join('\n\n').slice(0, MAX_CONTEXT_CHARS);
   }
-  return { supported: true, contextText, traces, recordIds, docs, ...(pendingAction ? { pendingAction } : {}) };
+  return {
+    supported: true,
+    contextText,
+    traces,
+    recordIds,
+    docs,
+    ...(pendingAction ? { pendingAction } : {}),
+    ...(pendingChoice ? { pendingChoice } : {}),
+  };
 }

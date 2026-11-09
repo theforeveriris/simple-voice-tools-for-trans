@@ -35,6 +35,15 @@ import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools
 import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } from '@/lib/assistantActions';
 import { PRACTICE_PLAN_TOOLS, runPracticePlanTool } from '@/lib/practicePlanTools';
 import { getPracticePlanState, planSummaryForPrompt } from '@/lib/practicePlan';
+import {
+  ASSISTANT_CHOICE_TOOL,
+  buildChoiceUserMessage,
+  choiceResultLabel,
+  runAssistantChoiceTool,
+  type ChoiceResult,
+  type PendingChoice,
+} from '@/lib/assistantChoice';
+import { ChoiceCard } from '@/components/ai/ChoiceCard';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
@@ -185,6 +194,7 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     `今天是 ${date}。`,
     buildAssistantProfile(settings),
     '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
+    '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
     '如果问题只是寒暄、常识或不需要应用数据，不要调用任何工具。',
   ].join('\n');
 }
@@ -360,6 +370,7 @@ const Bubble = memo(function Bubble({
   onRedo,
   onBranch,
   onMemory,
+  onResolveChoice,
 }: {
   m: ChatMessage;
   idx: number;
@@ -376,6 +387,7 @@ const Bubble = memo(function Bubble({
   onRedo: (idx: number) => void;
   onBranch: (idx: number) => void;
   onMemory: (idx: number) => void;
+  onResolveChoice: (idx: number, choice: PendingChoice, result: ChoiceResult) => void;
 }) {
   useI18n();
   const mine = m.role === 'user';
@@ -400,10 +412,19 @@ const Bubble = memo(function Bubble({
         </ThinkBlock>
       )}
       {mine
-        ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
+        ? (m.choice
+          ? null
+          : (m.content || (streaming ? (liveThink ? '' : '…') : '')))
         : (m.content
           ? <MessageBody text={m.content} />
           : (streaming ? (liveThink ? '' : '…') : ''))}
+      {!mine && !streaming && m.context?.pendingChoice && (
+        <ChoiceCard
+          choice={m.context.pendingChoice}
+          result={m.context.choiceResult}
+          onResolve={(result) => onResolveChoice(idx, m.context!.pendingChoice!, result)}
+        />
+      )}
       {!mine && !streaming && m.context?.planId && (
         <PlanCard planId={m.context.planId} />
       )}
@@ -463,12 +484,21 @@ const Bubble = memo(function Bubble({
         </span>
       )}
       {mine ? (
-        <button
-          onClick={onBodyClick}
-          className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-accent/15 px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
-        >
-          {body}
-        </button>
+        m.choice ? (
+          <span className="inline-flex max-w-[85%] items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1.5 text-[12px] text-ink">
+            <Check size={11} className="shrink-0 text-accent" />
+            <span className="truncate">
+              {m.choice.skipped ? t('assistant.choiceSkipped') : (m.choice.label || m.content)}
+            </span>
+          </span>
+        ) : (
+          <button
+            onClick={onBodyClick}
+            className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-accent/15 px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
+          >
+            {body}
+          </button>
+        )
       ) : (
         <div
           onClick={onBodyClick}
@@ -765,6 +795,7 @@ export function AssistantPage() {
       recordIds: string[];
       docs: { title: string; chars: number }[];
       pendingAction?: AssistantAction;
+      pendingChoice?: PendingChoice;
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
     if (lastUserMsg) {
       setToolNote(t('assistant.toolSearching'));
@@ -774,17 +805,36 @@ export function AssistantPage() {
           system: toolPlannerSystem(settings),
           history,
           userText: lastUserText,
-          tools: [...ASSISTANT_DATA_TOOLS, ...ASSISTANT_ACTION_TOOLS, ...PRACTICE_PLAN_TOOLS],
+          tools: [...ASSISTANT_DATA_TOOLS, ...ASSISTANT_ACTION_TOOLS, ...PRACTICE_PLAN_TOOLS, ASSISTANT_CHOICE_TOOL],
           execute: async (name, args) => (
             await runAssistantDataTool(name, args, { records, settings })
             ?? await runAssistantActionTool(name, args, { records, settings })
-            ?? runPracticePlanTool(name, args, { records, settings })
+            ?? await runPracticePlanTool(name, args, { records, settings })
+            ?? runAssistantChoiceTool(name, args)
           ),
           signal: controller.signal,
         });
       } finally {
         setToolNote(null);
       }
+    }
+    // 需要用户选择：暂停本轮，不生成最终回答；选择器解决后自动继续
+    if (toolRun.pendingChoice) {
+      const choiceMeta: ChatContextMeta = {
+        recordIds: toolRun.recordIds,
+        pinnedIds: [],
+        totalRecords: 0,
+        docs: toolRun.docs,
+        ...(toolRun.traces.length > 0 ? { toolCalls: toolRun.traces } : {}),
+        pendingChoice: toolRun.pendingChoice,
+      };
+      saveAssistantDraft(convId, {
+        content: t('assistant.choiceIntro'),
+        draft: false,
+        context: choiceMeta,
+      });
+      if (abortRef.current === controller) abortRef.current = null;
+      return;
     }
     const hist = buildAssistantContext(
       records,
@@ -920,6 +970,23 @@ export function AssistantPage() {
     }
   };
 
+  /** 选择器解决：把结果写回原消息，追加一条用户选择消息并自动续聊 */
+  const resolveChoice = (messageIndex: number, choice: PendingChoice, result: ChoiceResult) => {
+    if (busy || !conv) return;
+    const latest = getChat(conv.id);
+    const target = latest?.messages[messageIndex];
+    if (!target?.context?.pendingChoice || target.context.choiceResult) return;
+    const label = choiceResultLabel(choice, result);
+    const userResult: ChoiceResult = { ...result, ...(label ? { label } : {}) };
+    patchMessageContext(conv.id, messageIndex, { choiceResult: result });
+    addMessage(conv.id, {
+      role: 'user',
+      content: buildChoiceUserMessage(choice, result),
+      choice: userResult,
+    });
+    void generate(conv.id, getChat(conv.id)?.messages ?? [], '');
+  };
+
   /** 发送一条文本消息（文本输入、语音和命令共用） */
   const sendMessage = (raw: string, extraContext = '', attachments: ChatAttachment[] = []) => {
     const text = raw.trim();
@@ -930,6 +997,23 @@ export function AssistantPage() {
       convId = createChat('', [], { memoryOff: draftMemoryOff });
       setActiveId(convId);
       setDraftMemoryOff(false);
+    }
+    // 选择器还开着时用户直接打字：把文字当作「其他」答案，收起选择器
+    const current = getChat(convId);
+    const pendingIdx = current?.messages.findIndex(
+      (m) => m.context?.pendingChoice && !m.context?.choiceResult,
+    ) ?? -1;
+    if (pendingIdx >= 0 && current) {
+      const pending = current.messages[pendingIdx].context?.pendingChoice;
+      if (pending) {
+        patchMessageContext(convId, pendingIdx, {
+          choiceResult: {
+            selectedIds: [],
+            custom: text,
+            label: t('assistant.choiceOtherValue', { text }),
+          },
+        });
+      }
     }
     addMessage(convId, {
       role: 'user',
@@ -1837,6 +1921,7 @@ export function AssistantPage() {
                 onRedo={onRedo}
                 onBranch={onBranch}
                 onMemory={onMemory}
+                onResolveChoice={resolveChoice}
               />
             ))}
             {toolNote && (
@@ -1859,6 +1944,7 @@ export function AssistantPage() {
                 onRedo={() => undefined}
                 onBranch={() => undefined}
                 onMemory={() => undefined}
+                onResolveChoice={() => undefined}
               />
             )}
             {error && (

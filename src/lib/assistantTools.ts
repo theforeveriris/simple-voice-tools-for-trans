@@ -25,6 +25,8 @@ export type AssistantToolOutcome = {
   docs?: { title: string; chars: number }[];
   /** 需要用户确认的写操作（一次最多一个） */
   pendingAction?: import('./assistantActions').AssistantAction;
+  /** 需要用户选择的问题（一次最多一个） */
+  pendingChoice?: import('./assistantChoice').PendingChoice;
 };
 
 const MAX_QUERY = 20;

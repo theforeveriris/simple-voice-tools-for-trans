@@ -1582,6 +1582,17 @@ export const zhCN = {
   'assistant.attachAlt': '引用的记录',
   'assistant.attachAsk': '看看这条记录',
   'assistant.planPendingShort': '待确认',
+  'assistant.choiceIntro': '为了给你更准确的建议，先确认一下：',
+  'assistant.choiceSingleHint': '选一个，我会继续。',
+  'assistant.choiceMultiHint': '可以多选，选完继续。',
+  'assistant.choiceOther': '其他',
+  'assistant.choiceOtherPlaceholder': '输入你自己的选项',
+  'assistant.choiceContinue': '继续',
+  'assistant.choiceContinueN': '继续（{n}）',
+  'assistant.choiceSkip': '先不选',
+  'assistant.choiceSubmitted': '已选择',
+  'assistant.choiceSkipped': '已跳过',
+  'assistant.choiceOtherValue': '其他：{text}',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

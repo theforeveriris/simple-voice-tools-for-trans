@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import type { MemoryWrite } from './memory';
 import type { AssistantAction } from './assistantActions';
+import type { ChoiceResult, PendingChoice } from './assistantChoice';
 import type { ImgKind } from './assistantChartRoute';
 
 /** 用户随消息附带的资料；当前版本先支持记录图表，图片字段预留给后续视觉模型 */
@@ -45,6 +46,10 @@ export interface ChatContextMeta {
   appliedAction?: { summary: string; at: number };
   /** 本轮涉及的练习计划（渲染 PlanCard） */
   planId?: string;
+  /** 等待用户选择的阻塞式问题 */
+  pendingChoice?: PendingChoice;
+  /** 已解决的选择结果（卡片折叠成已选择状态） */
+  choiceResult?: ChoiceResult;
 }
 
 export interface ChatMessage {
@@ -52,6 +57,8 @@ export interface ChatMessage {
   content: string;
   /** 用户随消息附带的记录图表 / 图片（图片留给后续版本） */
   attachments?: ChatAttachment[];
+  /** 用户对阻塞式选择器的回答（用于渲染紧凑的选择 chip） */
+  choice?: ChoiceResult;
   /** 思考过程（推理模型 / thinking 块返回时保存，气泡可展开查看） */
   think?: string;
   /** 流式草稿：生成中节流写入，完成后清除；残留草稿（崩溃/杀进程）读取时转为 interrupted */
