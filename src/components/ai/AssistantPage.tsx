@@ -492,12 +492,15 @@ const Bubble = memo(function Bubble({
   onResolveChoice,
   onResolveChoiceSet,
   onOpenChat,
+  allowMemory = true,
   anchorIndex,
 }: {
   m: ChatMessage;
   idx: number;
   /** 消息在对话里的真实下标（跨对话跳转锚点） */
   anchorIndex?: number;
+  /** 私密对话不显示「记住」入口 */
+  allowMemory?: boolean;
   chatId?: string;
   streaming?: boolean;
   liveThink?: string;
@@ -674,7 +677,7 @@ const Bubble = memo(function Bubble({
           className="mt-1.5 flex items-center gap-1.5"
         >
           <ActionBtn icon={Copy} label={t('assistant.copy')} onClick={() => onCopy(idx)} />
-          {!mine && !streaming && (
+          {!mine && !streaming && allowMemory && (
             <ActionBtn icon={Brain} label={t('assistant.memorySave')} onClick={() => onMemory(idx)} />
           )}
           {!streaming && <ActionBtn icon={RotateCcw} label={t('assistant.redo')} onClick={() => onRedo(idx)} />}
@@ -1757,6 +1760,7 @@ export function AssistantPage() {
   /** 把助手回复存为长期记忆：先让 AI 提炼一条候选，再打开可编辑确认框 */
   const remember = (idx: number) => {
     const target = conv?.messages[idx];
+    if (conv?.privacy === 'private') return;
     setActionIdx(null);
     setThinkIdx(null);
     if (!target || target.role !== 'assistant') return;
@@ -2335,6 +2339,7 @@ export function AssistantPage() {
                 onResolveChoice={resolveChoice}
                 onResolveChoiceSet={resolveChoiceSet}
                 onOpenChat={openChatAt}
+                allowMemory={conv?.privacy !== 'private'}
                 anchorIndex={i}
               />
             ))}
