@@ -1605,6 +1605,13 @@ export const zhCN = {
   'assistant.handoffPrompt': '帮我解读这次记录',
   'assistant.chatRefs': '参考对话',
   'settings.memoryUnpin': '取消每轮注入',
+  'settings.memoryConsolidate': '整理记忆',
+  'settings.memoryConsolidating': '正在整理…',
+  'settings.memoryConsolidated': '已合并 {n} 条记忆',
+  'settings.memoryNoConsolidate': '没有需要合并的相似记忆',
+  'settings.memoryConsolidateFailed': '整理失败，请稍后再试',
+  'settings.memoryConsolidateNeedModel': '需要先配置大模型',
+  'settings.memoryHistory': '历史与已合并（{n}）',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

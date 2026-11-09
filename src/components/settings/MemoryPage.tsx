@@ -8,13 +8,15 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Brain, Check, Search, SquarePen, Star, Trash2, Wand2 } from 'lucide-react';
+import { ArrowLeft, Brain, Check, Layers, Search, SquarePen, Star, Trash2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   addMemories, clearMemories, deleteMemories, extractMemoryCandidates, restoreMemory, saveMemory,
   updateMemory, useMemories, MEMORY_KINDS, MEMORY_TEXT_MAX,
   type MemoryItem, type MemoryKind,
 } from '@/lib/memory';
+import { consolidateMemories } from '@/lib/memoryConsolidate';
+import { useActiveLlmConfig } from '@/lib/llmProfiles';
 import { useStore } from '@/store/useStore';
 import { useChats } from '@/lib/llmChats';
 import { t } from '@/i18n';
@@ -44,16 +46,26 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
   const [editPinned, setEditPinned] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [consolidating, setConsolidating] = useState(false);
   const [query, setQuery] = useState('');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const memoryAutoSave = useStore((s) => s.settings.memoryAutoSave);
+  const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
+  const cfg = useActiveLlmConfig(activeProfileId);
   const updateSettings = useStore((s) => s.updateSettings);
+
+  /** 只展示 active；已合并 / 已过期进入历史区 */
+  const history = useMemo(
+    () => memories.filter((m) => (m.status ?? 'active') !== 'active'),
+    [memories],
+  );
 
   /** 置顶在前，其余按最近更新；搜索时按正文过滤 */
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return [...memories]
+      .filter((m) => (m.status ?? 'active') === 'active')
       .filter((m) => !q || m.text.toLowerCase().includes(q) || (m.source?.quote ?? '').toLowerCase().includes(q))
       .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt);
   }, [memories, query]);
@@ -86,6 +98,23 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
         },
       });
     });
+  };
+
+  const consolidate = async () => {
+    if (!cfg || consolidating) return;
+    setConsolidating(true);
+    try {
+      const result = await consolidateMemories(cfg);
+      if (result.merged > 0) {
+        toast.success(t('settings.memoryConsolidated', { n: result.merged }));
+      } else {
+        toast.message(t('settings.memoryNoConsolidate'));
+      }
+    } catch {
+      toast.error(t('settings.memoryConsolidateFailed'));
+    } finally {
+      setConsolidating(false);
+    }
   };
 
   const toggleSelected = (id: string) => {
@@ -266,6 +295,15 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
               <Wand2 size={12} />
               {extracting ? t('settings.memoryExtracting') : t('settings.memoryExtract')}
             </button>
+            <button
+              onClick={() => void consolidate()}
+              disabled={!cfg || consolidating || list.length < 2}
+              title={cfg ? t('settings.memoryConsolidate') : t('settings.memoryConsolidateNeedModel')}
+              className="flex items-center gap-1.5 rounded-full bg-surface-hi px-3 py-1.5 text-[11px] font-medium text-ink transition-colors hover:text-accent disabled:opacity-40"
+            >
+              <Layers size={12} />
+              {consolidating ? t('settings.memoryConsolidating') : t('settings.memoryConsolidate')}
+            </button>
             {list.length > 0 && (
               <button
                 onClick={clearAll}
@@ -355,6 +393,29 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
                 </button>
               </div>
             ))
+          )}
+          {history.length > 0 && (
+            <div className="mt-2 border-t border-line/40 pt-2">
+              <p className="px-0.5 pb-1 text-[10px] font-medium text-ink-2">
+                {t('settings.memoryHistory', { n: history.length })}
+              </p>
+              <div className="space-y-1">
+                {history.slice(0, 12).map((m) => (
+                  <div key={m.id} className="flex items-start gap-2 rounded-lg bg-surface-hi/40 px-2 py-1.5">
+                    <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-ink-2 line-through decoration-line">
+                      {m.text}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { void restoreMemory(m); }}
+                      className="shrink-0 rounded px-1 py-0.5 text-[10px] text-accent"
+                    >
+                      {t('common.restore')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </SettingsSection>
       </motion.div>

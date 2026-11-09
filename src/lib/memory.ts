@@ -447,12 +447,44 @@ export async function deleteMemories(ids: string[]): Promise<MemoryItem[]> {
   return removed;
 }
 
-/** 恢复一条被删除的记忆（toast / chip 撤销用） */
+/** 恢复一条被删除或已合并的记忆（toast / 历史撤销用） */
 export async function restoreMemory(item: MemoryItem): Promise<void> {
   await loadMemories();
   const list = items ?? [];
-  if (list.some((m) => m.id === item.id)) return;
-  items = [item, ...list].slice(0, MEMORY_MAX);
+  const restored: MemoryItem = {
+    ...item,
+    status: 'active',
+    updatedAt: Date.now(),
+    supersededBy: undefined,
+    validUntil: undefined,
+  };
+  const existing = list.find((m) => m.id === item.id);
+  if (existing) {
+    items = list.map((m) => (m.id === item.id ? restored : m));
+  } else {
+    items = [restored, ...list].slice(0, MEMORY_MAX);
+  }
+  notify();
+  await persist();
+}
+
+/** 标记一组记忆已被合并/取代，保留历史供恢复 */
+export async function supersedeMemories(ids: string[], byId: string): Promise<void> {
+  await loadMemories();
+  const set = new Set(ids);
+  if (set.size === 0) return;
+  const now = Date.now();
+  items = (items ?? []).map((m) => (set.has(m.id)
+    ? { ...m, status: 'superseded', supersededBy: byId, updatedAt: now }
+    : m));
+  notify();
+  await persist();
+}
+
+/** 标记一条记忆过期（不物理删除） */
+export async function expireMemory(id: string): Promise<void> {
+  await loadMemories();
+  items = (items ?? []).map((m) => (m.id === id ? { ...m, status: 'expired', updatedAt: Date.now() } : m));
   notify();
   await persist();
 }
@@ -463,7 +495,7 @@ export async function addMemories(list: { text: string; kind: MemoryKind }[]): P
   const now = Date.now();
   const fresh: MemoryItem[] = [];
   for (const c of list) {
-    const text = c.text.trim().slice(0, MEMORY_TEXT_MAX);
+    const text = sanitizeMemoryText(c.text);
     if (!text || existing.has(text)) continue;
     existing.add(text);
     fresh.push({

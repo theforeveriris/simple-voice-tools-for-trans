@@ -1605,4 +1605,11 @@ export const es = {
   'assistant.handoffPrompt': 'Ayúdame a interpretar esta grabación',
   'assistant.chatRefs': 'Conversaciones relacionadas',
   'settings.memoryUnpin': 'Quitar de cada respuesta',
+  'settings.memoryConsolidate': 'Consolidar memorias',
+  'settings.memoryConsolidating': 'Consolidando…',
+  'settings.memoryConsolidated': 'Se fusionaron {n} memorias',
+  'settings.memoryNoConsolidate': 'No hay memorias similares para fusionar',
+  'settings.memoryConsolidateFailed': 'No se pudo consolidar; inténtalo más tarde',
+  'settings.memoryConsolidateNeedModel': 'Configura un modelo primero',
+  'settings.memoryHistory': 'Historial y fusionadas ({n})',
 } as const;

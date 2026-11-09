@@ -1596,4 +1596,11 @@ export const en = {
   'assistant.handoffPrompt': 'Help me interpret this recording',
   'assistant.chatRefs': 'Related chats',
   'settings.memoryUnpin': 'Unpin from every reply',
+  'settings.memoryConsolidate': 'Consolidate memories',
+  'settings.memoryConsolidating': 'Consolidating…',
+  'settings.memoryConsolidated': 'Merged {n} memories',
+  'settings.memoryNoConsolidate': 'No similar memories to merge',
+  'settings.memoryConsolidateFailed': 'Could not consolidate; try again later',
+  'settings.memoryConsolidateNeedModel': 'Configure a model first',
+  'settings.memoryHistory': 'History and merged ({n})',
 } as const;

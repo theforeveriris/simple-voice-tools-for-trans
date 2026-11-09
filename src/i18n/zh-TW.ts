@@ -1596,4 +1596,11 @@ export const zhTW = {
   'assistant.handoffPrompt': '幫我解讀這次記錄',
   'assistant.chatRefs': '參考對話',
   'settings.memoryUnpin': '取消每輪注入',
+  'settings.memoryConsolidate': '整理記憶',
+  'settings.memoryConsolidating': '正在整理…',
+  'settings.memoryConsolidated': '已合併 {n} 條記憶',
+  'settings.memoryNoConsolidate': '沒有需要合併的相似記憶',
+  'settings.memoryConsolidateFailed': '整理失敗，請稍後再試',
+  'settings.memoryConsolidateNeedModel': '需要先設定大模型',
+  'settings.memoryHistory': '歷史與已合併（{n}）',
 } as const;

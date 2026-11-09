@@ -1597,5 +1597,12 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.handoffPrompt': '為我解此錄',
   'assistant.chatRefs': '相關談',
   'settings.memoryUnpin': '罷每輪之注',
+  'settings.memoryConsolidate': '整記憶',
+  'settings.memoryConsolidating': '方整…',
+  'settings.memoryConsolidated': '已併 {n} 條',
+  'settings.memoryNoConsolidate': '無可併之似記',
+  'settings.memoryConsolidateFailed': '整之不成，請後再試',
+  'settings.memoryConsolidateNeedModel': '先須設大模',
+  'settings.memoryHistory': '舊記與已併（{n}）',
 };
 

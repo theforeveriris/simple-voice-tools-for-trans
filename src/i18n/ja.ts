@@ -1597,4 +1597,11 @@ export const ja = {
   'assistant.handoffPrompt': 'この記録を解釈して',
   'assistant.chatRefs': '関連する会話',
   'settings.memoryUnpin': '毎回の注入を解除',
+  'settings.memoryConsolidate': '記憶を整理',
+  'settings.memoryConsolidating': '整理中…',
+  'settings.memoryConsolidated': '{n} 件の記憶を統合しました',
+  'settings.memoryNoConsolidate': '統合する類似記憶はありません',
+  'settings.memoryConsolidateFailed': '整理に失敗しました。後でもう一度お試しください',
+  'settings.memoryConsolidateNeedModel': '先にモデルを設定してください',
+  'settings.memoryHistory': '履歴と統合済み（{n}）',
 } as const;
