@@ -22,6 +22,7 @@ import { AssistantPage } from '@/components/ai/AssistantPage';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme, presetSpec } from '@/lib/theme/monet';
+import { smoothThemeChange } from '@/lib/theme/smooth';
 import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
@@ -275,18 +276,30 @@ function App() {
 
   // 应用莫奈主题色（含深浅模式；system 下监听系统切换；预设配色改写色相来源；
   // 莫奈预设下 accentHue / darkHue 与 hue 不同时走合成 spec 生成双色调 / 独立深色铺底）
+  // 结构性切换（深浅模式 / 预设 / 旗帜 / 系统深浅翻转）走整页圆形揭示；
+  // 色相滑条拖动等纯色板微调保持即时，避免拖动时逐帧重拍快照。
+  const appliedThemeKeyRef = useRef<string | null>(null);
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => {
+    const applyNow = () => {
       const preset = presetSpec(huePreset, hue, prideFlag, accentHue, darkHue);
       applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec, prideFlag);
       // 原生壳：系统栏（状态栏/手势条）底色跟随主题（含深浅切换与自定义色相）
       syncNativeSystemBars();
     };
-    apply();
+    const applyIfNeeded = () => {
+      const dark = theme === 'dark' || (theme === 'system' && mq.matches);
+      const key = `${theme}|${huePreset}|${prideFlag}|${dark}`;
+      const prev = appliedThemeKeyRef.current;
+      appliedThemeKeyRef.current = key;
+      // 首次挂载无旧状态可过渡；key 不变（仅色相微调）直接应用
+      if (prev !== null && prev !== key) smoothThemeChange(applyNow);
+      else applyNow();
+    };
+    applyIfNeeded();
     if (theme === 'system') {
-      mq.addEventListener('change', apply);
-      return () => mq.removeEventListener('change', apply);
+      mq.addEventListener('change', applyIfNeeded);
+      return () => mq.removeEventListener('change', applyIfNeeded);
     }
   }, [hue, accentHue, darkHue, huePreset, prideFlag, theme]);
 
