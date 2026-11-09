@@ -118,6 +118,8 @@ export interface ChatConversation {
   memoryOff?: boolean;
   /** 私密对话：不读取记忆 / 记录 / 文档，也不调用数据工具 */
   privacy?: ChatPrivacy;
+  /** 开启私密对话时的消息下标；只把此后的消息发给模型 */
+  privateSince?: number;
   /** 较早对话摘要；只在上下文超预算时更新 */
   summary?: ChatSummary;
 }
@@ -385,7 +387,9 @@ export function setChatPrivacy(id: string, privacy: ChatPrivacy): void {
     ? {
       ...c,
       privacy: privacy === 'normal' ? undefined : privacy,
-      ...(privacy === 'private' ? { memoryOff: true } : {}),
+      ...(privacy === 'private'
+        ? { memoryOff: true, privateSince: c.messages.length }
+        : { privateSince: undefined }),
     }
     : c)));
 }

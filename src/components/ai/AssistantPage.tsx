@@ -954,6 +954,11 @@ export function AssistantPage() {
 
   const generate = async (convId: string, history: ChatMessage[], extraContext = '') => {
     if (!cfg || history.length === 0) return;
+    const privateChat = getChat(convId)?.privacy === 'private';
+    if (privateChat) {
+      const since = getChat(convId)?.privateSince ?? 0;
+      if (since > 0) history = history.slice(since);
+    }
     // 上下文预算：历史记录摘要 + 系统提示 + 对话 + 回复余量都要装进窗口。
     // 历史记录预算自适应：对话越短分给记录摘要越多（旧实现固定 40%，
     // 明明装得下的旧记录也被裁掉，导致 AI 读不到全部历史）
@@ -975,7 +980,6 @@ export function AssistantPage() {
     // 工具可用时不再逐条注入最近记录，只保留画像、聚合与基线，省 token。
     const lastUserMsg = [...history].reverse().find((m) => m.role === 'user');
     const lastUserText = lastUserMsg?.content ?? '';
-    const privateChat = getChat(convId)?.privacy === 'private';
     const page = useStore.getState();
     const pageRecord = !privateChat && page.lastTab === 'analysis' ? page.currentAnalysis : null;
     const pageContext = pageRecord
