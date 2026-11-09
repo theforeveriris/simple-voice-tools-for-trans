@@ -1612,6 +1612,11 @@ export const zhCN = {
   'settings.memoryConsolidateFailed': '整理失败，请稍后再试',
   'settings.memoryConsolidateNeedModel': '需要先配置大模型',
   'settings.memoryHistory': '历史与已合并（{n}）',
+  'assistant.privateOn': '开启私密对话',
+  'assistant.privateOff': '退出私密对话',
+  'assistant.privateOnHint': '不读取记忆、记录或文档，不自动记忆，不调用数据工具',
+  'assistant.privateOffHint': '当前为私密对话；点击退出',
+  'assistant.privateBadge': '私密',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

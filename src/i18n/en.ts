@@ -1603,4 +1603,9 @@ export const en = {
   'settings.memoryConsolidateFailed': 'Could not consolidate; try again later',
   'settings.memoryConsolidateNeedModel': 'Configure a model first',
   'settings.memoryHistory': 'History and merged ({n})',
+  'assistant.privateOn': 'Start a private chat',
+  'assistant.privateOff': 'Leave private chat',
+  'assistant.privateOnHint': 'No memories, records, or documents; no auto-memory or data tools',
+  'assistant.privateOffHint': 'Private chat is on; click to leave',
+  'assistant.privateBadge': 'Private',
 } as const;

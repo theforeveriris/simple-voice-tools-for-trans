@@ -24,7 +24,7 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowUp, Ban, Brain, Check, ChevronDown, Copy, Download, GitBranch, ListTree, Loader2, MoreHorizontal, PanelRight, Paperclip, X,
-  Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2, Star,
+  Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2, Star, Shield, ShieldOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -58,7 +58,7 @@ import { ChoiceSetCard } from '@/components/ai/ChoiceSetCard';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
-  addMessage, createChat, deleteChat, getChat, patchMessageContext, renameChat, saveAssistantDraft, setChatMemoryOff, setChatSummary, setMessages,
+  addMessage, createChat, deleteChat, getChat, patchMessageContext, renameChat, saveAssistantDraft, setChatMemoryOff, setChatPrivacy, setChatSummary, setMessages,
   setPinnedRecords, useChats, type ChatAttachment, type ChatContextMeta, type ChatConversation, type ChatMessage, type ChatRef,
 } from '@/lib/llmChats';
 import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chatSummary';
@@ -697,6 +697,7 @@ export function AssistantPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   /** 新建对话时是否默认关闭自动记忆（发送第一条消息时写入对话） */
   const [draftMemoryOff, setDraftMemoryOff] = useState(false);
+  const [draftPrivate, setDraftPrivate] = useState(false);
   const [input, setInput] = useState('');
   /** null = 空闲；否则为流式累积文本 */
   const [streamText, setStreamText] = useState<string | null>(null);
@@ -892,7 +893,8 @@ export function AssistantPage() {
     if (!cfg || !assistantText.trim()) return;
     const settings = useStore.getState().settings;
     if (settings.memoryAutoSave === 'off') return;
-    if (getChat(chatId)?.memoryOff) return;
+    const chat = getChat(chatId);
+    if (chat?.memoryOff || chat?.privacy === 'private') return;
     const fromChoice = origin === 'choice' || origin === 'choice_set';
     if (!fromChoice && !shouldAutoSaveMemory(userText)) return;
     try {
@@ -961,8 +963,9 @@ export function AssistantPage() {
     // 工具可用时不再逐条注入最近记录，只保留画像、聚合与基线，省 token。
     const lastUserMsg = [...history].reverse().find((m) => m.role === 'user');
     const lastUserText = lastUserMsg?.content ?? '';
+    const privateChat = getChat(convId)?.privacy === 'private';
     const page = useStore.getState();
-    const pageRecord = page.lastTab === 'analysis' ? page.currentAnalysis : null;
+    const pageRecord = !privateChat && page.lastTab === 'analysis' ? page.currentAnalysis : null;
     const pageContext = pageRecord
       ? `【当前页面】用户刚从分析页进入；当前记录 id=${pageRecord.id}（${new Date(pageRecord.createdAt).toLocaleDateString()} · ${t(`mode.${pageRecord.mode ?? 'reading'}`)}）。用户说「这个 / 刚才 / 这条」时指这条记录。`
       : '';
@@ -978,7 +981,7 @@ export function AssistantPage() {
       pendingChoice?: PendingChoice;
       pendingChoiceSet?: PendingChoiceSet;
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
-    if (lastUserMsg) {
+    if (lastUserMsg && !privateChat) {
       setToolNote(t('assistant.toolSearching'));
       try {
         toolRun = await runAssistantTools({
@@ -1025,34 +1028,42 @@ export function AssistantPage() {
       if (abortRef.current === controller) abortRef.current = null;
       return;
     }
-    const hist = buildAssistantContext(
-      records,
-      settings,
-      histBudget,
-      getChat(convId)?.pinnedRecordIds ?? [],
-      { includeDetails: !toolRun.supported },
-    );
+    const hist = privateChat
+      ? {
+        profile: buildAssistantProfile(settings),
+        history: '',
+        meta: { detailIds: [], pinnedIds: [], totalRecords: 0 },
+      }
+      : buildAssistantContext(
+        records,
+        settings,
+        histBudget,
+        getChat(convId)?.pinnedRecordIds ?? [],
+        { includeDetails: !toolRun.supported },
+      );
     // 内置文档检索：工具没有主动查文档时，再用最近一条用户消息做一次预检索
-    const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = lastUserMsg && toolRun.docs.length === 0
+    const docHitPromise: Promise<{ text: string; docs: { title: string; chars: number }[] }> = !privateChat && lastUserMsg && toolRun.docs.length === 0
       ? retrieveDocsDetailed(lastUserText)
       : Promise.resolve({ text: '', docs: [] });
     // 长期记忆：置顶固定注入；其余由模型按需调用 search_memory，按需注入
     const planState = getPracticePlanState();
-    const memoryHit = await resolveMemoryContext(cfg, history, lastUserMsg, {
-      chatId: convId,
-      planId: planState.plan?.id,
-    });
+    const memoryHit = privateChat
+      ? { text: '', count: 0, items: [] }
+      : await resolveMemoryContext(cfg, history, lastUserMsg, {
+        chatId: convId,
+        planId: planState.plan?.id,
+      });
     const docHit = await docHitPromise;
-    const planSummary = planSummaryForPrompt(planState.plan, planState.logs);
+    const planSummary = privateChat ? '' : planSummaryForPrompt(planState.plan, planState.logs);
     // 用户随消息引用的记录：把指标和 id 一起注入，图表用 record://
-    const attachmentRecords = (lastUserMsg?.attachments ?? [])
+    const attachmentRecords = privateChat ? [] : (lastUserMsg?.attachments ?? [])
       .filter((a) => a.kind === 'record' && a.recordId)
       .map((a) => records.find((r) => r.id === a.recordId))
       .filter((r): r is AnalysisRecord => !!r);
     const attachmentText = attachmentRecords
       .map((r) => `【用户引用的记录】\n${formatRecordLine(r)}`)
       .join('\n\n');
-    const baseExtra = [extraContext, pageContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
+    const baseExtra = [privateChat ? '' : extraContext, pageContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
     const storedChat = getChat(convId);
     // 只有完整历史才能安全使用/更新摘要；redo / retry 传的是切片，跳过摘要
     const canSummarize = !!storedChat && storedChat.messages === history;
@@ -1313,9 +1324,13 @@ export function AssistantPage() {
     setInput('');
     let convId = activeId;
     if (!convId) {
-      convId = createChat('', [], { memoryOff: draftMemoryOff });
+      convId = createChat('', [], {
+        memoryOff: draftMemoryOff,
+        ...(draftPrivate ? { privacy: 'private' as const } : {}),
+      });
       setActiveId(convId);
       setDraftMemoryOff(false);
+      setDraftPrivate(false);
     }
     // 选择器还开着时用户直接打字：把文字当作「其他」答案，收起选择器
     const current = getChat(convId);
@@ -1666,7 +1681,10 @@ export function AssistantPage() {
     const id = createChat(
       conv.title ? `${conv.title} · ${t('assistant.branch')}` : t('assistant.title'),
       conv.messages.slice(0, idx + 1),
-      { memoryOff: conv.memoryOff },
+      {
+        memoryOff: conv.memoryOff,
+        ...(conv.privacy ? { privacy: conv.privacy } : {}),
+      },
     );
     setActiveId(id);
     setActionIdx(null);
@@ -1809,6 +1827,7 @@ export function AssistantPage() {
     stopStream();
     setActiveId(null);
     setDraftMemoryOff(memoryOff);
+    setDraftPrivate(false);
     setPendingAttachments([]);
     setRecordPickerOpen(false);
     setSidebarOpen(false);
@@ -1992,10 +2011,16 @@ export function AssistantPage() {
     send();
   };
 
-  const memoryOffNow = activeId ? !!conv?.memoryOff : draftMemoryOff;
+  const privateNow = activeId ? conv?.privacy === 'private' : draftPrivate;
+  const memoryOffNow = privateNow || (activeId ? !!conv?.memoryOff : draftMemoryOff);
   const toggleMemoryOff = () => {
+    if (privateNow) return;
     if (activeId) setChatMemoryOff(activeId, !memoryOffNow);
     else setDraftMemoryOff((v) => !v);
+  };
+  const togglePrivate = () => {
+    if (activeId) setChatPrivacy(activeId, privateNow ? 'normal' : 'private');
+    else setDraftPrivate((v) => !v);
   };
 
   const recordLabel = (id: string): string => {
@@ -2028,13 +2053,27 @@ export function AssistantPage() {
         </button>
       )}
       <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
+      {privateNow && (
+        <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+          {t('assistant.privateBadge')}
+        </span>
+      )}
       <button
         onClick={toggleMemoryOff}
+        disabled={privateNow}
         aria-label={t(memoryOffNow ? 'assistant.memoryOff' : 'assistant.memoryOn')}
         title={t(memoryOffNow ? 'assistant.memoryOffHint' : 'assistant.memoryOnHint')}
         className={cn(iconBtn, memoryOffNow && 'text-accent')}
       >
         {memoryOffNow ? <Ban size={17} /> : <Brain size={17} />}
+      </button>
+      <button
+        onClick={togglePrivate}
+        aria-label={t(privateNow ? 'assistant.privateOff' : 'assistant.privateOn')}
+        title={t(privateNow ? 'assistant.privateOffHint' : 'assistant.privateOnHint')}
+        className={cn(iconBtn, privateNow && 'text-accent')}
+      >
+        {privateNow ? <ShieldOff size={17} /> : <Shield size={17} />}
       </button>
       <button onClick={() => newChat()} aria-label={t('assistant.newChat')} className={iconBtn}>
         <Plus size={17} />

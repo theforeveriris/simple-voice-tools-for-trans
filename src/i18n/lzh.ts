@@ -1604,5 +1604,10 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.memoryConsolidateFailed': '整之不成，請後再試',
   'settings.memoryConsolidateNeedModel': '先須設大模',
   'settings.memoryHistory': '舊記與已併（{n}）',
+  'assistant.privateOn': '啟私談',
+  'assistant.privateOff': '罷私談',
+  'assistant.privateOnHint': '不讀記憶、記錄、文獻；不自記；不役數據之器',
+  'assistant.privateOffHint': '今為私談；點之則罷',
+  'assistant.privateBadge': '私',
 };
 

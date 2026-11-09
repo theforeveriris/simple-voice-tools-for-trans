@@ -1603,4 +1603,9 @@ export const zhTW = {
   'settings.memoryConsolidateFailed': '整理失敗，請稍後再試',
   'settings.memoryConsolidateNeedModel': '需要先設定大模型',
   'settings.memoryHistory': '歷史與已合併（{n}）',
+  'assistant.privateOn': '開啟私密對話',
+  'assistant.privateOff': '退出私密對話',
+  'assistant.privateOnHint': '不讀取記憶、記錄或文件，不自動記憶，不呼叫資料工具',
+  'assistant.privateOffHint': '目前為私密對話；點擊退出',
+  'assistant.privateBadge': '私密',
 } as const;

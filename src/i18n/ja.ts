@@ -1604,4 +1604,9 @@ export const ja = {
   'settings.memoryConsolidateFailed': '整理に失敗しました。後でもう一度お試しください',
   'settings.memoryConsolidateNeedModel': '先にモデルを設定してください',
   'settings.memoryHistory': '履歴と統合済み（{n}）',
+  'assistant.privateOn': 'プライベート会話を開始',
+  'assistant.privateOff': 'プライベート会話を終了',
+  'assistant.privateOnHint': '記憶・記録・文書を読み込まず、自動記憶やデータツールも使いません',
+  'assistant.privateOffHint': 'プライベート会話中です。クリックで終了',
+  'assistant.privateBadge': 'プライベート',
 } as const;

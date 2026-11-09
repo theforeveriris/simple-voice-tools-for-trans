@@ -1612,4 +1612,9 @@ export const es = {
   'settings.memoryConsolidateFailed': 'No se pudo consolidar; inténtalo más tarde',
   'settings.memoryConsolidateNeedModel': 'Configura un modelo primero',
   'settings.memoryHistory': 'Historial y fusionadas ({n})',
+  'assistant.privateOn': 'Iniciar chat privado',
+  'assistant.privateOff': 'Salir del chat privado',
+  'assistant.privateOnHint': 'Sin memorias, grabaciones ni documentos; sin memoria automática ni herramientas de datos',
+  'assistant.privateOffHint': 'Chat privado activo; haz clic para salir',
+  'assistant.privateBadge': 'Privado',
 } as const;

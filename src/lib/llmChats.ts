@@ -101,6 +101,9 @@ export interface ChatSummary {
   source: 'local' | 'llm';
 }
 
+/** 对话隐私级别：normal / 只关写入 / 完全私密 */
+export type ChatPrivacy = 'normal' | 'no-write' | 'private';
+
 export interface ChatConversation {
   id: string;
   title: string;
@@ -111,6 +114,8 @@ export interface ChatConversation {
   pinnedRecordIds?: string[];
   /** 临时会话：不自动写入长期记忆（手动「记住」仍可用） */
   memoryOff?: boolean;
+  /** 私密对话：不读取记忆 / 记录 / 文档，也不调用数据工具 */
+  privacy?: ChatPrivacy;
   /** 较早对话摘要；只在上下文超预算时更新 */
   summary?: ChatSummary;
 }
@@ -240,7 +245,7 @@ function truncate(text: string, max: number): string {
 export function createChat(
   title: string,
   messages: ChatMessage[] = [],
-  opts: { memoryOff?: boolean } = {},
+  opts: { memoryOff?: boolean; privacy?: ChatPrivacy } = {},
 ): string {
   const now = Date.now();
   const conv: ChatConversation = {
@@ -250,6 +255,7 @@ export function createChat(
     updatedAt: now,
     messages,
     ...(opts.memoryOff ? { memoryOff: true } : {}),
+    ...(opts.privacy && opts.privacy !== 'normal' ? { privacy: opts.privacy } : {}),
   };
   // 加载未完成时也先建立内存列表：其余写操作都有 !chats 守卫会静默丢消息，
   // 这里放行后 ensureLoaded 按 id 合并，新对话不会被读到的旧数据覆盖
@@ -368,6 +374,18 @@ export function setPinnedRecords(id: string, ids: string[]): void {
 export function setChatSummary(id: string, summary: ChatSummary): void {
   if (!chats) return;
   commit(chats.map((c) => (c.id === id ? { ...c, summary } : c)));
+}
+
+/** 设置对话隐私级别；private 同时关闭自动写入记忆 */
+export function setChatPrivacy(id: string, privacy: ChatPrivacy): void {
+  if (!chats) return;
+  commit(chats.map((c) => (c.id === id
+    ? {
+      ...c,
+      privacy: privacy === 'normal' ? undefined : privacy,
+      ...(privacy === 'private' ? { memoryOff: true } : {}),
+    }
+    : c)));
 }
 
 export function deleteChat(id: string): void {
