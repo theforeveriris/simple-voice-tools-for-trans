@@ -204,6 +204,7 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     `今天是 ${date}。`,
     buildAssistantProfile(settings),
     '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
+    '趋势、均值、中位数、波动、靶标命中率、本周 vs 上周、与基线比较，必须调用 get_trends；不要心算这些数字。',
     '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
     '如果要一次问 2–4 个互不依赖的问题，改用 ask_choice_set：一张卡片分页展示，用户答完一次提交；如果下一题取决于上一题答案，继续用 ask_choice 逐轮询问。',
     '如果用户要求「演示/测试选择器」「连续问多轮问题」「多轮提问」，也必须调用 ask_choice 或 ask_choice_set 真实发起选择；不要生成 HTML、<details>、<script>、按钮代码或 Markdown 复选框来模拟。',

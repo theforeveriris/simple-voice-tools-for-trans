@@ -85,6 +85,29 @@ describe('runAssistantDataTool', () => {
     expect(out!.recordIds).toEqual(['a', 'b']);
   });
 
+  it('computes trends with code-side stats', async () => {
+    const out = await runAssistantDataTool('get_trends', { metric: 'f0', lastN: 2 }, ctx);
+    expect(out!.summary).toBe('趋势：F0 中位 · 2 条');
+    expect(out!.text).toContain('均值 177.5 Hz');
+    expect(out!.text).toContain('记录 id：b, c');
+
+    const previous = await runAssistantDataTool('get_trends', { metric: 'f0', lastN: 2, compare: 'previous' }, ctx);
+    expect(previous!.text).toContain('均值相比上一周期 +17.5 Hz');
+
+    const withBaseline = {
+      ...ctx,
+      settings: { ...ctx.settings, baselineRecordId: 'a' },
+    };
+    const baseline = await runAssistantDataTool('get_trends', { metric: 'f0', lastN: 2, compare: 'baseline' }, withBaseline);
+    expect(baseline!.text).toContain('均值相比基线 +17.5 Hz');
+  });
+
+  it('reports invalid trend metrics', async () => {
+    const out = await runAssistantDataTool('get_trends', { metric: 'pitch' }, ctx);
+    expect(out!.summary).toBe('趋势：参数无效');
+    expect(out!.text).toContain('metric 无效');
+  });
+
   it('handles unknown ids and empty queries', async () => {
     expect((await runAssistantDataTool('get_record', { id: 'missing' }, ctx))!.summary).toBe('读取记录：未找到');
     expect((await runAssistantDataTool('query_records', { from: '2030-01-01' }, ctx))!.summary).toBe('查询记录：0 条');

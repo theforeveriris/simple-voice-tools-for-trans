@@ -8,10 +8,19 @@
 import type { AnalysisRecord, AppSettings, TestMode } from '@/types';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import type { LlmToolSpec } from '@/lib/llm';
+import {
+  computeTrend,
+  formatTrendText,
+  isTrendMetric,
+  trendMetricLabel,
+  type TrendCompare,
+} from './assistantTrends';
 
 export type AssistantToolContext = {
   records: AnalysisRecord[];
-  settings: Pick<AppSettings, 'targetEnabled' | 'targetF0Min' | 'targetF0Max'>;
+  settings: Pick<AppSettings, 'targetEnabled' | 'targetF0Min' | 'targetF0Max'> & {
+    baselineRecordId?: string | null;
+  };
 };
 
 export type AssistantToolOutcome = {
@@ -94,6 +103,40 @@ export const ASSISTANT_DATA_TOOLS: LlmToolSpec[] = [
         query: { type: 'string', description: '2–8 个关键词或用户原话中的关键短语' },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'get_trends',
+    description:
+      '按指标计算代码级趋势：均值、中位数、波动、首末变化、每周斜率、靶标命中率，以及相比上一周期 / 基线的差值。用户问「最近几次怎么样」「有没有进步」「本周比上周如何」「离基线多远」时使用；不要自己心算这些数字。',
+    parameters: {
+      type: 'object',
+      properties: {
+        metric: {
+          type: 'string',
+          enum: ['f0', 'f1', 'f2', 'jitter', 'shimmer', 'hnr', 'cpps', 'inTarget', 'duration'],
+          description: 'F0 中位 / F1 / F2 / Jitter / Shimmer / HNR / CPPS / 靶标命中率 / 录音时长',
+        },
+        lastN: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 20,
+          description: '最近几条记录，默认 8（上限 20）',
+        },
+        mode: {
+          type: 'string',
+          enum: ['reading', 'sustained', 'glide'],
+          description: '测试模式（可选）',
+        },
+        from: { type: 'string', description: '起始日期 YYYY-MM-DD（可选）' },
+        to: { type: 'string', description: '结束日期 YYYY-MM-DD（可选）' },
+        compare: {
+          type: 'string',
+          enum: ['previous', 'baseline'],
+          description: '与紧邻的上一周期比较，或与设置中的基线记录比较（可选）',
+        },
+      },
+      required: ['metric'],
     },
   },
 ];
@@ -254,6 +297,37 @@ async function searchDocs(args: Record<string, unknown>): Promise<AssistantToolO
   };
 }
 
+/** 趋势工具：所有数字由 computeTrend 计算，模型只负责解释 */
+function getTrends(args: Record<string, unknown>, ctx: AssistantToolContext): AssistantToolOutcome {
+  const metric = isTrendMetric(args.metric) ? args.metric : null;
+  if (!metric) {
+    return { text: 'metric 无效。可用：f0 / f1 / f2 / jitter / shimmer / hnr / cpps / inTarget / duration。', summary: '趋势：参数无效' };
+  }
+  const lastN = typeof args.lastN === 'number' && Number.isFinite(args.lastN)
+    ? Math.max(1, Math.min(20, Math.round(args.lastN)))
+    : 8;
+  const mode: TestMode | null = args.mode === 'reading' || args.mode === 'sustained' || args.mode === 'glide'
+    ? args.mode
+    : null;
+  const compare: TrendCompare | null = args.compare === 'previous' || args.compare === 'baseline'
+    ? args.compare
+    : null;
+  const from = typeof args.from === 'string' ? args.from : null;
+  const to = typeof args.to === 'string' ? args.to : null;
+  const baselineRecordId = compare === 'baseline' ? ctx.settings.baselineRecordId ?? null : null;
+  const options = { lastN, mode, from, to, compare, baselineRecordId };
+  const result = computeTrend(ctx.records, metric, options);
+  let text = formatTrendText(result, options);
+  if (compare === 'baseline' && !baselineRecordId) {
+    text += '\n未设置基线记录，无法比较基线；可先在分析页把某条记录设为基线。';
+  }
+  return {
+    text,
+    summary: `趋势：${trendMetricLabel(metric)} · ${result.count} 条`,
+    recordIds: result.recordIds,
+  };
+}
+
 /** 执行一个只读工具；未知工具返回 null */
 export async function runAssistantDataTool(
   name: string,
@@ -269,6 +343,8 @@ export async function runAssistantDataTool(
       return compareRecords(args, ctx);
     case 'search_docs':
       return searchDocs(args);
+    case 'get_trends':
+      return getTrends(args, ctx);
     default:
       return null;
   }
