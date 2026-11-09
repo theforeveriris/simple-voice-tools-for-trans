@@ -2106,7 +2106,9 @@ export function AssistantPage() {
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
             <Sparkles size={17} />
           </span>
-        ) : (
+        ) : !classicNav ? (
+          // 悬浮胶囊底栏没有可见页签，助手页需要返回入口；
+          // 经典底栏下 AI 本身就是页签，返回键是重复的
           <button
             onClick={() => setTab(lastTab === 'assistant' ? 'test' : lastTab)}
             aria-label={t('common.back')}
@@ -2114,7 +2116,7 @@ export function AssistantPage() {
           >
             <ArrowLeft size={18} />
           </button>
-        )}
+        ) : null}
         <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
         {privateNow && (
           <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-medium text-accent">
