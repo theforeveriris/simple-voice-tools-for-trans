@@ -64,7 +64,7 @@ import {
 import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chatSummary';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
-import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
+import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, isMemoryVisible, looksLikeInstruction, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
 import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_CHOICE_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
 import { CompareImage, RecordImage, TrendImage } from '@/lib/assistantCharts';
@@ -302,13 +302,14 @@ async function resolveMemoryContext(
   cfg: LlmConfig,
   history: ChatMessage[],
   lastUser: ChatMessage | undefined,
+  options: { chatId?: string; planId?: string } = {},
 ): Promise<{ text: string; count: number; query?: string }> {
   const list = await loadMemories();
-  const pinned = list.filter((m) => m.pinned);
+  const pinned = list.filter((m) => m.pinned && isMemoryVisible(m, options));
   let text = memoryPromptBlock(pinned);
   let count = pinned.length;
   let query: string | undefined;
-  if (!lastUser || !list.some((m) => !m.pinned)) return { text, count };
+  if (!lastUser || !list.some((m) => !m.pinned && isMemoryVisible(m, options))) return { text, count };
 
   const recent = history
     .slice(-4)
@@ -326,7 +327,7 @@ async function resolveMemoryContext(
     if (!call) return { text, count };
     const q = typeof call.arguments.query === 'string' ? call.arguments.query.trim() : '';
     query = (q || lastUser.content).slice(0, 120);
-    const found = await searchMemories(query);
+    const found = await searchMemories(query, 8, options);
     if (found.length > 0) {
       text = [text, memorySearchBlock(found, query)].filter(Boolean).join('\n\n');
       count += found.length;
@@ -334,7 +335,7 @@ async function resolveMemoryContext(
     return { text, count, query };
   } catch {
     // 没有工具能力（或预检失败）：退回本轮按问题自动筛选，避免记忆直接失效
-    const fallback = await buildMemoryPrompt(lastUser.content);
+    const fallback = await buildMemoryPrompt(lastUser.content, options);
     return { text: fallback.text, count: fallback.count };
   }
 }
@@ -901,6 +902,7 @@ export function AssistantPage() {
       const saves = calls
         .map(parseMemorySaveCall)
         .filter((x): x is NonNullable<typeof x> => !!x)
+        .filter((x) => !looksLikeInstruction(x.text))
         .slice(0, fromChoice ? 1 : 3);
       const writes: MemoryWrite[] = [];
       for (const s of saves) {
@@ -1031,9 +1033,12 @@ export function AssistantPage() {
       ? retrieveDocsDetailed(lastUserText)
       : Promise.resolve({ text: '', docs: [] });
     // 长期记忆：置顶固定注入；其余由模型按需调用 search_memory，按需注入
-    const memoryHit = await resolveMemoryContext(cfg, history, lastUserMsg);
-    const docHit = await docHitPromise;
     const planState = getPracticePlanState();
+    const memoryHit = await resolveMemoryContext(cfg, history, lastUserMsg, {
+      chatId: convId,
+      planId: planState.plan?.id,
+    });
+    const docHit = await docHitPromise;
     const planSummary = planSummaryForPrompt(planState.plan, planState.logs);
     // 用户随消息引用的记录：把指标和 id 一起注入，图表用 record://
     const attachmentRecords = (lastUserMsg?.attachments ?? [])
