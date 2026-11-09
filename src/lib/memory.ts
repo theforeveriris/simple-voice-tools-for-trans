@@ -496,7 +496,7 @@ export async function addMemories(list: { text: string; kind: MemoryKind }[]): P
   const fresh: MemoryItem[] = [];
   for (const c of list) {
     const text = sanitizeMemoryText(c.text);
-    if (!text || existing.has(text)) continue;
+    if (!text || existing.has(text) || looksLikeInstruction(text)) continue;
     existing.add(text);
     fresh.push({
       id: genId(),

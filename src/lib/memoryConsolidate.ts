@@ -5,6 +5,7 @@
 import { llmChat, type LlmConfig } from './llm';
 import {
   loadMemories,
+  looksLikeInstruction,
   memorySimilarity,
   saveMemory,
   supersedeMemories,
@@ -94,6 +95,7 @@ export async function consolidateMemories(
     const first = group[0];
     let firstNewId: string | null = null;
     for (const line of lines) {
+      if (looksLikeInstruction(line)) continue;
       const result = await saveMemory({
         text: line,
         kind: first.kind,
