@@ -1590,4 +1590,6 @@ export const en = {
   'assistant.numericUnverified': 'Some numbers could not be verified against this round\'s data.',
   'assistant.numericRepaired': 'Numbers were corrected against this round\'s data.',
   'assistant.ctx.numberTag': 'Numbers',
+  'assistant.chartTrend': 'Trend',
+  'assistant.chartCompare': 'Comparison',
 } as const;

@@ -66,7 +66,7 @@ import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
 import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
-import { RecordImage } from '@/lib/assistantCharts';
+import { CompareImage, RecordImage, TrendImage } from '@/lib/assistantCharts';
 import {
   buildCommandCompletions, parseAssistantCommand, parseTestMode,
   recordsWithinLastDays, resolveRecordSelectors, reviewRangeDays,
@@ -177,11 +177,13 @@ const ASSISTANT_VISUAL_GUIDE = [
   '- 需要用户决定方向、范围或偏好时，由系统统一选择器处理；如果用户要求演示、测试或连续问多轮问题，也必须实际发起选择，而不是生成演示页面。',
   '- 一次要问几个互不依赖的问题（如方向、频率、时长）时，用 ask_choice_set 放进同一张卡片分页回答、一次提交；如果下一题取决于上一题答案，则用 ask_choice 逐轮询问。',
   '【引用记录图表】',
-  '- 语法严格为 ![一句说明](record://<记录id>/<kind>)；kind 只能是 pitch（音高）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）。',
+  '- 单条记录：![一句说明](record://<记录id>/<kind>)；kind 只能是 pitch（音高）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）。',
+  '- 多记录趋势：![一句说明](trend://<metric>/last:<n>)；metric 只能是 f0（平均基频）/ mpt（最长声时）/ cpps；n 取 2–20，默认 8。',
+  '- 两条对比：![一句说明](compare://<idA>,<idB>/<kind>)；kind 只能是 pitch / formant / energy。',
   '- 记录 id 必须来自下方历史清单的「id」字段或【本轮工具查询结果】；没有可用记录时如实说明并请用户提供 id，绝不编造。',
   '- 图表是证据，不是装饰：放在相关结论之后；每条回复最多 2 张，同一记录最多 2 种图；不要每段都配图，也不要用文字重复图里已能看出的所有数字。',
   '- 说明文字要写「看什么」（如「句中段稳定在 150–170 Hz」），不要只写「图表」「F0 图」。',
-  '- 不要用 genui 重画已有原生图表；不要把 record:// 放进 genui 或代码块。',
+  '- 不要用 genui 重画已有原生图表；不要把 record:// / trend:// / compare:// 放进 genui 或代码块。',
   '【genui 交互组件】',
   '- 只在原生图表 + Markdown 不够时使用：滑块、开关、对比切换、计算器、可点选面板；普通解释不要用 genui。',
   '- 用 ```genui 围栏包一个 HTML 片段；不要 doctype/html/head/body；不要外链资源、网络请求或表单提交；每条回复最多 2 个，单个 ≤ 48KB；可写内联 <style>/<script>（沙箱运行，不能访问应用数据）。',
@@ -194,7 +196,7 @@ const ASSISTANT_VISUAL_GUIDE = [
   '- 交互：按钮/输入继承主题色；触控区 ≥ 40px；状态不能只靠颜色，配文字或图标；动画 120–180ms，遵循 prefers-reduced-motion，不做无限动画。',
   '- 可访问性：语义标签、aria-label、可见 focus；布局适配 320–640px 任意宽度，越窄越紧凑（指标从 4 列自然降到 2 列），高度随内容自然增长，不要 100vh。',
   '- 数据必须来自历史记录，或明确标注「示例」；不要编造用户数据。',
-  '【选择】单条记录的音高/共振峰/能量/元音优先用 record://；多记录对比、趋势、可调参数用 genui；纯文字能讲清就不用图表。',
+  '【选择】单条记录用 record://；多记录趋势用 trend://；两条对比用 compare://；可调参数、计算器用 genui；纯文字能讲清就不用图表。',
 ].join('\n');
 
 /**
@@ -379,8 +381,36 @@ const MessageBody = memo(function MessageBody({ text }: { text: string }) {
   return (
     <>
       {parts.map((p, i) => {
-        if (p.type === 'img' && p.kind && p.recordId) {
-          return <RecordImage key={i} recordId={p.recordId} kind={p.kind} alt={p.alt ?? ''} />;
+        if (p.type === 'img') {
+          if (p.compare) {
+            return (
+              <CompareImage
+                key={i}
+                a={p.compare.a}
+                b={p.compare.b}
+                kind={p.compare.kind}
+                alt={p.alt ?? ''}
+              />
+            );
+          }
+          if (p.trend) {
+            return (
+              <TrendImage
+                key={i}
+                metric={p.trend.metric}
+                lastN={p.trend.lastN}
+                alt={p.alt ?? ''}
+              />
+            );
+          }
+          if (p.kind && p.recordId) {
+            return <RecordImage key={i} recordId={p.recordId} kind={p.kind} alt={p.alt ?? ''} />;
+          }
+          return (
+            <span key={i} className="my-2 flex items-center gap-1.5 rounded-2xl bg-card px-3 py-2 text-[10px] text-ink-2">
+              {t('assistant.chartMissing')}
+            </span>
+          );
         }
         if (p.type === 'genui') {
           return <GenUiBlock key={i} html={p.content} />;

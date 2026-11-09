@@ -1599,6 +1599,8 @@ export const zhCN = {
   'assistant.numericUnverified': '部分数字未能在本轮记录中验证。',
   'assistant.numericRepaired': '数字已按本轮记录校正。',
   'assistant.ctx.numberTag': '数字',
+  'assistant.chartTrend': '趋势',
+  'assistant.chartCompare': '对比',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

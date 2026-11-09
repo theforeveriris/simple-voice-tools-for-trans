@@ -1599,4 +1599,6 @@ export const es = {
   'assistant.numericUnverified': 'Algunos números no se pudieron verificar con los datos de esta ronda.',
   'assistant.numericRepaired': 'Los números se corrigieron según los datos de esta ronda.',
   'assistant.ctx.numberTag': 'Números',
+  'assistant.chartTrend': 'Tendencia',
+  'assistant.chartCompare': 'Comparación',
 } as const;

@@ -1590,4 +1590,6 @@ export const zhTW = {
   'assistant.numericUnverified': '部分數字未能在本輪記錄中驗證。',
   'assistant.numericRepaired': '數字已按本輪記錄校正。',
   'assistant.ctx.numberTag': '數字',
+  'assistant.chartTrend': '趨勢',
+  'assistant.chartCompare': '對比',
 } as const;

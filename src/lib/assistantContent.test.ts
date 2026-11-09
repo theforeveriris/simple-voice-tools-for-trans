@@ -24,6 +24,20 @@ describe('renderAssistantMessage', () => {
     expect(parts.some((p) => p.type === 'img' && p.recordId === 'rec-1' && p.kind === 'pitch')).toBe(true);
   });
 
+  it('保留 trend:// 与 compare:// 图表引用', () => {
+    const trend = renderAssistantMessage('![最近五次](trend://f0/last:5)');
+    expect(trend[0]).toMatchObject({ type: 'img', trend: { metric: 'f0', lastN: 5 } });
+
+    const compare = renderAssistantMessage('![对比](compare://a-1,b-2/formant)');
+    expect(compare[0]).toMatchObject({ type: 'img', compare: { a: 'a-1', b: 'b-2', kind: 'formant' } });
+  });
+
+  it('非法 trend 指标保留为图表占位而不会被当成正文', () => {
+    const parts = renderAssistantMessage('![趋势](trend://jitter/last:8)');
+    expect(parts[0].type).toBe('img');
+    if (parts[0].type === 'img') expect(parts[0].chartError).toBe('unknown-metric');
+  });
+
   it('genui 内部的 record:// 不再拆成图表', () => {
     const parts = renderAssistantMessage('```genui\n<div>![x](record://rec-1/pitch)</div>\n```');
     expect(parts).toHaveLength(1);

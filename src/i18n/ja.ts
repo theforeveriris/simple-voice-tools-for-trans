@@ -1591,4 +1591,6 @@ export const ja = {
   'assistant.numericUnverified': '一部の数値は今回の記録で確認できませんでした。',
   'assistant.numericRepaired': '数値は今回の記録に合わせて修正されました。',
   'assistant.ctx.numberTag': '数値',
+  'assistant.chartTrend': '推移',
+  'assistant.chartCompare': '比較',
 } as const;

@@ -1591,5 +1591,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.numericUnverified': '數有未驗於此輪者。',
   'assistant.numericRepaired': '數已依此輪正之。',
   'assistant.ctx.numberTag': '數',
+  'assistant.chartTrend': '勢',
+  'assistant.chartCompare': '較',
 };
 

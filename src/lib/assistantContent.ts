@@ -1,18 +1,22 @@
 /**
- * AI 回复的文本路由：把一条回复拆成 Markdown / 记录图表 / genui 组件。
+ * AI 回复的文本路由：把一条回复拆成 Markdown / 原生图表 / genui 组件。
  *
- * - `record://` 图表引用沿用 assistantChartRoute 的解析（站点原生图表）
+ * - `record://` 单条记录图
+ * - `trend://` 多记录趋势图
+ * - `compare://` 两条记录并排对比
  * - ```genui 围栏是站点渲染的沙箱 HTML 组件（见 assistantGenui.tsx）
  * - 未闭合的 genui 围栏在流式输出期间返回 pending，避免把半截 HTML 当正文
  *
  * 纯字符串层，可单测；不依赖 window / React。
  */
-
-import { renderAssistantContent as splitRecordImages, type ImgKind } from './assistantChartRoute';
+import {
+  renderAssistantContent as splitCharts,
+  type AssistantChartPart,
+} from './assistantChartRoute';
 
 export type AssistantPart =
   | { type: 'md'; content: string }
-  | { type: 'img'; content: string; alt?: string; recordId?: string; kind?: ImgKind }
+  | AssistantChartPart
   | { type: 'genui'; content: string }
   | { type: 'genui-pending' };
 
@@ -24,7 +28,7 @@ export function renderAssistantMessage(text: string): AssistantPart[] {
 
   const pushMd = (chunk: string) => {
     if (!chunk) return;
-    for (const p of splitRecordImages(chunk)) {
+    for (const p of splitCharts(chunk)) {
       if (p.type === 'img') out.push(p);
       else out.push({ type: 'md', content: p.content });
     }

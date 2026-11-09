@@ -1599,4 +1599,6 @@ export const fr = {
   'assistant.numericUnverified': 'Certains nombres n\'ont pas pu être vérifiés avec les données de ce tour.',
   'assistant.numericRepaired': 'Les nombres ont été corrigés d\'après les données de ce tour.',
   'assistant.ctx.numberTag': 'Nombres',
+  'assistant.chartTrend': 'Tendance',
+  'assistant.chartCompare': 'Comparaison',
 } as const;
