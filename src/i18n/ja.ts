@@ -1575,8 +1575,6 @@ export const ja = {
   'assistant.attachAsk': 'この記録を見てください',
   'assistant.planPendingShort': '確認待ち',
   'assistant.choiceIntro': 'より正確に答えるため、先に確認させてください：',
-  'assistant.choiceSingleHint': '1つ選ぶと続行します。',
-  'assistant.choiceMultiHint': '複数選択できます。選んだら続行します。',
   'assistant.choiceOther': 'その他',
   'assistant.choiceOtherPlaceholder': '自分で入力する',
   'assistant.choiceContinue': '続行',
@@ -1589,4 +1587,5 @@ export const ja = {
   'assistant.choiceSetSubmit': '送信',
   'assistant.choiceSetSubmitted': '{n} 問に回答しました',
   'assistant.choiceSetSkipAll': 'すべてスキップ',
+  'assistant.choiceSetNext': '次へ',
 } as const;

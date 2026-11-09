@@ -139,9 +139,6 @@ export function ChoiceSetCard({
                   <HelpCircle size={12} className="mt-0.5 shrink-0 text-accent" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold leading-[1.45] text-ink">{q.question}</p>
-                    <p className="mt-0.5 text-[8.5px] leading-relaxed text-ink-2">
-                      {multi ? t('assistant.choiceMultiHint') : t('assistant.choiceSingleHint')}
-                    </p>
                   </div>
                 </div>
 
@@ -231,14 +228,24 @@ export function ChoiceSetCard({
         <span className="text-[8.5px] tabular-nums text-ink-2/70">
           {answeredCount}/{total}
         </span>
-        <button
-          type="button"
-          disabled={!allAnswered}
-          onClick={submit}
-          className="ml-auto rounded-full bg-accent px-3 py-1 text-[9.5px] font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          {t('assistant.choiceSetSubmit')}
-        </button>
+        {index < total - 1 ? (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => Math.min(total - 1, i + 1))}
+            className="ml-auto rounded-full bg-accent px-3 py-1 text-[9.5px] font-medium text-on-accent transition-opacity hover:opacity-90"
+          >
+            {t('assistant.choiceSetNext')}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!allAnswered}
+            onClick={submit}
+            className="ml-auto rounded-full bg-accent px-3 py-1 text-[9.5px] font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {t('assistant.choiceSetSubmit')}
+          </button>
+        )}
       </div>
     </div>
   );

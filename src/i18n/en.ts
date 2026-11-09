@@ -1574,8 +1574,6 @@ export const en = {
   'assistant.attachAsk': 'Take a look at this recording',
   'assistant.planPendingShort': 'To confirm',
   'assistant.choiceIntro': 'One quick choice so I can give you a better answer:',
-  'assistant.choiceSingleHint': 'Pick one to continue.',
-  'assistant.choiceMultiHint': 'Select any that apply, then continue.',
   'assistant.choiceOther': 'Other',
   'assistant.choiceOtherPlaceholder': 'Type your own option',
   'assistant.choiceContinue': 'Continue',
@@ -1588,4 +1586,5 @@ export const en = {
   'assistant.choiceSetSubmit': 'Submit',
   'assistant.choiceSetSubmitted': 'Answered {n} questions',
   'assistant.choiceSetSkipAll': 'Skip all',
+  'assistant.choiceSetNext': 'Next',
 } as const;

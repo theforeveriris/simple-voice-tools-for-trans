@@ -1575,8 +1575,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.attachAsk': '視此錄',
   'assistant.planPendingShort': '待可',
   'assistant.choiceIntro': '欲為精確之答，先請確認：',
-  'assistant.choiceSingleHint': '擇一，吾當續之。',
-  'assistant.choiceMultiHint': '可多擇，擇畢續之。',
   'assistant.choiceOther': '他',
   'assistant.choiceOtherPlaceholder': '自書其選',
   'assistant.choiceContinue': '續',
@@ -1589,5 +1587,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.choiceSetSubmit': '呈',
   'assistant.choiceSetSubmitted': '已答 {n} 問',
   'assistant.choiceSetSkipAll': '皆捨',
+  'assistant.choiceSetNext': '次',
 };
 

@@ -1583,8 +1583,6 @@ export const zhCN = {
   'assistant.attachAsk': '看看这条记录',
   'assistant.planPendingShort': '待确认',
   'assistant.choiceIntro': '为了给你更准确的建议，先确认一下：',
-  'assistant.choiceSingleHint': '选一个，我会继续。',
-  'assistant.choiceMultiHint': '可以多选，选完继续。',
   'assistant.choiceOther': '其他',
   'assistant.choiceOtherPlaceholder': '输入你自己的选项',
   'assistant.choiceContinue': '继续',
@@ -1597,6 +1595,7 @@ export const zhCN = {
   'assistant.choiceSetSubmit': '提交',
   'assistant.choiceSetSubmitted': '已回答 {n} 个问题',
   'assistant.choiceSetSkipAll': '全部跳过',
+  'assistant.choiceSetNext': '下一道',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

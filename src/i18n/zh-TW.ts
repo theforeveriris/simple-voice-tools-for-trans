@@ -1574,8 +1574,6 @@ export const zhTW = {
   'assistant.attachAsk': '看看這條記錄',
   'assistant.planPendingShort': '待確認',
   'assistant.choiceIntro': '為了給你更準確的建議，先確認一下：',
-  'assistant.choiceSingleHint': '選一個，我會繼續。',
-  'assistant.choiceMultiHint': '可以多選，選完繼續。',
   'assistant.choiceOther': '其他',
   'assistant.choiceOtherPlaceholder': '輸入你自己的選項',
   'assistant.choiceContinue': '繼續',
@@ -1588,4 +1586,5 @@ export const zhTW = {
   'assistant.choiceSetSubmit': '提交',
   'assistant.choiceSetSubmitted': '已回答 {n} 個問題',
   'assistant.choiceSetSkipAll': '全部跳過',
+  'assistant.choiceSetNext': '下一道',
 } as const;

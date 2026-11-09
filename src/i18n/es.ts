@@ -1583,8 +1583,6 @@ export const es = {
   'assistant.attachAsk': 'Mira esta grabación',
   'assistant.planPendingShort': 'Por confirmar',
   'assistant.choiceIntro': 'Una elección rápida para darte una respuesta más precisa:',
-  'assistant.choiceSingleHint': 'Elige una para continuar.',
-  'assistant.choiceMultiHint': 'Puedes elegir varias; luego continúa.',
   'assistant.choiceOther': 'Otro',
   'assistant.choiceOtherPlaceholder': 'Escribe tu propia opción',
   'assistant.choiceContinue': 'Continuar',
@@ -1597,4 +1595,5 @@ export const es = {
   'assistant.choiceSetSubmit': 'Enviar',
   'assistant.choiceSetSubmitted': 'Respondidas {n} preguntas',
   'assistant.choiceSetSkipAll': 'Omitir todo',
+  'assistant.choiceSetNext': 'Siguiente',
 } as const;

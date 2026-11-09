@@ -74,9 +74,6 @@ export function ChoiceCard({
         <HelpCircle size={12} className="mt-0.5 shrink-0 text-accent" />
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold leading-[1.45] text-ink">{choice.question}</p>
-          <p className="mt-0.5 text-[8.5px] leading-relaxed text-ink-2">
-            {multi ? t('assistant.choiceMultiHint') : t('assistant.choiceSingleHint')}
-          </p>
         </div>
       </div>
 
