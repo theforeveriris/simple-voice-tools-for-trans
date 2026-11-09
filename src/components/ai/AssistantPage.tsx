@@ -1978,6 +1978,9 @@ export function AssistantPage() {
 
   const iconBtn =
     'grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90';
+  // 次要导航（返回 / 历史）：保留 40px 点击区，去掉圆底，降低顶栏的「圈圈感」
+  const ghostBtn =
+    'grid size-10 shrink-0 place-items-center rounded-full text-ink-2 transition-colors hover:text-ink active:scale-90';
   const menuBtn =
     'flex items-center gap-1 rounded-full bg-surface-hi/70 px-2.5 py-1.5 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink';
 
@@ -2095,53 +2098,68 @@ export function AssistantPage() {
   };
 
   const topBar = (
-    <div className="flex min-h-14 shrink-0 items-center gap-2 bg-surface px-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
-      {aiWorkspace ? (
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
-          <Sparkles size={17} />
-        </span>
-      ) : (
-        <button
-          onClick={() => setTab(lastTab === 'assistant' ? 'test' : lastTab)}
-          aria-label={t('common.back')}
-          className={iconBtn}
-        >
-          <ArrowLeft size={18} />
+    // 安全区单独做上边距，内容行固定 56px 居中：
+    // 旧写法把 safe-area 塞进同一容器，浏览器里 env() 恒为 0 时内容比栏中心低 6px。
+    <div className="shrink-0 bg-surface pt-[env(safe-area-inset-top)]">
+      <div className="flex h-14 items-center gap-2 px-3">
+        {aiWorkspace ? (
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+            <Sparkles size={17} />
+          </span>
+        ) : (
+          <button
+            onClick={() => setTab(lastTab === 'assistant' ? 'test' : lastTab)}
+            aria-label={t('common.back')}
+            className={ghostBtn}
+          >
+            <ArrowLeft size={18} />
+          </button>
+        )}
+        <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
+        {privateNow && (
+          <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+            {t('assistant.privateBadge')}
+          </span>
+        )}
+        {/* 记忆 / 私密：两个状态开关合成一个 88px 胶囊（= 原来两个 40px 圆 + 8px 间距），
+            图标沿用大脑 / 盾牌，+ 按钮位置完全不变 */}
+        <div className="flex h-10 w-[88px] shrink-0 items-center rounded-full bg-card shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+          <button
+            onClick={toggleMemoryOff}
+            disabled={privateNow}
+            aria-label={t(memoryOffNow ? 'assistant.memoryOff' : 'assistant.memoryOn')}
+            title={t(memoryOffNow ? 'assistant.memoryOffHint' : 'assistant.memoryOnHint')}
+            className={cn(
+              'flex h-10 flex-1 items-center justify-center rounded-full transition-colors disabled:opacity-40',
+              memoryOffNow ? 'text-accent' : 'text-ink-2 hover:text-ink',
+            )}
+          >
+            {memoryOffNow ? <Ban size={17} /> : <Brain size={17} />}
+          </button>
+          <span className="h-3.5 w-px shrink-0 bg-line/70" />
+          <button
+            onClick={togglePrivate}
+            aria-label={t(privateNow ? 'assistant.privateOff' : 'assistant.privateOn')}
+            title={t(privateNow ? 'assistant.privateOffHint' : 'assistant.privateOnHint')}
+            className={cn(
+              'flex h-10 flex-1 items-center justify-center rounded-full transition-colors',
+              privateNow ? 'text-accent' : 'text-ink-2 hover:text-ink',
+            )}
+          >
+            {privateNow ? <ShieldOff size={17} /> : <Shield size={17} />}
+          </button>
+        </div>
+        <button onClick={() => newChat()} aria-label={t('assistant.newChat')} className={iconBtn}>
+          <Plus size={17} />
         </button>
-      )}
-      <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{t('assistant.title')}</p>
-      {privateNow && (
-        <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-medium text-accent">
-          {t('assistant.privateBadge')}
-        </span>
-      )}
-      <button
-        onClick={toggleMemoryOff}
-        disabled={privateNow}
-        aria-label={t(memoryOffNow ? 'assistant.memoryOff' : 'assistant.memoryOn')}
-        title={t(memoryOffNow ? 'assistant.memoryOffHint' : 'assistant.memoryOnHint')}
-        className={cn(iconBtn, memoryOffNow && 'text-accent')}
-      >
-        {memoryOffNow ? <Ban size={17} /> : <Brain size={17} />}
-      </button>
-      <button
-        onClick={togglePrivate}
-        aria-label={t(privateNow ? 'assistant.privateOff' : 'assistant.privateOn')}
-        title={t(privateNow ? 'assistant.privateOffHint' : 'assistant.privateOnHint')}
-        className={cn(iconBtn, privateNow && 'text-accent')}
-      >
-        {privateNow ? <ShieldOff size={17} /> : <Shield size={17} />}
-      </button>
-      <button onClick={() => newChat()} aria-label={t('assistant.newChat')} className={iconBtn}>
-        <Plus size={17} />
-      </button>
-      <button
-        onClick={() => { setSidebarOpen(true); setDelId(null); }}
-        aria-label={t('assistant.history')}
-        className={iconBtn}
-      >
-        <PanelRight size={17} />
-      </button>
+        <button
+          onClick={() => { setSidebarOpen(true); setDelId(null); }}
+          aria-label={t('assistant.history')}
+          className={ghostBtn}
+        >
+          <PanelRight size={17} />
+        </button>
+      </div>
     </div>
   );
 
