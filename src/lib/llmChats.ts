@@ -43,6 +43,8 @@ export interface ChatContextMeta {
   docs: { title: string; chars: number }[];
   /** 本轮注入的长期记忆条数 */
   memories?: number;
+  /** 本轮实际注入的记忆 id（ContextPanel 逐条展示/编辑） */
+  memoryIds?: string[];
   /** 本轮按需记忆检索使用的查询（未触发工具检索时省略） */
   memoryQuery?: string;
   /** 本轮助手实际执行的数据 / 计划 / 操作工具 */

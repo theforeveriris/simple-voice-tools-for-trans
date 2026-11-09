@@ -590,11 +590,11 @@ export function memoryPromptBlock(picked: MemoryItem[]): string {
 export async function buildMemoryPrompt(
   query: string,
   options: { chatId?: string; planId?: string } = {},
-): Promise<{ text: string; count: number }> {
+): Promise<{ text: string; count: number; items: MemoryItem[] }> {
   const list = await loadMemories();
   const visible = list.filter((m) => isMemoryVisible(m, options));
   const picked = selectMemories(visible, query);
-  return { text: memoryPromptBlock(picked), count: picked.length };
+  return { text: memoryPromptBlock(picked), count: picked.length, items: picked };
 }
 
 /** AI 工具 search_memory 的本地实现：只在非置顶记忆里按相关度取，最多 limit 条 */

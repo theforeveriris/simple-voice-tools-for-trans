@@ -64,7 +64,7 @@ import {
 import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chatSummary';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
-import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, isMemoryVisible, looksLikeInstruction, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
+import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, isMemoryVisible, looksLikeInstruction, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryItem, type MemoryKind, type MemoryWrite } from '@/lib/memory';
 import { SAVE_MEMORY_TOOL, MEMORY_WRITER_SYSTEM, MEMORY_CHOICE_WRITER_SYSTEM, MEMORY_MANUAL_SYSTEM, buildMemoryWriterInput, parseMemorySaveCall } from '@/lib/memoryTools';
 import { buildAssistantContext, buildAssistantProfile, formatRecordLine } from '@/lib/assistantContext';
 import { CompareImage, RecordImage, TrendImage } from '@/lib/assistantCharts';
@@ -303,13 +303,16 @@ async function resolveMemoryContext(
   history: ChatMessage[],
   lastUser: ChatMessage | undefined,
   options: { chatId?: string; planId?: string } = {},
-): Promise<{ text: string; count: number; query?: string }> {
+): Promise<{ text: string; count: number; query?: string; items: MemoryItem[] }> {
   const list = await loadMemories();
   const pinned = list.filter((m) => m.pinned && isMemoryVisible(m, options));
+  const picked: MemoryItem[] = [...pinned];
   let text = memoryPromptBlock(pinned);
   let count = pinned.length;
   let query: string | undefined;
-  if (!lastUser || !list.some((m) => !m.pinned && isMemoryVisible(m, options))) return { text, count };
+  if (!lastUser || !list.some((m) => !m.pinned && isMemoryVisible(m, options))) {
+    return { text, count, items: picked };
+  }
 
   const recent = history
     .slice(-4)
@@ -324,19 +327,20 @@ async function resolveMemoryContext(
       { feature: 'assistant', maxTokens: 200, temperature: 0 },
     );
     const call = calls.find((c) => c.name === 'search_memory');
-    if (!call) return { text, count };
+    if (!call) return { text, count, items: picked };
     const q = typeof call.arguments.query === 'string' ? call.arguments.query.trim() : '';
     query = (q || lastUser.content).slice(0, 120);
     const found = await searchMemories(query, 8, options);
     if (found.length > 0) {
       text = [text, memorySearchBlock(found, query)].filter(Boolean).join('\n\n');
       count += found.length;
+      picked.push(...found);
     }
-    return { text, count, query };
+    return { text, count, query, items: picked };
   } catch {
     // 没有工具能力（或预检失败）：退回本轮按问题自动筛选，避免记忆直接失效
     const fallback = await buildMemoryPrompt(lastUser.content, options);
-    return { text: fallback.text, count: fallback.count };
+    return { text: fallback.text, count: fallback.count, items: fallback.items };
   }
 }
 
@@ -1137,6 +1141,7 @@ export function AssistantPage() {
       totalRecords: hist.meta.totalRecords,
       docs,
       memories: memoryHit.count,
+      ...(memoryHit.items.length > 0 ? { memoryIds: memoryHit.items.map((m) => m.id) } : {}),
       memoryQuery: memoryHit.query,
       ...(toolRun.traces.length > 0 ? { toolCalls: toolRun.traces } : {}),
       ...(toolRun.chatRefs && toolRun.chatRefs.length > 0 ? { chatRefs: toolRun.chatRefs } : {}),

@@ -1604,4 +1604,5 @@ export const fr = {
   'assistant.askAboutThis': 'En parler avec l’assistant',
   'assistant.handoffPrompt': 'Aide-moi à interpréter cet enregistrement',
   'assistant.chatRefs': 'Conversations liées',
+  'settings.memoryUnpin': 'Retirer de chaque réponse',
 } as const;

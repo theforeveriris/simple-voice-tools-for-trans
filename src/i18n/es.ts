@@ -1604,4 +1604,5 @@ export const es = {
   'assistant.askAboutThis': 'Hablar de esta grabación',
   'assistant.handoffPrompt': 'Ayúdame a interpretar esta grabación',
   'assistant.chatRefs': 'Conversaciones relacionadas',
+  'settings.memoryUnpin': 'Quitar de cada respuesta',
 } as const;

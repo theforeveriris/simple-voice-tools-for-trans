@@ -1595,4 +1595,5 @@ export const zhTW = {
   'assistant.askAboutThis': '和助手聊這次',
   'assistant.handoffPrompt': '幫我解讀這次記錄',
   'assistant.chatRefs': '參考對話',
+  'settings.memoryUnpin': '取消每輪注入',
 } as const;

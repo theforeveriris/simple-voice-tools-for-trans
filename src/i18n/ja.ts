@@ -1596,4 +1596,5 @@ export const ja = {
   'assistant.askAboutThis': 'この記録をアシスタントと話す',
   'assistant.handoffPrompt': 'この記録を解釈して',
   'assistant.chatRefs': '関連する会話',
+  'settings.memoryUnpin': '毎回の注入を解除',
 } as const;

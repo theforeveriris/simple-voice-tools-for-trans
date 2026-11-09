@@ -4,16 +4,25 @@
  * 数据来自生成时写入消息的 ChatContextMeta，不重新计算提示词。
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
 import type { ChatContextMeta } from '@/lib/llmChats';
 import type { AnalysisRecord } from '@/types';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
+import { deleteMemory, updateMemory, useMemories } from '@/lib/memory';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 
 /** 面板里最多逐条列出多少条记录（其余只给计数） */
 const MAX_ROWS = 8;
+
+const KIND_KEY = {
+  fact: 'settings.memoryKindFact',
+  preference: 'settings.memoryKindPreference',
+  requirement: 'settings.memoryKindRequirement',
+  caution: 'settings.memoryKindCaution',
+} as const;
 
 function recordLabel(r: AnalysisRecord): string {
   const d = new Date(r.createdAt);
@@ -38,6 +47,15 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
   const docs = Array.isArray(meta.docs) ? meta.docs : [];
   const memories = meta.memories ?? 0;
   const memoryQuery = meta.memoryQuery?.trim();
+  const allMemories = useMemories();
+  const memoryItems = useMemo(() => {
+    const byId = new Map(allMemories.map((memory) => [memory.id, memory]));
+    return [...new Set(meta.memoryIds ?? [])]
+      .map((id) => byId.get(id))
+      .filter((memory): memory is NonNullable<typeof memory> => !!memory);
+  }, [allMemories, meta.memoryIds]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
   const toolCalls = meta.toolCalls ?? [];
   const numericCheck = meta.numericCheck;
   const byId = useMemo(() => new Map(records.map((r) => [r.id, r])), [records]);
@@ -47,6 +65,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
     ids.length === 0
     && docs.length === 0
     && memories === 0
+    && memoryItems.length === 0
     && !memoryQuery
     && toolCalls.length === 0
     && !numericCheck
@@ -96,18 +115,99 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
         </p>
       ))}
 
-      {(memories > 0 || memoryQuery) && (
+      {(memoryItems.length > 0 || memories > 0 || memoryQuery) && (
         <div className="px-0 py-1 text-[11px]">
-          <p className="flex items-center gap-1.5">
-            <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
-              {t('assistant.ctx.memoryTag')}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-ink">
-              {memories > 0
-                ? t('assistant.ctx.memoryCount', { n: memories })
-                : t('assistant.ctx.memoryNone')}
-            </span>
-          </p>
+          {memoryItems.length > 0 ? (
+            <div className="space-y-1">
+              {memoryItems.map((memory) => (
+                <div key={memory.id} className="rounded-lg border border-line/40 px-2 py-1.5">
+                  <div className="flex items-start gap-1.5">
+                    <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
+                      {t('assistant.ctx.memoryTag')}
+                    </span>
+                    {editingId === memory.id ? (
+                      <input
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        aria-label={t('settings.memoryEditTitle')}
+                        className="min-w-0 flex-1 rounded border border-line/60 bg-transparent px-1 py-0.5 text-[11px] text-ink outline-none"
+                      />
+                    ) : (
+                      <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-ink">{memory.text}</span>
+                    )}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1 pl-1">
+                    <span className="text-[9px] text-ink-2/70">
+                      {t(KIND_KEY[memory.kind])}
+                      {memory.pinned ? ` · ${t('settings.memoryPin')}` : ''}
+                    </span>
+                    {editingId === memory.id ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void updateMemory(memory.id, { text: editText });
+                            setEditingId(null);
+                          }}
+                          className="ml-auto rounded px-1.5 py-0.5 text-[9px] text-accent"
+                        >
+                          {t('common.save')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(null)}
+                          className="rounded px-1.5 py-0.5 text-[9px] text-ink-2"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          aria-label={memory.pinned ? t('settings.memoryUnpin') : t('settings.memoryPin')}
+                          title={memory.pinned ? t('settings.memoryUnpin') : t('settings.memoryPin')}
+                          onClick={() => { void updateMemory(memory.id, { pinned: !memory.pinned }); }}
+                          className="ml-auto rounded p-0.5 text-ink-2 transition-colors hover:text-accent"
+                        >
+                          {memory.pinned ? <PinOff size={11} /> : <Pin size={11} />}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t('settings.memoryEditTitle')}
+                          title={t('settings.memoryEditTitle')}
+                          onClick={() => { setEditingId(memory.id); setEditText(memory.text); }}
+                          className="rounded p-0.5 text-ink-2 transition-colors hover:text-accent"
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t('common.delete')}
+                          title={t('common.delete')}
+                          onClick={() => { void deleteMemory(memory.id); }}
+                          className="rounded p-0.5 text-ink-2 transition-colors hover:text-error"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="flex items-center gap-1.5">
+              <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
+                {t('assistant.ctx.memoryTag')}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-ink">
+                {memories > 0
+                  ? t('assistant.ctx.memoryCount', { n: memories })
+                  : t('assistant.ctx.memoryNone')}
+              </span>
+            </p>
+          )}
           {memoryQuery && (
             <p className="mt-0.5 pl-1 text-[10px] leading-relaxed text-ink-2/70">
               {t('assistant.ctx.memoryQuery', { q: memoryQuery })}

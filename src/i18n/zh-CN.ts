@@ -1604,6 +1604,7 @@ export const zhCN = {
   'assistant.askAboutThis': '和助手聊这次',
   'assistant.handoffPrompt': '帮我解读这次记录',
   'assistant.chatRefs': '参考对话',
+  'settings.memoryUnpin': '取消每轮注入',
 } as const;
 
 export type DictKey = keyof typeof zhCN;
