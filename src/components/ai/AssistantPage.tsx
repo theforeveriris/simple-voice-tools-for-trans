@@ -161,6 +161,9 @@ async function loadAllRecords(): Promise<AnalysisRecord[]> {
  * 数据编造、与主题冲突的配色或需要横向滚动的固定宽度组件。
  */
 const ASSISTANT_VISUAL_GUIDE = [
+  '【需要用户选择时】',
+  '- 不要输出 HTML、<details>、<script>、按钮代码或 Markdown 复选框来模拟选择器。',
+  '- 需要用户决定方向、范围或偏好时，由系统统一选择器处理；如果用户要求演示、测试或连续问多轮问题，也必须实际发起选择，而不是生成演示页面。',
   '【引用记录图表】',
   '- 语法严格为 ![一句说明](record://<记录id>/<kind>)；kind 只能是 pitch（音高）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）。',
   '- 记录 id 必须来自下方历史清单的「id」字段或【本轮工具查询结果】；没有可用记录时如实说明并请用户提供 id，绝不编造。',
@@ -195,6 +198,8 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     buildAssistantProfile(settings),
     '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
     '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
+    '如果用户要求「演示/测试选择器」「连续问多轮问题」「多轮提问」，也必须调用 ask_choice 真实发起选择；不要生成 HTML、<details>、<script>、按钮代码或 Markdown 复选框来模拟。',
+    '用户回答后如果还需要信息，可以再次调用 ask_choice，最多连续 3 轮。',
     '如果问题只是寒暄、常识或不需要应用数据，不要调用任何工具。',
   ].join('\n');
 }

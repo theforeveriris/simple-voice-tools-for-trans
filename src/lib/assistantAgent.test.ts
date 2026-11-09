@@ -78,4 +78,22 @@ describe('runAssistantTools', () => {
     expect(run.traces[0]).toMatchObject({ ok: false, summary: '执行失败' });
     expect(run.contextText).toBe('');
   });
+
+  it('halts after a blocking choice', async () => {
+    vi.mocked(llmChatToolMessages).mockResolvedValueOnce({
+      content: '',
+      toolCalls: [{ id: 'c1', name: 'ask_choice', arguments: { question: 'Pick', options: [{ label: 'A' }, { label: 'B' }] } }],
+    });
+    const choice = { id: 'ch1', question: 'Pick', selection: 'single' as const, options: [{ id: 'o1', label: 'A' }], allowOther: true, createdAt: 1 };
+    const run = await runAssistantTools({
+      cfg: { baseUrl: 'http://x', apiKey: 'k', modelId: 'm' } as never,
+      system: 'planner',
+      history: [],
+      userText: 'choose',
+      tools: [{ name: 'ask_choice', description: 'q', parameters: {} }],
+      execute: vi.fn().mockResolvedValue({ text: 'waiting', summary: '等待用户选择', pendingChoice: choice }),
+    });
+    expect(run.pendingChoice).toEqual(choice);
+    expect(llmChatToolMessages).toHaveBeenCalledTimes(1);
+  });
 });

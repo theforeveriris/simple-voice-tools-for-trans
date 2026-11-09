@@ -96,7 +96,7 @@ export function choiceResultLabel(choice: PendingChoice, result: ChoiceResult): 
 export const ASSISTANT_CHOICE_TOOL: LlmToolSpec = {
   name: 'ask_choice',
   description:
-    '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，向用户展示一个统一选择器并暂停当前回合。用户选完后会自动继续。不要在正文里问完就结束。',
+    '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，向用户展示一个统一选择器并暂停当前回合。用户选完后会自动继续；可以连续调用多轮。如果用户要求演示/测试选择器或多轮提问，也必须调用本工具，不要生成 HTML/代码演示。不要在正文里问完就结束。',
   parameters: {
     type: 'object',
     properties: {
