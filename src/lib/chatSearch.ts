@@ -85,7 +85,7 @@ export function searchChats(
 
   for (const chat of chats) {
     if (chat.id === options.excludeId) continue;
-    if ((chat as { privacy?: string }).privacy === 'private') continue;
+    if (chat.privacy === 'private') continue;
     const ageDays = Math.max(0, (now - chat.createdAt) / 86_400_000);
     const recency = Math.max(0, 1 - ageDays / 365);
     let score = 0;

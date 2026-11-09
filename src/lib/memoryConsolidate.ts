@@ -102,9 +102,9 @@ export async function consolidateMemories(
         ...(first.chatId ? { chatId: first.chatId } : {}),
         ...(first.planId ? { planId: first.planId } : {}),
       });
-      if (result && result.action !== 'duplicate') {
+      if (result) {
         firstNewId ??= result.item.id;
-        merged++;
+        if (result.action !== 'duplicate') merged++;
       }
     }
     if (firstNewId) await supersedeMemories(group.map((m) => m.id), firstNewId);
