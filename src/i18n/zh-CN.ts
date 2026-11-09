@@ -1593,6 +1593,10 @@ export const zhCN = {
   'assistant.choiceSubmitted': '已选择',
   'assistant.choiceSkipped': '已跳过',
   'assistant.choiceOtherValue': '其他：{text}',
+  'assistant.choiceSetPage': '第 {n} 题',
+  'assistant.choiceSetSubmit': '提交',
+  'assistant.choiceSetSubmitted': '已回答 {n} 个问题',
+  'assistant.choiceSetSkipAll': '全部跳过',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

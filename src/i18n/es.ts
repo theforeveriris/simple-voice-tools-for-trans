@@ -1593,4 +1593,8 @@ export const es = {
   'assistant.choiceSubmitted': 'Seleccionado',
   'assistant.choiceSkipped': 'Omitido',
   'assistant.choiceOtherValue': 'Otro: {text}',
+  'assistant.choiceSetPage': 'Pregunta {n}',
+  'assistant.choiceSetSubmit': 'Enviar',
+  'assistant.choiceSetSubmitted': 'Respondidas {n} preguntas',
+  'assistant.choiceSetSkipAll': 'Omitir todo',
 } as const;

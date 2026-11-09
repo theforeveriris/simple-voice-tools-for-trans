@@ -36,14 +36,20 @@ import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } 
 import { PRACTICE_PLAN_TOOLS, runPracticePlanTool } from '@/lib/practicePlanTools';
 import { getPracticePlanState, planSummaryForPrompt } from '@/lib/practicePlan';
 import {
+  ASSISTANT_CHOICE_SET_TOOL,
   ASSISTANT_CHOICE_TOOL,
+  buildChoiceSetUserMessage,
   buildChoiceUserMessage,
   choiceResultLabel,
+  runAssistantChoiceSetTool,
   runAssistantChoiceTool,
   type ChoiceResult,
+  type ChoiceSetResult,
   type PendingChoice,
+  type PendingChoiceSet,
 } from '@/lib/assistantChoice';
 import { ChoiceCard } from '@/components/ai/ChoiceCard';
+import { ChoiceSetCard } from '@/components/ai/ChoiceSetCard';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
@@ -164,6 +170,7 @@ const ASSISTANT_VISUAL_GUIDE = [
   '【需要用户选择时】',
   '- 不要输出 HTML、<details>、<script>、按钮代码或 Markdown 复选框来模拟选择器。',
   '- 需要用户决定方向、范围或偏好时，由系统统一选择器处理；如果用户要求演示、测试或连续问多轮问题，也必须实际发起选择，而不是生成演示页面。',
+  '- 一次要问几个互不依赖的问题（如方向、频率、时长）时，用 ask_choice_set 放进同一张卡片分页回答、一次提交；如果下一题取决于上一题答案，则用 ask_choice 逐轮询问。',
   '【引用记录图表】',
   '- 语法严格为 ![一句说明](record://<记录id>/<kind>)；kind 只能是 pitch（音高）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）。',
   '- 记录 id 必须来自下方历史清单的「id」字段或【本轮工具查询结果】；没有可用记录时如实说明并请用户提供 id，绝不编造。',
@@ -198,8 +205,9 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     buildAssistantProfile(settings),
     '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
     '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
-    '如果用户要求「演示/测试选择器」「连续问多轮问题」「多轮提问」，也必须调用 ask_choice 真实发起选择；不要生成 HTML、<details>、<script>、按钮代码或 Markdown 复选框来模拟。',
-    '用户回答后如果还需要信息，可以再次调用 ask_choice，最多连续 3 轮。',
+    '如果要一次问 2–4 个互不依赖的问题，改用 ask_choice_set：一张卡片分页展示，用户答完一次提交；如果下一题取决于上一题答案，继续用 ask_choice 逐轮询问。',
+    '如果用户要求「演示/测试选择器」「连续问多轮问题」「多轮提问」，也必须调用 ask_choice 或 ask_choice_set 真实发起选择；不要生成 HTML、<details>、<script>、按钮代码或 Markdown 复选框来模拟。',
+    '用户回答后如果还需要信息，可以再次调用 ask_choice / ask_choice_set，最多连续 3 轮。',
     '如果问题只是寒暄、常识或不需要应用数据，不要调用任何工具。',
   ].join('\n');
 }
@@ -376,6 +384,7 @@ const Bubble = memo(function Bubble({
   onBranch,
   onMemory,
   onResolveChoice,
+  onResolveChoiceSet,
 }: {
   m: ChatMessage;
   idx: number;
@@ -393,6 +402,7 @@ const Bubble = memo(function Bubble({
   onBranch: (idx: number) => void;
   onMemory: (idx: number) => void;
   onResolveChoice: (idx: number, choice: PendingChoice, result: ChoiceResult) => void;
+  onResolveChoiceSet: (idx: number, set: PendingChoiceSet, result: ChoiceSetResult) => void;
 }) {
   useI18n();
   const mine = m.role === 'user';
@@ -417,7 +427,7 @@ const Bubble = memo(function Bubble({
         </ThinkBlock>
       )}
       {mine
-        ? (m.choice
+        ? (m.choice || m.choiceLabel
           ? null
           : (m.content || (streaming ? (liveThink ? '' : '…') : '')))
         : (m.content
@@ -428,6 +438,13 @@ const Bubble = memo(function Bubble({
           choice={m.context.pendingChoice}
           result={m.context.choiceResult}
           onResolve={(result) => onResolveChoice(idx, m.context!.pendingChoice!, result)}
+        />
+      )}
+      {!mine && !streaming && m.context?.pendingChoiceSet && (
+        <ChoiceSetCard
+          set={m.context.pendingChoiceSet}
+          result={m.context.choiceSetResult}
+          onResolve={(result) => onResolveChoiceSet(idx, m.context!.pendingChoiceSet!, result)}
         />
       )}
       {!mine && !streaming && m.context?.planId && (
@@ -489,11 +506,13 @@ const Bubble = memo(function Bubble({
         </span>
       )}
       {mine ? (
-        m.choice ? (
+        m.choice || m.choiceLabel ? (
           <span className="inline-flex max-w-[85%] items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1.5 text-[12px] text-ink">
             <Check size={11} className="shrink-0 text-accent" />
             <span className="truncate">
-              {m.choice.skipped ? t('assistant.choiceSkipped') : (m.choice.label || m.content)}
+              {m.choice?.skipped
+                ? t('assistant.choiceSkipped')
+                : (m.choiceLabel || m.choice?.label || m.content)}
             </span>
           </span>
         ) : (
@@ -801,6 +820,7 @@ export function AssistantPage() {
       docs: { title: string; chars: number }[];
       pendingAction?: AssistantAction;
       pendingChoice?: PendingChoice;
+      pendingChoiceSet?: PendingChoiceSet;
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
     if (lastUserMsg) {
       setToolNote(t('assistant.toolSearching'));
@@ -810,12 +830,19 @@ export function AssistantPage() {
           system: toolPlannerSystem(settings),
           history,
           userText: lastUserText,
-          tools: [...ASSISTANT_DATA_TOOLS, ...ASSISTANT_ACTION_TOOLS, ...PRACTICE_PLAN_TOOLS, ASSISTANT_CHOICE_TOOL],
+          tools: [
+            ...ASSISTANT_DATA_TOOLS,
+            ...ASSISTANT_ACTION_TOOLS,
+            ...PRACTICE_PLAN_TOOLS,
+            ASSISTANT_CHOICE_TOOL,
+            ASSISTANT_CHOICE_SET_TOOL,
+          ],
           execute: async (name, args) => (
             await runAssistantDataTool(name, args, { records, settings })
             ?? await runAssistantActionTool(name, args, { records, settings })
             ?? await runPracticePlanTool(name, args, { records, settings })
             ?? runAssistantChoiceTool(name, args)
+            ?? runAssistantChoiceSetTool(name, args)
           ),
           signal: controller.signal,
         });
@@ -824,14 +851,15 @@ export function AssistantPage() {
       }
     }
     // 需要用户选择：暂停本轮，不生成最终回答；选择器解决后自动继续
-    if (toolRun.pendingChoice) {
+    if (toolRun.pendingChoice || toolRun.pendingChoiceSet) {
       const choiceMeta: ChatContextMeta = {
         recordIds: toolRun.recordIds,
         pinnedIds: [],
         totalRecords: 0,
         docs: toolRun.docs,
         ...(toolRun.traces.length > 0 ? { toolCalls: toolRun.traces } : {}),
-        pendingChoice: toolRun.pendingChoice,
+        ...(toolRun.pendingChoice ? { pendingChoice: toolRun.pendingChoice } : {}),
+        ...(toolRun.pendingChoiceSet ? { pendingChoiceSet: toolRun.pendingChoiceSet } : {}),
       };
       saveAssistantDraft(convId, {
         content: t('assistant.choiceIntro'),
@@ -992,6 +1020,27 @@ export function AssistantPage() {
     void generate(conv.id, getChat(conv.id)?.messages ?? [], '');
   };
 
+  /** 多问题卡解决：把答案写回原消息，追加一条用户消息并自动续聊 */
+  const resolveChoiceSet = (messageIndex: number, set: PendingChoiceSet, result: ChoiceSetResult) => {
+    if (busy || !conv) return;
+    const latest = getChat(conv.id);
+    const target = latest?.messages[messageIndex];
+    if (!target?.context?.pendingChoiceSet || target.context.choiceSetResult) return;
+    const answered = result.answers.filter(
+      (a) => !a.skipped && (a.selectedIds.length > 0 || (a.custom?.trim() ?? '')),
+    ).length;
+    const label = result.skipped
+      ? t('assistant.choiceSkipped')
+      : t('assistant.choiceSetSubmitted', { n: answered });
+    patchMessageContext(conv.id, messageIndex, { choiceSetResult: result });
+    addMessage(conv.id, {
+      role: 'user',
+      content: buildChoiceSetUserMessage(set, result),
+      choiceLabel: label,
+    });
+    void generate(conv.id, getChat(conv.id)?.messages ?? [], '');
+  };
+
   /** 发送一条文本消息（文本输入、语音和命令共用） */
   const sendMessage = (raw: string, extraContext = '', attachments: ChatAttachment[] = []) => {
     const text = raw.trim();
@@ -1019,6 +1068,15 @@ export function AssistantPage() {
           },
         });
       }
+    }
+    // 多问题卡还开着时直接打字：视为跳过整张卡，文字照常发送
+    const pendingSetIdx = current?.messages.findIndex(
+      (m) => m.context?.pendingChoiceSet && !m.context?.choiceSetResult,
+    ) ?? -1;
+    if (pendingSetIdx >= 0) {
+      patchMessageContext(convId, pendingSetIdx, {
+        choiceSetResult: { answers: [], skipped: true },
+      });
     }
     addMessage(convId, {
       role: 'user',
@@ -1927,6 +1985,7 @@ export function AssistantPage() {
                 onBranch={onBranch}
                 onMemory={onMemory}
                 onResolveChoice={resolveChoice}
+                onResolveChoiceSet={resolveChoiceSet}
               />
             ))}
             {toolNote && (
@@ -1950,6 +2009,7 @@ export function AssistantPage() {
                 onBranch={() => undefined}
                 onMemory={() => undefined}
                 onResolveChoice={() => undefined}
+                onResolveChoiceSet={() => undefined}
               />
             )}
             {error && (

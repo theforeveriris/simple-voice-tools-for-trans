@@ -1585,5 +1585,9 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.choiceSubmitted': '已擇',
   'assistant.choiceSkipped': '已捨',
   'assistant.choiceOtherValue': '他：{text}',
+  'assistant.choiceSetPage': '第 {n} 問',
+  'assistant.choiceSetSubmit': '呈',
+  'assistant.choiceSetSubmitted': '已答 {n} 問',
+  'assistant.choiceSetSkipAll': '皆捨',
 };
 

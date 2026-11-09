@@ -27,6 +27,8 @@ export type AssistantToolOutcome = {
   pendingAction?: import('./assistantActions').AssistantAction;
   /** 需要用户选择的问题（一次最多一个） */
   pendingChoice?: import('./assistantChoice').PendingChoice;
+  /** 需要用户一次提交的多问题卡 */
+  pendingChoiceSet?: import('./assistantChoice').PendingChoiceSet;
 };
 
 const MAX_QUERY = 20;

@@ -1585,4 +1585,8 @@ export const ja = {
   'assistant.choiceSubmitted': '選択済み',
   'assistant.choiceSkipped': 'スキップ',
   'assistant.choiceOtherValue': 'その他：{text}',
+  'assistant.choiceSetPage': '質問 {n}',
+  'assistant.choiceSetSubmit': '送信',
+  'assistant.choiceSetSubmitted': '{n} 問に回答しました',
+  'assistant.choiceSetSkipAll': 'すべてスキップ',
 } as const;

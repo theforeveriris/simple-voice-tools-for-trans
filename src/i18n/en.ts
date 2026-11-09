@@ -1584,4 +1584,8 @@ export const en = {
   'assistant.choiceSubmitted': 'Selected',
   'assistant.choiceSkipped': 'Skipped',
   'assistant.choiceOtherValue': 'Other: {text}',
+  'assistant.choiceSetPage': 'Question {n}',
+  'assistant.choiceSetSubmit': 'Submit',
+  'assistant.choiceSetSubmitted': 'Answered {n} questions',
+  'assistant.choiceSetSkipAll': 'Skip all',
 } as const;

@@ -34,6 +34,8 @@ export interface AssistantToolRun {
   pendingAction?: import('./assistantActions').AssistantAction;
   /** 本轮提出的待用户选择问题 */
   pendingChoice?: import('./assistantChoice').PendingChoice;
+  /** 本轮提出的多问题卡 */
+  pendingChoiceSet?: import('./assistantChoice').PendingChoiceSet;
 }
 
 const EMPTY: AssistantToolRun = {
@@ -101,6 +103,7 @@ export async function runAssistantTools(opts: {
   const seenDocs = new Set<string>();
   let pendingAction: AssistantToolRun['pendingAction'];
   let pendingChoice: AssistantToolRun['pendingChoice'];
+  let pendingChoiceSet: AssistantToolRun['pendingChoiceSet'];
   let callsUsed = 0;
   let halt = false;
   try {
@@ -145,6 +148,10 @@ export async function runAssistantTools(opts: {
             pendingChoice = outcome.pendingChoice;
             halt = true;
           }
+          if (outcome.pendingChoiceSet && !pendingChoiceSet) {
+            pendingChoiceSet = outcome.pendingChoiceSet;
+            halt = true;
+          }
           for (const id of outcome.recordIds ?? []) recordIdSet.add(id);
           for (const doc of outcome.docs ?? []) {
             if (seenDocs.has(doc.title)) continue;
@@ -180,5 +187,6 @@ export async function runAssistantTools(opts: {
     docs,
     ...(pendingAction ? { pendingAction } : {}),
     ...(pendingChoice ? { pendingChoice } : {}),
+    ...(pendingChoiceSet ? { pendingChoiceSet } : {}),
   };
 }

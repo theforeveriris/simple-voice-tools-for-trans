@@ -8,7 +8,7 @@ import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import type { MemoryWrite } from './memory';
 import type { AssistantAction } from './assistantActions';
-import type { ChoiceResult, PendingChoice } from './assistantChoice';
+import type { ChoiceResult, ChoiceSetResult, PendingChoice, PendingChoiceSet } from './assistantChoice';
 import type { ImgKind } from './assistantChartRoute';
 
 /** 用户随消息附带的资料；当前版本先支持记录图表，图片字段预留给后续视觉模型 */
@@ -50,6 +50,10 @@ export interface ChatContextMeta {
   pendingChoice?: PendingChoice;
   /** 已解决的选择结果（卡片折叠成已选择状态） */
   choiceResult?: ChoiceResult;
+  /** 等待用户一次提交的多问题卡 */
+  pendingChoiceSet?: PendingChoiceSet;
+  /** 多问题卡的提交结果 */
+  choiceSetResult?: ChoiceSetResult;
 }
 
 export interface ChatMessage {
@@ -59,6 +63,8 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
   /** 用户对阻塞式选择器的回答（用于渲染紧凑的选择 chip） */
   choice?: ChoiceResult;
+  /** 用户对多问题卡的回答摘要（渲染 chip 用） */
+  choiceLabel?: string;
   /** 思考过程（推理模型 / thinking 块返回时保存，气泡可展开查看） */
   think?: string;
   /** 流式草稿：生成中节流写入，完成后清除；残留草稿（崩溃/杀进程）读取时转为 interrupted */

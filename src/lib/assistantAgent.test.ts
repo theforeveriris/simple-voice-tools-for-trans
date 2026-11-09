@@ -96,4 +96,29 @@ describe('runAssistantTools', () => {
     expect(run.pendingChoice).toEqual(choice);
     expect(llmChatToolMessages).toHaveBeenCalledTimes(1);
   });
+
+  it('halts after a multi-question card', async () => {
+    vi.mocked(llmChatToolMessages).mockResolvedValueOnce({
+      content: '',
+      toolCalls: [{ id: 'c1', name: 'ask_choice_set', arguments: { questions: [] } }],
+    });
+    const set = {
+      id: 'set1',
+      createdAt: 1,
+      questions: [
+        { id: 'q1', question: 'A?', selection: 'single' as const, options: [{ id: 'o1', label: 'A' }], allowOther: true },
+        { id: 'q2', question: 'B?', selection: 'single' as const, options: [{ id: 'o1', label: 'B' }], allowOther: true },
+      ],
+    };
+    const run = await runAssistantTools({
+      cfg: { baseUrl: 'http://x', apiKey: 'k', modelId: 'm' } as never,
+      system: 'planner',
+      history: [],
+      userText: 'ask me a few',
+      tools: [{ name: 'ask_choice_set', description: 'q', parameters: {} }],
+      execute: vi.fn().mockResolvedValue({ text: 'waiting', summary: '等待回答', pendingChoiceSet: set }),
+    });
+    expect(run.pendingChoiceSet).toEqual(set);
+    expect(llmChatToolMessages).toHaveBeenCalledTimes(1);
+  });
 });

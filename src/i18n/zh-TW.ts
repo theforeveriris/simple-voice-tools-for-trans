@@ -1584,4 +1584,8 @@ export const zhTW = {
   'assistant.choiceSubmitted': '已選擇',
   'assistant.choiceSkipped': '已跳過',
   'assistant.choiceOtherValue': '其他：{text}',
+  'assistant.choiceSetPage': '第 {n} 題',
+  'assistant.choiceSetSubmit': '提交',
+  'assistant.choiceSetSubmitted': '已回答 {n} 個問題',
+  'assistant.choiceSetSkipAll': '全部跳過',
 } as const;
