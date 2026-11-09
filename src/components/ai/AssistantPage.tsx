@@ -695,7 +695,9 @@ export function AssistantPage() {
   const lastTab = useStore((s) => s.lastTab);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const cfg = useActiveLlmConfig(activeProfileId);
-  const auxCfg = useActiveLlmConfig(settings.llmAuxProfileId ?? activeProfileId);
+  const auxProfileId = settings.llmAuxProfileId;
+  const auxCfgRaw = useActiveLlmConfig(auxProfileId ?? activeProfileId);
+  const auxCfg = auxProfileId && auxProfileId !== activeProfileId ? auxCfgRaw : null;
   const chats = useChats();
   /** null = 尚未开始对话（发送第一条时创建） */
   const [activeId, setActiveId] = useState<string | null>(null);

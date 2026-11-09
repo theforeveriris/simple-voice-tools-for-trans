@@ -54,8 +54,8 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
   const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
   const auxProfileId = useStore((s) => s.settings.llmAuxProfileId);
   const mainCfg = useActiveLlmConfig(activeProfileId);
-  const auxCfg = useActiveLlmConfig(auxProfileId);
-  const cfg = auxCfg ?? mainCfg;
+  const auxCfgRaw = useActiveLlmConfig(auxProfileId ?? activeProfileId);
+  const cfg = auxProfileId && auxProfileId !== activeProfileId ? auxCfgRaw : mainCfg;
   const updateSettings = useStore((s) => s.updateSettings);
 
   /** 只展示 active；已合并 / 已过期进入历史区 */
