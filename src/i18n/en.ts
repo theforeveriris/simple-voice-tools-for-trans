@@ -1587,4 +1587,7 @@ export const en = {
   'assistant.choiceSetSubmitted': 'Answered {n} questions',
   'assistant.choiceSetSkipAll': 'Skip all',
   'assistant.choiceSetNext': 'Next',
+  'assistant.numericUnverified': 'Some numbers could not be verified against this round\'s data.',
+  'assistant.numericRepaired': 'Numbers were corrected against this round\'s data.',
+  'assistant.ctx.numberTag': 'Numbers',
 } as const;

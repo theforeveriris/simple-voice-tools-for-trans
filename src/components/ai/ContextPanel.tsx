@@ -39,10 +39,18 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
   const memories = meta.memories ?? 0;
   const memoryQuery = meta.memoryQuery?.trim();
   const toolCalls = meta.toolCalls ?? [];
+  const numericCheck = meta.numericCheck;
   const byId = useMemo(() => new Map(records.map((r) => [r.id, r])), [records]);
   const hidden = Math.max(0, (meta.totalRecords ?? 0) - ids.length);
 
-  if (ids.length === 0 && docs.length === 0 && memories === 0 && !memoryQuery && toolCalls.length === 0) return null;
+  if (
+    ids.length === 0
+    && docs.length === 0
+    && memories === 0
+    && !memoryQuery
+    && toolCalls.length === 0
+    && !numericCheck
+  ) return null;
 
   return (
     <div onClick={(e) => e.stopPropagation()}>
@@ -123,6 +131,17 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
             </p>
           ))}
         </div>
+      )}
+
+      {numericCheck && (
+        <p className="flex items-center gap-1.5 px-0 py-1 text-[11px]">
+          <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
+            {t('assistant.ctx.numberTag')}
+          </span>
+          <span className="min-w-0 flex-1 text-ink">
+            {t(numericCheck === 'repaired' ? 'assistant.numericRepaired' : 'assistant.numericUnverified')}
+          </span>
+        </p>
       )}
 
       {ids.length > MAX_ROWS && (

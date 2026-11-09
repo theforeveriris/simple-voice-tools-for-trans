@@ -1587,4 +1587,7 @@ export const zhTW = {
   'assistant.choiceSetSubmitted': '已回答 {n} 個問題',
   'assistant.choiceSetSkipAll': '全部跳過',
   'assistant.choiceSetNext': '下一道',
+  'assistant.numericUnverified': '部分數字未能在本輪記錄中驗證。',
+  'assistant.numericRepaired': '數字已按本輪記錄校正。',
+  'assistant.ctx.numberTag': '數字',
 } as const;

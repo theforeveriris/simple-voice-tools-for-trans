@@ -1588,4 +1588,7 @@ export const ja = {
   'assistant.choiceSetSubmitted': '{n} 問に回答しました',
   'assistant.choiceSetSkipAll': 'すべてスキップ',
   'assistant.choiceSetNext': '次へ',
+  'assistant.numericUnverified': '一部の数値は今回の記録で確認できませんでした。',
+  'assistant.numericRepaired': '数値は今回の記録に合わせて修正されました。',
+  'assistant.ctx.numberTag': '数値',
 } as const;

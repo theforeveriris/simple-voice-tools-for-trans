@@ -54,6 +54,8 @@ export interface ChatContextMeta {
   pendingChoiceSet?: PendingChoiceSet;
   /** 多问题卡的提交结果 */
   choiceSetResult?: ChoiceSetResult;
+  /** 关键数字校验结果：repaired = 已按工具结果修正，flagged = 仍有未验证数字 */
+  numericCheck?: 'repaired' | 'flagged';
 }
 
 export interface ChatMessage {

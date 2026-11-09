@@ -1596,4 +1596,7 @@ export const es = {
   'assistant.choiceSetSubmitted': 'Respondidas {n} preguntas',
   'assistant.choiceSetSkipAll': 'Omitir todo',
   'assistant.choiceSetNext': 'Siguiente',
+  'assistant.numericUnverified': 'Algunos números no se pudieron verificar con los datos de esta ronda.',
+  'assistant.numericRepaired': 'Los números se corrigieron según los datos de esta ronda.',
+  'assistant.ctx.numberTag': 'Números',
 } as const;

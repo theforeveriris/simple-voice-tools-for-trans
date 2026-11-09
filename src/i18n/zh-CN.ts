@@ -1596,6 +1596,9 @@ export const zhCN = {
   'assistant.choiceSetSubmitted': '已回答 {n} 个问题',
   'assistant.choiceSetSkipAll': '全部跳过',
   'assistant.choiceSetNext': '下一道',
+  'assistant.numericUnverified': '部分数字未能在本轮记录中验证。',
+  'assistant.numericRepaired': '数字已按本轮记录校正。',
+  'assistant.ctx.numberTag': '数字',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

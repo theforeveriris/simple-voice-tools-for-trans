@@ -1588,5 +1588,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.choiceSetSubmitted': '已答 {n} 問',
   'assistant.choiceSetSkipAll': '皆捨',
   'assistant.choiceSetNext': '次',
+  'assistant.numericUnverified': '數有未驗於此輪者。',
+  'assistant.numericRepaired': '數已依此輪正之。',
+  'assistant.ctx.numberTag': '數',
 };
 

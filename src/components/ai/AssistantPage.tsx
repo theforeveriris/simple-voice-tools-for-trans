@@ -29,12 +29,17 @@ import {
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { isAbortError, languageName, llmChatStreamMessages, llmToolCall, type LlmConfig, type LlmToolSpec } from '@/lib/llm';
+import { isAbortError, languageName, llmChat, llmChatStreamMessages, llmToolCall, type LlmConfig, type LlmToolSpec } from '@/lib/llm';
 import { runAssistantTools } from '@/lib/assistantAgent';
 import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools';
 import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } from '@/lib/assistantActions';
 import { PRACTICE_PLAN_TOOLS, runPracticePlanTool } from '@/lib/practicePlanTools';
 import { getPracticePlanState, planSummaryForPrompt } from '@/lib/practicePlan';
+import {
+  findUnverifiedClaims,
+  formatAllowedNumbers,
+  type NumberClaim,
+} from '@/lib/assistantNumerals';
 import {
   ASSISTANT_CHOICE_SET_TOOL,
   ASSISTANT_CHOICE_TOOL,
@@ -234,6 +239,34 @@ function systemPrompt(profile: string, history: string, docs = '', extra = '', m
     extra,
     `使用「${languageName()}」回答。`,
   ].filter(Boolean).join('\n');
+}
+
+/**
+ * 数字修正：只改回答里没有依据的关键数字，保持 Markdown / 图表结构不变。
+ * 返回修正后的完整回答；失败时返回空串，由调用方决定标注。
+ */
+async function repairNumericAnswer(
+  cfg: LlmConfig,
+  reply: string,
+  claims: NumberClaim[],
+  sources: string[],
+  signal?: AbortSignal,
+): Promise<string> {
+  const invalid = claims.map((claim) => claim.raw).join('、');
+  const allowed = formatAllowedNumbers(sources);
+  const system = [
+    '你是数字校验器。只修正回答中没有数据依据的数字，其他文字、Markdown 结构、图表引用（record:// / trend://）和语气保持不变。',
+    '能对应到允许值的数字改成正确值；无法对应的数字删除或改成不带数字的表述。',
+    '只输出修正后的完整回答，不要解释，不要新增结论。',
+  ].join('\n');
+  const user = [
+    `【没有依据的数字】${invalid}`,
+    `【本轮可用数字】${allowed || '（无）'}`,
+    '【原回答】',
+    reply,
+  ].join('\n\n');
+  const repaired = await llmChat(cfg, system, user, 0, signal, 'assistant');
+  return repaired.trim();
 }
 
 /** 记忆检索路由器：只决定是否需要长期记忆，并给出检索词 */
@@ -966,15 +999,49 @@ export function AssistantPage() {
           persistDraft();
         },
       });
+      let finalReply = reply;
+      // 只在本轮确实调用过工具时校验关键数字；普通常识回答不做数字审查
+      if (toolRun.traces.length > 0 && !controller.signal.aborted) {
+        const sources = [
+          sys,
+          hist.history,
+          toolRun.contextText,
+          docHit.text,
+          memoryHit.text,
+          attachmentText,
+          planSummary,
+        ];
+        const claims = findUnverifiedClaims(reply, sources);
+        if (claims.length > 0) {
+          try {
+            const repaired = await repairNumericAnswer(cfg, reply, claims, sources, controller.signal);
+            const remaining = repaired ? findUnverifiedClaims(repaired, sources) : claims;
+            if (repaired && remaining.length < claims.length) {
+              finalReply = remaining.length === 0
+                ? repaired
+                : `${repaired}\n\n> ${t('assistant.numericUnverified')}`;
+              contextMeta.numericCheck = remaining.length === 0 ? 'repaired' : 'flagged';
+            } else {
+              finalReply = `${reply}\n\n> ${t('assistant.numericUnverified')}`;
+              contextMeta.numericCheck = 'flagged';
+            }
+          } catch {
+            if (!controller.signal.aborted) {
+              finalReply = `${reply}\n\n> ${t('assistant.numericUnverified')}`;
+              contextMeta.numericCheck = 'flagged';
+            }
+          }
+        }
+      }
       saveAssistantDraft(convId, {
-        content: reply,
+        content: finalReply,
         think: thinkAcc,
         draft: false,
         context: contextMeta,
       });
       // AI 自动判断并保存长期记忆（后台；失败不影响回答）
       const assistantIndex = (getChat(convId)?.messages.length ?? 1) - 1;
-      if (lastUserMsg) void autoSaveMemories(convId, assistantIndex, lastUserMsg.content, reply);
+      if (lastUserMsg) void autoSaveMemories(convId, assistantIndex, lastUserMsg.content, finalReply);
     } catch (err: unknown) {
       // 中止或报错：保留已经输出的部分，标注「已中断」，不白丢这段内容
       if (textAcc || thinkAcc) {
