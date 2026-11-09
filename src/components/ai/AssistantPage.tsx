@@ -58,9 +58,10 @@ import { ChoiceSetCard } from '@/components/ai/ChoiceSetCard';
 import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import { downloadBlob } from '@/lib/file';
 import {
-  addMessage, createChat, deleteChat, getChat, patchMessageContext, renameChat, saveAssistantDraft, setChatMemoryOff, setMessages,
+  addMessage, createChat, deleteChat, getChat, patchMessageContext, renameChat, saveAssistantDraft, setChatMemoryOff, setChatSummary, setMessages,
   setPinnedRecords, useChats, type ChatAttachment, type ChatContextMeta, type ChatConversation, type ChatMessage,
 } from '@/lib/llmChats';
+import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chatSummary';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryKind, type MemoryWrite } from '@/lib/memory';
@@ -958,8 +959,77 @@ export function AssistantPage() {
     const attachmentText = attachmentRecords
       .map((r) => `【用户引用的记录】\n${formatRecordLine(r)}`)
       .join('\n\n');
-    const extraAll = [extraContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
-    const sys = systemPrompt(hist.profile, hist.history, docHit.text, extraAll, memoryHit.text);
+    const baseExtra = [extraContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
+    const storedChat = getChat(convId);
+    // 只有完整历史才能安全使用/更新摘要；redo / retry 传的是切片，跳过摘要
+    const canSummarize = !!storedChat && storedChat.messages === history;
+    const existingSummary = canSummarize ? storedChat.summary : undefined;
+    let summaryText = existingSummary?.text ?? '';
+    let summaryThrough = existingSummary?.throughMessageIndex ?? -1;
+    if (summaryThrough >= history.length - 1) {
+      summaryText = '';
+      summaryThrough = -1;
+    }
+    const buildSys = (summary: string) => systemPrompt(
+      hist.profile,
+      hist.history,
+      docHit.text,
+      [baseExtra, summaryPromptBlock(summary)].filter(Boolean).join('\n\n'),
+      memoryHit.text,
+    );
+    let sys = buildSys(summaryText);
+    let turns = summaryThrough >= 0 ? history.slice(summaryThrough + 1) : history;
+    const totalOf = (ts: ChatMessage[]) => ts.reduce((n, x) => n + estTokens(x.content), 0);
+    let maxTok = Math.max(1024, context - (estTokens(sys) + replyReserve));
+    // 从最旧开始裁剪；保证 user 开头（Anthropic 要求 user/assistant 交替且以 user 起始）
+    for (let pass = 0; pass < 3; pass++) {
+      let dropped = 0;
+      while (turns.length > 1 && totalOf(turns) > maxTok) {
+        turns = turns.slice(1);
+        dropped++;
+      }
+      while (turns.length > 1 && turns[0]?.role !== 'user') {
+        turns = turns.slice(1);
+        dropped++;
+      }
+      if (dropped === 0 || !canSummarize) break;
+      const previous = summaryText;
+      const start = summaryThrough + 1;
+      const end = Math.min(history.length - 1, summaryThrough + dropped);
+      if (end < start) break;
+      const chunk = history.slice(start, end + 1);
+      summaryText = buildLocalSummary(chunk, previous);
+      summaryThrough = end;
+      setChatSummary(convId, {
+        text: summaryText,
+        throughMessageIndex: summaryThrough,
+        updatedAt: Date.now(),
+        source: 'local',
+      });
+      // 摘要本身也占 token：重建系统提示后重新算预算，可能还需要再裁一点
+      sys = buildSys(summaryText);
+      maxTok = Math.max(1024, context - (estTokens(sys) + replyReserve));
+      // 后台生成正式摘要，下一轮替换本地摘录
+      const covered = summaryThrough;
+      void summarizeChat(cfg, chunk, previous, controller.signal)
+        .then((text) => {
+          if (!text) return;
+          const latest = getChat(convId)?.summary;
+          if (latest && latest.throughMessageIndex > covered) return;
+          setChatSummary(convId, {
+            text,
+            throughMessageIndex: covered,
+            updatedAt: Date.now(),
+            source: 'llm',
+          });
+        })
+        .catch(() => {});
+    }
+    if (turns[0]?.role !== 'user') turns = turns.slice(1);
+    if (turns.length === 0) {
+      if (abortRef.current === controller) abortRef.current = null;
+      return;
+    }
     // 本轮真正注入的上下文：消息落库后，气泡下方的「本轮上下文」面板据此展示
     const seenDocs = new Set<string>();
     const docs = [...docHit.docs, ...toolRun.docs].filter((d) => {
@@ -981,17 +1051,6 @@ export function AssistantPage() {
       ...(toolRun.traces.length > 0 ? { toolCalls: toolRun.traces } : {}),
       ...(toolRun.pendingAction ? { pendingAction: toolRun.pendingAction } : {}),
     };
-    const reserve = estTokens(sys) + replyReserve;
-    let turns = history;
-    const maxTok = Math.max(1024, context - reserve);
-    const totalOf = (ts: ChatMessage[]) => ts.reduce((n, x) => n + estTokens(x.content), 0);
-    // 从最旧开始裁剪；保证 user 开头（Anthropic 要求 user/assistant 交替且以 user 起始）
-    while (turns.length > 1 && totalOf(turns) > maxTok) turns = turns.slice(1);
-    if (turns[0]?.role !== 'user') turns = turns.slice(1);
-    if (turns.length === 0) {
-      if (abortRef.current === controller) abortRef.current = null;
-      return;
-    }
 
     setStreamText('');
     setStreamThink('');

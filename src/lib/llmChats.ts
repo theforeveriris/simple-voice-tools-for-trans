@@ -77,6 +77,15 @@ export interface ChatMessage {
   context?: ChatContextMeta;
 }
 
+/** 较早对话的滚动摘要（内部使用，不展示 UI） */
+export interface ChatSummary {
+  text: string;
+  /** 摘要覆盖到的消息下标（含） */
+  throughMessageIndex: number;
+  updatedAt: number;
+  source: 'local' | 'llm';
+}
+
 export interface ChatConversation {
   id: string;
   title: string;
@@ -87,6 +96,8 @@ export interface ChatConversation {
   pinnedRecordIds?: string[];
   /** 临时会话：不自动写入长期记忆（手动「记住」仍可用） */
   memoryOff?: boolean;
+  /** 较早对话摘要；只在上下文超预算时更新 */
+  summary?: ChatSummary;
 }
 
 const KV_CHATS = 'llm:chats';
@@ -336,6 +347,12 @@ export function setPinnedRecords(id: string, ids: string[]): void {
   commit(chats.map((c) => (c.id === id
     ? { ...c, updatedAt: Date.now(), pinnedRecordIds: unique.length ? unique : undefined }
     : c)));
+}
+
+/** 写入较早对话摘要（不改变会话排序） */
+export function setChatSummary(id: string, summary: ChatSummary): void {
+  if (!chats) return;
+  commit(chats.map((c) => (c.id === id ? { ...c, summary } : c)));
 }
 
 export function deleteChat(id: string): void {
