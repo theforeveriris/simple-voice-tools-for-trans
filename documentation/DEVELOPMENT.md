@@ -435,6 +435,8 @@ npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-
 | [ARCHITECTURE-THEME.md](./ARCHITECTURE-THEME.md) | 主题：OKLCH 令牌、骄傲旗预设、渐变参数、包含块陷阱 |
 | [ARCHITECTURE-STATE.md](./ARCHITECTURE-STATE.md) | 状态与持久化：store、IndexedDB、键清单、迁移与降级 |
 | [ARCHITECTURE-SETTINGS.md](./ARCHITECTURE-SETTINGS.md) | 设置页：子页面模式、搜索索引、新增子页步骤 |
+| [ARCHITECTURE-AI-ASSISTANT.md](./ARCHITECTURE-AI-ASSISTANT.md) | AI 助手：请求链路、工具循环、记忆、隐私与安全边界 |
+| [PARAMETERS-AI-ASSISTANT.md](./PARAMETERS-AI-ASSISTANT.md) | AI 助手参数：模型档案、上下文预算、工具与记忆阈值 |
 | [GUIDE-PWA.md](./GUIDE-PWA.md) | PWA：更新流、版本注入、Share Target、修复工具 |
 | [GUIDE-CAPACITOR.md](./GUIDE-CAPACITOR.md) | Capacitor 安卓壳：构建、签名、原生分享/快捷方式、已知限制 |
 | [GUIDE-DESKTOP.md](./GUIDE-DESKTOP.md) | Tauri Windows 桌面版：构建、CI、平台差异 |

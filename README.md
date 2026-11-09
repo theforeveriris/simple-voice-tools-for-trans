@@ -92,6 +92,8 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 | [documentation/ARCHITECTURE-THEME.md](documentation/ARCHITECTURE-THEME.md) | Architecture: theme system, pride-flag presets, gradient parameters |
 | [documentation/ARCHITECTURE-STATE.md](documentation/ARCHITECTURE-STATE.md) | Architecture: state & persistence, storage key inventory, migrations |
 | [documentation/ARCHITECTURE-SETTINGS.md](documentation/ARCHITECTURE-SETTINGS.md) | Architecture: settings sub-page pattern & how to add one |
+| [documentation/ARCHITECTURE-AI-ASSISTANT.md](documentation/ARCHITECTURE-AI-ASSISTANT.md) | Architecture: AI assistant request flow, tool loop, memory, privacy and safety boundaries |
+| [documentation/PARAMETERS-AI-ASSISTANT.md](documentation/PARAMETERS-AI-ASSISTANT.md) | Parameters: AI assistant model profiles, context budgets, tool and memory thresholds |
 | [documentation/GUIDE-PWA.md](documentation/GUIDE-PWA.md) | Guide: PWA update flow, Share Target, repair tool |
 | [documentation/GUIDE-CAPACITOR.md](documentation/GUIDE-CAPACITOR.md) | Guide: Capacitor Android shell (build / signing / native share / known limits) |
 | [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | Guide: Tauri Windows desktop (build / CI / platform differences) |

@@ -30,6 +30,8 @@ export const DEV_DOCS: DocEntry[] = [
   { file: 'ARCHITECTURE-THEME.md', titleKey: 'settings.docThemeTitle', descKey: 'settings.docThemeDesc' },
   { file: 'ARCHITECTURE-STATE.md', titleKey: 'settings.docStateTitle', descKey: 'settings.docStateDesc' },
   { file: 'ARCHITECTURE-SETTINGS.md', titleKey: 'settings.docSettingsTitle', descKey: 'settings.docSettingsDesc' },
+  { file: 'ARCHITECTURE-AI-ASSISTANT.md', titleKey: 'settings.docAiArchTitle', descKey: 'settings.docAiArchDesc' },
+  { file: 'PARAMETERS-AI-ASSISTANT.md', titleKey: 'settings.docAiParamsTitle', descKey: 'settings.docAiParamsDesc' },
   { file: 'RECORDS-FORMAT.md', titleKey: 'settings.docRecordsTitle', descKey: 'settings.docRecordsDesc' },
   { file: 'GUIDE-PWA.md', titleKey: 'settings.docPwaTitle', descKey: 'settings.docPwaDesc' },
   { file: 'GUIDE-CAPACITOR.md', titleKey: 'settings.docCapacitorTitle', descKey: 'settings.docCapacitorDesc' },

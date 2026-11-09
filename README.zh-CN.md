@@ -178,6 +178,8 @@
 | [documentation/ARCHITECTURE-THEME.md](documentation/ARCHITECTURE-THEME.md) | 架构：主题系统、骄傲旗预设与渐变参数 |
 | [documentation/ARCHITECTURE-STATE.md](documentation/ARCHITECTURE-STATE.md) | 架构：状态与持久化、存储键清单、迁移 |
 | [documentation/ARCHITECTURE-SETTINGS.md](documentation/ARCHITECTURE-SETTINGS.md) | 架构：设置子页模式与新增步骤 |
+| [documentation/ARCHITECTURE-AI-ASSISTANT.md](documentation/ARCHITECTURE-AI-ASSISTANT.md) | 架构：AI 助手的请求链路、工具循环、记忆、隐私与安全边界 |
+| [documentation/PARAMETERS-AI-ASSISTANT.md](documentation/PARAMETERS-AI-ASSISTANT.md) | 参数：AI 助手的模型档案、上下文预算、工具与记忆阈值 |
 | [documentation/GUIDE-PWA.md](documentation/GUIDE-PWA.md) | 指南：PWA 更新流、Share Target、修复工具 |
 | [documentation/GUIDE-CAPACITOR.md](documentation/GUIDE-CAPACITOR.md) | 指南：Capacitor 安卓壳（构建/签名/原生分享/已知限制） |
 | [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | 指南：Tauri Windows 桌面版（构建/CI/平台差异） |
