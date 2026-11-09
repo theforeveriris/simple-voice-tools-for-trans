@@ -28,6 +28,7 @@
 | --- | --- |
 | Peterson, G. E. & Barney, H. L. (1952). *Control methods used in a study of the vowels*. J. Acoust. Soc. Am. 24(2), 175–184. | i / a / u 参考元音 F1/F2 位置的原始依据（VOWEL_REFS，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第二节 2.5） |
 | Hillenbrand, J., Getty, L. A., Clark, M. J. & Wheeler, K. (1995). *Acoustic characteristics of American English vowels*. J. Acoust. Soc. Am. 97(5), 3099–3111. doi:10.1121/1.411872 | 成人男女元音共振峰分布的性别差异（「i 是共鸣试金石」等论述）；本项目取其 12 个元音的男女共振峰分组均值（男 n=45、女 n=48，共 1668 个稳态样本）作为「声音性别表达参考分」的元音归一锚点（VOWEL_REFS_H95，[PARAMETERS-GUIDE.md](PARAMETERS-GUIDE.md) 第十二节） |
+| Meng, Z., Chen, Y. & Li, X. (2006). *Statistical Survey of Monophthong Formants in Mandarin for Students Being Trained as Broadcasters*. Proceedings of PACLIC 20, 280–286. ACL Anthology Y06-1037. | 普通话六个主元音（a / o / e[ɤ] / i / u / ü[y]）的男女 F1/F2 分组均值（212 女 + 126 男播音专业学生，Table 3）；「长音测试 → 元音检查」卡的参考值（MANDARIN_VOWELS） |
 
 ## 声音性别感知参考（VFP 风格）
 

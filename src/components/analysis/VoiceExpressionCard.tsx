@@ -138,7 +138,7 @@ export function VoiceExpressionCard({ record }: { record: AnalysisRecord }) {
         </div>
       </div>
 
-      {result.breakdown.length > 0 && (
+      {result.breakdown.length > 0 && record.mode !== 'sustained' && (
         <details className="mt-2 px-0.5">
           <summary className="cursor-pointer text-[10px] text-ink-2">
             {t('analysis.expressionVowelBreakdown')}
