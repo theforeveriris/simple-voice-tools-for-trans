@@ -62,6 +62,7 @@ import {
   setPinnedRecords, useChats, type ChatAttachment, type ChatContextMeta, type ChatConversation, type ChatMessage, type ChatRef,
 } from '@/lib/llmChats';
 import { buildLocalSummary, summarizeChat, summaryPromptBlock } from '@/lib/chatSummary';
+import { detectSafetyLevel } from '@/lib/safety';
 import { renderMarkdown } from '@/lib/markdown';
 import { retrieveDocsDetailed } from '@/lib/docKnowledge';
 import { buildMemoryPrompt, extractMemoryCandidates, loadMemories, memoryPromptBlock, memorySearchBlock, saveMemory, searchMemories, shouldAutoSaveMemory, isMemoryVisible, looksLikeInstruction, undoMemoryWrite, MEMORY_KINDS, MEMORY_TEXT_MAX, type MemoryItem, type MemoryKind, type MemoryWrite } from '@/lib/memory';
@@ -228,7 +229,9 @@ function systemPrompt(profile: string, history: string, docs = '', extra = '', m
     '你是 Simple Voice Tool for Trans 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
     '不要使用 emoji 或颜文字；用文字、Markdown、图表和交互组件表达。',
     '回答简洁、务实、有依据；涉及嗓音训练时给出可操作的练习建议；',
+    '【身份与语言】不假设用户的性别认同、激素状态或过渡阶段；不把「passing」当作默认目标。除非用户自己使用「男声 / 女声」，否则用「目标音区 / 共鸣位置 / 听感 / 表达风格」描述声音。目标由用户定义，不替用户设定「应该像什么」。',
     '不做医学诊断，遇到疑似嗓音疾病（持续嘶哑、疼痛等）时建议就医或咨询言语治疗师。',
+    '如果用户表达强烈的声音焦虑、自我否定或绝望：先共情和支持，再谈训练；不要把声音好坏等同于人的价值，建议降低强度或先休息。',
     '记录里的底噪、麦克风、录音小时是自动采集的环境元数据：可用于解释数据可比性与可信度，缺失时不要假设，也不要据此做医学判断。',
     '如果工具结果显示「数据质量偏低 / 低」：先说明这次录音的可信度，建议在安静环境重录；不要把与测量波动相当的变化说成进步或退化。',
     '回复支持 Markdown：可用 **粗体**、*斜体*、`行内代码`、有序/无序列表、表格（| 列 | 列 |）、> 引用与 ## 小标题，让长回答结构清晰；除 genui 组件外不要输出代码块。',
@@ -895,6 +898,7 @@ export function AssistantPage() {
     if (settings.memoryAutoSave === 'off') return;
     const chat = getChat(chatId);
     if (chat?.memoryOff || chat?.privacy === 'private') return;
+    const minor = settings.ageGroup === 'child' || settings.ageGroup === 'adolescent';
     const fromChoice = origin === 'choice' || origin === 'choice_set';
     if (!fromChoice && !shouldAutoSaveMemory(userText)) return;
     try {
@@ -909,6 +913,7 @@ export function AssistantPage() {
         .map(parseMemorySaveCall)
         .filter((x): x is NonNullable<typeof x> => !!x)
         .filter((x) => !looksLikeInstruction(x.text))
+        .filter((x) => !(minor && /(激素|手术|出柜|transition|hormone|surgery|coming\s*out)/i.test(x.text)))
         .slice(0, fromChoice ? 1 : 3);
       const writes: MemoryWrite[] = [];
       for (const s of saves) {
@@ -1063,7 +1068,10 @@ export function AssistantPage() {
     const attachmentText = attachmentRecords
       .map((r) => `【用户引用的记录】\n${formatRecordLine(r)}`)
       .join('\n\n');
-    const baseExtra = [privateChat ? '' : extraContext, pageContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
+    const minorSafety = settings.ageGroup === 'child' || settings.ageGroup === 'adolescent'
+      ? '【未成年安全】不主动询问激素、手术、过渡阶段或出柜状态；不把 passing 当作目标；不建议强力压音或长时间连续练习；涉及医疗问题时建议与监护人 / 医生沟通；不假设家庭已知情；训练强度保持温和，优先休息。'
+      : '';
+    const baseExtra = [minorSafety, privateChat ? '' : extraContext, pageContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
     const storedChat = getChat(convId);
     // 只有完整历史才能安全使用/更新摘要；redo / retry 传的是切片，跳过摘要
     const canSummarize = !!storedChat && storedChat.messages === history;
@@ -1358,16 +1366,40 @@ export function AssistantPage() {
         choiceSetResult: { answers: [], skipped: true },
       });
     }
+    const safety = detectSafetyLevel(text);
+    if (safety === 'crisis') {
+      addMessage(convId, {
+        role: 'user',
+        content: text,
+        ...(attachments.length > 0 ? { attachments } : {}),
+      });
+      addMessage(convId, {
+        role: 'assistant',
+        content: t('assistant.crisisReply'),
+        context: {
+          recordIds: [],
+          pinnedIds: [],
+          totalRecords: 0,
+          docs: [],
+          safety: 'crisis',
+        },
+      });
+      setPendingAttachments([]);
+      return;
+    }
     addMessage(convId, {
       role: 'user',
       content: text,
       ...(attachments.length > 0 ? { attachments } : {}),
     });
     setPendingAttachments([]);
+    const safetyContext = safety === 'distress'
+      ? '【心理安全】用户表达了强烈的声音焦虑或自我否定。先共情和支持，再谈训练；不要评价声音好坏等于人的价值，建议降低强度或先休息。'
+      : '';
     void generate(
       convId,
       getChat(convId)?.messages ?? [{ role: 'user', content: text }],
-      extraContext,
+      [extraContext, safetyContext].filter(Boolean).join('\n\n'),
     );
   };
 

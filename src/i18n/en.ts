@@ -1608,4 +1608,5 @@ export const en = {
   'assistant.privateOnHint': 'No memories, records, or documents; no auto-memory or data tools',
   'assistant.privateOffHint': 'Private chat is on; click to leave',
   'assistant.privateBadge': 'Private',
+  'assistant.crisisReply': 'It sounds like you\'re going through something really hard. I\'ll pause the training advice for now. You don\'t have to carry this alone: if you\'re in immediate danger, contact your local emergency services or a crisis line, and reach out to someone you trust. When you feel safer, we can talk about voice again.',
 } as const;

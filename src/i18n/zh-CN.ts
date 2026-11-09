@@ -1617,6 +1617,7 @@ export const zhCN = {
   'assistant.privateOnHint': '不读取记忆、记录或文档，不自动记忆，不调用数据工具',
   'assistant.privateOffHint': '当前为私密对话；点击退出',
   'assistant.privateBadge': '私密',
+  'assistant.crisisReply': '听起来你现在很难受，我先停一下训练建议。你不需要独自扛着：如果现在有立即危险，请联系当地急救或危机热线，也可以找一位你信任的人陪着你。等你安全一些，我们再慢慢聊声音的事。',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

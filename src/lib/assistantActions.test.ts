@@ -62,6 +62,22 @@ describe('createAssistantAction', () => {
     expect(createAssistantAction('createPlan', { title: 'x', focus: 'nope', weeks: 6, daysPerWeek: 3, minutesPerSession: 10 }, ctx).error).toContain('计划');
   });
 
+  it('caps plan intensity for minors', () => {
+    const minorCtx = {
+      ...ctx,
+      settings: { ...settings, ageGroup: 'adolescent' } as unknown as AppSettings,
+    };
+    const res = createAssistantAction('createPlan', {
+      title: '六周音高',
+      focus: 'pitch',
+      weeks: 6,
+      daysPerWeek: 7,
+      minutesPerSession: 60,
+    }, minorCtx);
+    expect(res.action?.args).toMatchObject({ daysPerWeek: 5, minutesPerSession: 20 });
+    expect(res.action?.summary).toContain('未成年');
+  });
+
   it('respects the write permission setting', () => {
     const off = { ...ctx, settings: { ...settings, assistantWrites: 'off' } as unknown as AppSettings };
     expect(createAssistantAction('setTarget', { min: 150, max: 250 }, off).error).toContain('关闭');

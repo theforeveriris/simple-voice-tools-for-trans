@@ -1609,4 +1609,5 @@ export const ja = {
   'assistant.privateOnHint': '記憶・記録・文書を読み込まず、自動記憶やデータツールも使いません',
   'assistant.privateOffHint': 'プライベート会話中です。クリックで終了',
   'assistant.privateBadge': 'プライベート',
+  'assistant.crisisReply': '今はとてもつらい状態のように聞こえます。トレーニングの提案は一旦止めます。ひとりで抱え込まないでください。今すぐ危険がある場合は、地域の救急や相談窓口へ、信頼できる人にも連絡してください。安全になってから、声のことをゆっくり話しましょう。',
 } as const;

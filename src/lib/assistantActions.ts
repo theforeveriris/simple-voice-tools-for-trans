@@ -60,6 +60,13 @@ function asNumber(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
+/** 未成年：限制计划强度，但不改变成人计划 */
+function minorPlanCaps(ageGroup: AssistantActionContext['settings']['ageGroup']): { days: number; minutes: number } | null {
+  return ageGroup === 'child' || ageGroup === 'adolescent'
+    ? { days: 5, minutes: 20 }
+    : null;
+}
+
 /**
  * 校验模型提出的操作；通过则返回待确认 action。
  * 只允许白名单内的安全操作。
@@ -125,12 +132,15 @@ export function createAssistantAction(
       || minutesPerSession < 2 || minutesPerSession > 60) {
       return { error: '计划需要标题、重点、1–52 周、每周 1–7 次、每次 2–60 分钟。' };
     }
+    const caps = minorPlanCaps(ctx.settings.ageGroup);
+    const cappedDays = caps ? Math.min(daysPerWeek, caps.days) : daysPerWeek;
+    const cappedMinutes = caps ? Math.min(minutesPerSession, caps.minutes) : minutesPerSession;
     return {
       action: {
         ...base,
         kind: 'createPlan',
-        args: { title, focus, weeks, daysPerWeek, minutesPerSession },
-        summary: `创建计划「${title}」：${FOCUS_LABEL[focus]}，每周 ${daysPerWeek} 次，每次约 ${minutesPerSession} 分钟`,
+        args: { title, focus, weeks, daysPerWeek: cappedDays, minutesPerSession: cappedMinutes },
+        summary: `创建计划「${title}」：${FOCUS_LABEL[focus]}，每周 ${cappedDays} 次，每次约 ${cappedMinutes} 分钟${caps ? '（未成年强度上限）' : ''}`,
         before: {},
       },
     };
@@ -142,8 +152,15 @@ export function createAssistantAction(
     const patch: Record<string, unknown> = {};
     if (args.status === 'active' || args.status === 'paused' || args.status === 'done') patch.status = args.status;
     if (typeof args.title === 'string' && args.title.trim()) patch.title = args.title.trim().slice(0, 80);
-    if (typeof args.daysPerWeek === 'number' && args.daysPerWeek >= 1 && args.daysPerWeek <= 7) patch.daysPerWeek = Math.round(args.daysPerWeek);
-    if (typeof args.minutesPerSession === 'number' && args.minutesPerSession >= 2 && args.minutesPerSession <= 60) patch.minutesPerSession = Math.round(args.minutesPerSession);
+    const caps = minorPlanCaps(ctx.settings.ageGroup);
+    if (typeof args.daysPerWeek === 'number' && args.daysPerWeek >= 1 && args.daysPerWeek <= 7) {
+      patch.daysPerWeek = caps ? Math.min(Math.round(args.daysPerWeek), caps.days) : Math.round(args.daysPerWeek);
+    }
+    if (typeof args.minutesPerSession === 'number' && args.minutesPerSession >= 2 && args.minutesPerSession <= 60) {
+      patch.minutesPerSession = caps
+        ? Math.min(Math.round(args.minutesPerSession), caps.minutes)
+        : Math.round(args.minutesPerSession);
+    }
     if (Object.keys(patch).length === 0) return { error: '没有可更新的计划字段。' };
     return {
       action: {

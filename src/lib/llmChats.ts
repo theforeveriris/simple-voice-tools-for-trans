@@ -69,6 +69,8 @@ export interface ChatContextMeta {
   numericCheck?: 'repaired' | 'flagged';
   /** 跨对话检索命中的参考对话 */
   chatRefs?: ChatRef[];
+  /** 安全固定回复标记 */
+  safety?: 'crisis';
 }
 
 export interface ChatMessage {

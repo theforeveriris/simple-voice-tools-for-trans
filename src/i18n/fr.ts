@@ -1617,4 +1617,5 @@ export const fr = {
   'assistant.privateOnHint': 'Aucun souvenir, enregistrement ou document ; pas de mémoire automatique ni d’outils de données',
   'assistant.privateOffHint': 'Chat privé actif ; clique pour quitter',
   'assistant.privateBadge': 'Privé',
+  'assistant.crisisReply': 'J’entends que c’est très difficile en ce moment. Je mets les conseils d’entraînement de côté. Tu n’as pas à porter ça seul·e : si tu es en danger immédiat, contacte les urgences ou une ligne d’écoute, et une personne de confiance. Quand tu iras mieux, on reparlera de la voix.',
 } as const;
