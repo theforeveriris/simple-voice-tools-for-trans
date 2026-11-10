@@ -162,6 +162,10 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
   （IndexedDB 单份存储）。`applyBgImage` 在 `huePreset='image'` 或
   custom 当前深浅模式的 `page.image` 为 true 时挂 `html.bg-image`；
   `app-root` 让出底色，由 `body::before` 铺图。
+- **原始配置**：顶部卡片提供「直接编辑配置」入口；JSON 经
+  `parseCustomThemeJson` 解析——空文本 / null / 空配置清除全部覆盖，
+  坏 JSON 或 version 不为 1 时保留当前主题，合法值仍走 `normalizeCustomTheme`
+  清洗。
 - **恢复**：单部位恢复删除该部位键；「全部恢复」清空 `customTheme`。
   自定义页有覆盖时在顶栏显示「全部恢复」图标（不悬浮在内容上遮挡滑条），
   避免把卡片改成低对比度后找不到出口。

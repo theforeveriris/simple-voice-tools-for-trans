@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CUSTOM_THEME_PARTS, buildCustomThemeCss, hasPageImage, normalizeCustomTheme } from './customTheme';
+import { CUSTOM_THEME_PARTS, buildCustomThemeCss, hasPageImage, normalizeCustomTheme, parseCustomThemeJson } from './customTheme';
 
 describe('normalizeCustomTheme', () => {
   it('拒绝错误版本 / 空对象', () => {
@@ -43,6 +43,27 @@ describe('normalizeCustomTheme', () => {
     expect(t?.light.page?.image).toBe(true);
     expect(t?.light.card).toBeUndefined();
     expect(t?.dark.page?.image).toBeUndefined();
+  });
+});
+
+describe('parseCustomThemeJson', () => {
+  it('空文本 / null / 空配置 → 清除全部覆盖', () => {
+    expect(parseCustomThemeJson('')).toBeNull();
+    expect(parseCustomThemeJson('null')).toBeNull();
+    expect(parseCustomThemeJson('{"version":1,"light":{},"dark":{}}')).toBeNull();
+  });
+
+  it('合法配置返回 normalize 后的主题', () => {
+    const theme = parseCustomThemeJson(
+      '{"version":1,"light":{"card":{"bg":"#ffffff","radius":99}},"dark":{}}',
+    );
+    expect(theme?.light.card).toEqual({ bg: '#ffffff', radius: 40 });
+  });
+
+  it('坏 JSON / 错误版本 / 只有坏字段 → undefined', () => {
+    expect(parseCustomThemeJson('{bad')).toBeUndefined();
+    expect(parseCustomThemeJson('{"version":2,"light":{},"dark":{}}')).toBeUndefined();
+    expect(parseCustomThemeJson('{"version":1,"light":{"card":{"bg":"red"}},"dark":{}}')).toBeUndefined();
   });
 });
 

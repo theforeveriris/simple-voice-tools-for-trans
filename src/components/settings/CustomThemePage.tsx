@@ -7,14 +7,15 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ElementType } from 'react';
-import { ArrowLeft, Palette, RotateCcw, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Braces, ChevronRight, Palette, RotateCcw, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import type { AppSettings, CustomGradient, CustomPartStyle, CustomTheme, CustomThemePart } from '@/types';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
 import type { DictKey } from '@/i18n';
-import { CUSTOM_THEME_PART_IDS, autoTextColor } from '@/lib/theme/customTheme';
+import { CUSTOM_THEME_PART_IDS, autoTextColor, parseCustomThemeJson } from '@/lib/theme/customTheme';
 import { registerBackClose } from '@/lib/backNav';
 import { BgImageControls } from './BgImageControls';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 const EMPTY: CustomTheme = { version: 1, light: {}, dark: {} };
@@ -172,6 +173,10 @@ export function CustomThemePage({
   const hasAnyOverride = Object.keys(theme.light ?? {}).length > 0
     || Object.keys(theme.dark ?? {}).length > 0;
   const hasStyle = Object.keys(style).length > 0;
+  /** 原始 JSON 编辑器 */
+  const [jsonOpen, setJsonOpen] = useState(false);
+  const [jsonText, setJsonText] = useState('');
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   const setStyle = (patch: Partial<CustomPartStyle>) => {
     const nextStyle: CustomPartStyle = { ...style, ...patch };
@@ -194,6 +199,37 @@ export function CustomThemePage({
   const resetAll = () => {
     if (!confirm(t('customTheme.resetConfirm'))) return;
     update({ customTheme: null, huePreset: 'custom' });
+  };
+
+  /** 打开原始 JSON 编辑器，初始值取当前完整配置（含浅色 / 深色） */
+  const openJson = () => {
+    setJsonText(JSON.stringify(settings.customTheme ?? EMPTY, null, 2));
+    setJsonError(null);
+    setJsonOpen(true);
+  };
+
+  const formatJson = () => {
+    try {
+      setJsonText(JSON.stringify(JSON.parse(jsonText), null, 2));
+      setJsonError(null);
+    } catch {
+      setJsonError(t('customTheme.jsonError'));
+    }
+  };
+
+  const resetJson = () => {
+    setJsonText(JSON.stringify(settings.customTheme ?? EMPTY, null, 2));
+    setJsonError(null);
+  };
+
+  const applyJson = () => {
+    const parsed = parseCustomThemeJson(jsonText);
+    if (parsed === undefined) {
+      setJsonError(t('customTheme.jsonError'));
+      return;
+    }
+    update({ customTheme: parsed, huePreset: 'custom' });
+    setJsonOpen(false);
   };
 
   const bgMode = style.image ? 'image' : style.gradient ? 'gradient' : style.bg ? 'solid' : 'inherit';
@@ -298,6 +334,15 @@ export function CustomThemePage({
             </button>
           )}
         </div>
+        <button
+          type="button"
+          onClick={openJson}
+          className="mt-3 flex w-full items-center gap-2 border-t border-line pt-3 text-left text-[11px] font-medium text-ink-2 transition-colors hover:text-ink focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
+        >
+          <Braces size={13} className="shrink-0 text-accent" />
+          <span>{t('customTheme.editJson')}</span>
+          <ChevronRight size={13} className="ml-auto shrink-0" />
+        </button>
       </div>
 
       {/* 背景 */}
@@ -431,6 +476,76 @@ export function CustomThemePage({
           onClear={() => setStyle({ opacity: undefined })}
         />
       </div>
+
+      {/* 原始 JSON 配置：高级入口，校验后走 normalizeCustomTheme */}
+      <Dialog
+        open={jsonOpen}
+        onOpenChange={(open) => {
+          setJsonOpen(open);
+          if (!open) setJsonError(null);
+        }}
+      >
+        <DialogContent
+          className="gap-3 overflow-y-auto"
+          style={{ maxWidth: 'min(42rem, calc(100vw - 1.5rem))', maxHeight: '90dvh' }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold text-ink">
+              {t('customTheme.editJson')}
+            </DialogTitle>
+            <DialogDescription className="text-[11px] leading-relaxed text-ink-2">
+              {t('customTheme.jsonDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={jsonText}
+            onChange={(e) => {
+              setJsonText(e.target.value);
+              setJsonError(null);
+            }}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            aria-label={t('customTheme.editJson')}
+            className="min-h-[42vh] w-full resize-y rounded-xl border border-line bg-surface-hi p-3 font-mono text-[11px] leading-relaxed text-ink outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
+          />
+          {jsonError && (
+            <p className="text-[11px] leading-relaxed text-destructive">{jsonError}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={formatJson}
+              className="rounded-full bg-surface-hi px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
+            >
+              {t('customTheme.jsonFormat')}
+            </button>
+            <button
+              type="button"
+              onClick={resetJson}
+              className="rounded-full bg-surface-hi px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
+            >
+              {t('common.reset')}
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setJsonOpen(false)}
+                className="rounded-full px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors hover:bg-surface-hi hover:text-ink focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={applyJson}
+                className="rounded-full bg-accent px-3.5 py-1.5 text-[11px] font-semibold text-on-accent transition-transform active:scale-95 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
+              >
+                {t('common.save')}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

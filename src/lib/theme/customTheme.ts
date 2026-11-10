@@ -93,6 +93,36 @@ export function normalizeCustomTheme(input: unknown): CustomTheme | null {
   return { version: 1, light, dark };
 }
 
+/**
+ * 解析「直接编辑配置」的 JSON 文本：
+ * - 空文本 / null / 空配置 → null（清除全部覆盖）
+ * - 合法配置 → normalize 后的 CustomTheme
+ * - 格式错误或配置无效 → undefined
+ */
+export function parseCustomThemeJson(raw: string): CustomTheme | null | undefined {
+  const text = raw.trim();
+  if (!text) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (parsed === null) return null;
+  if (typeof parsed === 'object') {
+    const o = parsed as {
+      version?: unknown;
+      light?: Record<string, unknown>;
+      dark?: Record<string, unknown>;
+    };
+    const empty = o.version === 1
+      && Object.keys(o.light ?? {}).length === 0
+      && Object.keys(o.dark ?? {}).length === 0;
+    if (empty) return null;
+  }
+  return normalizeCustomTheme(parsed) ?? undefined;
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
