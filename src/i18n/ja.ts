@@ -271,6 +271,8 @@ export const ja = {
   'history.viewList': 'リスト',
   'history.viewTrend': '推移',
   'history.searchPlaceholder': 'メモ・日付・モードを検索（lua: 式フィルタ）',
+  'history.luaCompletions': 'Lua 補完',
+  'history.luaExample': '例',
   'history.emptyTitle': 'まだテスト記録がありません',
   'history.emptyDesc': 'テストはすべて記録として保存され、いつでも見返し・比較・推移を確認できます',
   'history.noMatch': '「{q}」に一致する記録はありません',

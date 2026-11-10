@@ -270,6 +270,8 @@ export const es = {
   'history.viewList': 'Lista',
   'history.viewTrend': 'Tendencia',
   'history.searchPlaceholder': 'Buscar notas, fechas o modos (filtro de expresión lua:)',
+  'history.luaCompletions': 'Sugerencias Lua',
+  'history.luaExample': 'Ejemplo',
   'history.noMatch': 'No hay registros que coincidan con «{q}»',
   'history.deleteAria': 'Eliminar este registro',
   'history.selectedCount': '{n} seleccionados',

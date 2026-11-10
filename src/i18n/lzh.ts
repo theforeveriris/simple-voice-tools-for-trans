@@ -271,6 +271,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'history.viewList': '列冊',
   'history.viewTrend': '趨勢',
   'history.searchPlaceholder': '索註、日期或其式（lua: 之式濾之）',
+  'history.luaCompletions': 'Lua 之補',
+  'history.luaExample': '例',
   'history.emptyTitle': '尚無試錄',
   'history.emptyDesc': '凡試輒存一錄，可隨時覆觀、相比、察其變',
   'history.noMatch': '無合「{q}」之錄',

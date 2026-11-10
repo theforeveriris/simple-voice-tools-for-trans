@@ -271,6 +271,8 @@ export const zhCN = {
   'history.viewList': '列表',
   'history.viewTrend': '趋势',
   'history.searchPlaceholder': '搜索备注、日期或模式（lua: 表达式过滤）',
+  'history.luaCompletions': 'Lua 补全',
+  'history.luaExample': '示例',
   'history.noMatch': '没有匹配「{q}」的记录',
   'history.deleteAria': '删除该记录',
   'history.selectedCount': '已选 {n} 条',

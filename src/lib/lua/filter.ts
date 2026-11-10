@@ -5,6 +5,7 @@
  * 表达式被包进 function(stats, record, note) ... end 执行，真值 = 命中。
  * stats = 统计字段（含 mode）；record = 记录级字段（id/createdAt/mode/note）。
  * 与建议脚本同一沙箱（500ms 看门狗 / 无 IO）；出错时显示错误并视为无命中。
+ * 搜索框输入 `lua` / `lua:` 时的字段补全见 `lib/lua/completions.ts`。
  */
 
 import type { AnalysisRecord } from '@/types';

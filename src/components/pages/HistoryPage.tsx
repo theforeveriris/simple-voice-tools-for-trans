@@ -8,7 +8,7 @@
  * 点击任意记录进入对应分析页。
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Trash2,
@@ -33,7 +33,8 @@ import { cn } from '@/lib/utils';
 import { EmptyHero, EMPTY_PRIMARY, EMPTY_SECONDARY } from '@/components/layout/EmptyHero';
 import { useDeferredMount } from '@/hooks/useDeferredMount';
 import { registerBackClose } from '@/lib/backNav';
-import { isLuaFilter, luaFilterExpr, luaFilterRecords } from '@/lib/lua/filter';
+import { isLuaFilter, luaFilterExpr, luaFilterRecords, recordView } from '@/lib/lua/filter';
+import { buildLuaFilterCompletions, type LuaFilterCompletion } from '@/lib/lua/completions';
 
 /** Lua 过滤器 hook：表达式（去 lua: 前缀后）→ 命中 id 集合 + 首条错误。
  *  空表达式不进 effect（渲染期短路返回全命中）；异步结果按表达式内容落定。 */
@@ -117,6 +118,10 @@ export function HistoryPage() {
   /** 花园入口关闭时，即使 state 仍停在 garden，也回退到列表 */
   const effectiveView = view === 'garden' && !showGarden ? 'list' : view;
   const [query, setQuery] = useState('');
+  /** Lua 补全菜单：焦点 / 选中项 / Esc 关闭 */
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [luaCompletionIndex, setLuaCompletionIndex] = useState(0);
+  const [luaCompletionDismissed, setLuaCompletionDismissed] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [comparePair, setComparePair] = useState<[AnalysisRecord, AnalysisRecord] | null>(null);
@@ -158,6 +163,44 @@ export function HistoryPage() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- i18nVer 是有意依赖：语言切换后重算本地化搜索串
   }, [records, query, i18nVer, luaMode, luaHits]);
+
+  /** Lua 过滤补全：字段示例值取当前列表第一条记录 */
+  const luaCompletions = useMemo(
+    () => buildLuaFilterCompletions(query, records[0] ? recordView(records[0]) : undefined),
+    [query, records],
+  );
+  const showLuaCompletions = searchFocused && !luaCompletionDismissed && luaCompletions.length > 0;
+  const luaListId = 'history-lua-completions';
+  const activeLuaId = showLuaCompletions ? `history-lua-${luaCompletionIndex}` : undefined;
+
+  const applyLuaCompletion = (item: LuaFilterCompletion) => {
+    setQuery(item.insert);
+    setLuaCompletionIndex(0);
+    // 前缀补全后继续展示字段；选中字段 / 示例后收起，等下一次输入再打开
+    setLuaCompletionDismissed(item.kind !== 'prefix');
+    requestAnimationFrame(() => {
+      const input = searchRef.current;
+      input?.focus();
+      input?.setSelectionRange(item.insert.length, item.insert.length);
+    });
+  };
+
+  const onSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (!showLuaCompletions) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setLuaCompletionIndex((i) => (i + 1) % luaCompletions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setLuaCompletionIndex((i) => (i - 1 + luaCompletions.length) % luaCompletions.length);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      applyLuaCompletion(luaCompletions[luaCompletionIndex] ?? luaCompletions[0]);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setLuaCompletionDismissed(true);
+    }
+  };
 
   const toggleSelect = (id: string) => {    setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -297,19 +340,82 @@ export function HistoryPage() {
       ) : (
         <>
           {/* 搜索框 */}
-          <div className="flex items-center gap-2 rounded-full bg-card px-4 py-2.5 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+          <div className="relative flex items-center gap-2 rounded-full bg-card px-4 py-2.5 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
             <Search size={14} className="shrink-0 text-ink-2" />
             <input
               ref={searchRef}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setLuaCompletionIndex(0);
+                setLuaCompletionDismissed(false);
+              }}
+              onFocus={() => {
+                setSearchFocused(true);
+                setLuaCompletionDismissed(false);
+              }}
+              onBlur={() => setSearchFocused(false)}
+              onKeyDown={onSearchKeyDown}
               placeholder={t('history.searchPlaceholder')}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={showLuaCompletions}
+              aria-controls={showLuaCompletions ? luaListId : undefined}
+              aria-activedescendant={activeLuaId}
+              autoComplete="off"
+              spellCheck={false}
               className="min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-ink-2/70 sm:text-sm"
             />
             {query && (
-              <button onClick={() => setQuery('')} className="text-ink-2 hover:text-ink" aria-label={t('common.reset')}>
+              <button
+                onClick={() => {
+                  setQuery('');
+                  setLuaCompletionDismissed(true);
+                }}
+                className="text-ink-2 hover:text-ink"
+                aria-label={t('common.reset')}
+              >
                 <X size={14} />
               </button>
+            )}
+            {showLuaCompletions && (
+              <div
+                id={luaListId}
+                role="listbox"
+                aria-label={t('history.luaCompletions')}
+                className="no-scrollbar absolute left-0 right-0 top-full z-30 mt-2 max-h-64 overflow-y-auto overscroll-contain rounded-2xl bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(28,25,45,0.28)]"
+              >
+                {luaCompletions.map((c, i) => (
+                  <button
+                    key={c.key}
+                    id={`history-lua-${i}`}
+                    type="button"
+                    role="option"
+                    aria-selected={i === luaCompletionIndex}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setLuaCompletionIndex(i)}
+                    onClick={() => applyLuaCompletion(c)}
+                    className={cn(
+                      'flex w-full items-start justify-between gap-3 rounded-xl px-2.5 py-2 text-left transition-colors',
+                      i === luaCompletionIndex ? 'bg-accent/10' : 'hover:bg-surface-hi/60',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'min-w-0 flex-1 font-mono text-[11px] leading-snug',
+                        c.kind === 'example' ? 'text-ink-2' : 'text-accent',
+                      )}
+                    >
+                      {c.label}
+                    </span>
+                    {(c.kind === 'example' || c.detail) && (
+                      <span className="shrink-0 text-[10px] text-ink-2/70">
+                        {c.kind === 'example' ? t('history.luaExample') : c.detail}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 

@@ -270,6 +270,8 @@ export const fr = {
   'history.viewList': 'Liste',
   'history.viewTrend': 'Tendance',
   'history.searchPlaceholder': 'Rechercher des notes, des dates ou des modes (filtre d\'expression lua:)',
+  'history.luaCompletions': 'Complétions Lua',
+  'history.luaExample': 'Exemple',
   'history.noMatch': 'Aucun enregistrement ne correspond à « {q} »',
   'history.deleteAria': 'Supprimer cet enregistrement',
   'history.selectedCount': '{n} sélectionné(s)',

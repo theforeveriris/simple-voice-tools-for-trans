@@ -270,6 +270,8 @@ export const en = {
   'history.viewList': 'List',
   'history.viewTrend': 'Trend',
   'history.searchPlaceholder': 'Search notes, dates or modes (lua: expression filter)',
+  'history.luaCompletions': 'Lua completions',
+  'history.luaExample': 'Example',
   'history.emptyTitle': 'No recordings yet',
   'history.emptyDesc': 'Every test is saved as a record - review, compare and track changes anytime',
   'history.noMatch': 'No records matching "{q}"',
