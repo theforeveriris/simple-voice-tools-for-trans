@@ -15,7 +15,24 @@ export interface DocEntry {
   descKey: DictKey;
   /** 来源：repo（documentation/ 源文件）| public（public/ 站点文件） */
   source?: 'repo' | 'public';
+  /** 开发者文档分组（仅 DEV_DOCS 使用） */
+  group?: DocGroup;
 }
+
+/** 开发者文档分组：关于页按此顺序拆成独立卡片块展示 */
+export type DocGroup = 'start' | 'architecture' | 'parameters' | 'algorithms' | 'guides' | 'format';
+
+export interface DocSection {
+  key: string;
+  titleKey: DictKey;
+  groups: DocGroup[];
+}
+
+export const DEV_DOC_SECTIONS: DocSection[] = [
+  { key: 'dev', titleKey: 'settings.docSectionDev', groups: ['start', 'architecture', 'parameters'] },
+  { key: 'algorithms', titleKey: 'settings.docSectionAlgorithms', groups: ['algorithms'] },
+  { key: 'guides', titleKey: 'settings.docSectionGuides', groups: ['guides', 'format'] },
+];
 
 /** 面向使用者的文档 */
 export const USER_DOCS: DocEntry[] = [
@@ -25,21 +42,23 @@ export const USER_DOCS: DocEntry[] = [
 
 /** 开发者文档（算法与架构） */
 export const DEV_DOCS: DocEntry[] = [
-  { file: 'DEVELOPMENT.md', titleKey: 'settings.docDevTitle', descKey: 'settings.docDevDesc' },
-  { file: 'ARCHITECTURE-I18N.md', titleKey: 'settings.docI18nTitle', descKey: 'settings.docI18nDesc' },
-  { file: 'ARCHITECTURE-THEME.md', titleKey: 'settings.docThemeTitle', descKey: 'settings.docThemeDesc' },
-  { file: 'ARCHITECTURE-STATE.md', titleKey: 'settings.docStateTitle', descKey: 'settings.docStateDesc' },
-  { file: 'ARCHITECTURE-SETTINGS.md', titleKey: 'settings.docSettingsTitle', descKey: 'settings.docSettingsDesc' },
-  { file: 'ARCHITECTURE-AI-ASSISTANT.md', titleKey: 'settings.docAiArchTitle', descKey: 'settings.docAiArchDesc' },
-  { file: 'PARAMETERS-AI-ASSISTANT.md', titleKey: 'settings.docAiParamsTitle', descKey: 'settings.docAiParamsDesc' },
-  { file: 'RECORDS-FORMAT.md', titleKey: 'settings.docRecordsTitle', descKey: 'settings.docRecordsDesc' },
-  { file: 'GUIDE-PWA.md', titleKey: 'settings.docPwaTitle', descKey: 'settings.docPwaDesc' },
-  { file: 'GUIDE-CAPACITOR.md', titleKey: 'settings.docCapacitorTitle', descKey: 'settings.docCapacitorDesc' },
-  { file: 'GUIDE-DESKTOP.md', titleKey: 'settings.docDesktopTitle', descKey: 'settings.docDesktopDesc' },
-  { file: 'ALGORITHM-YIN.md', titleKey: 'settings.docYinTitle', descKey: 'settings.docYinDesc' },
-  { file: 'ALGORITHM-FORMANT-LPC.md', titleKey: 'settings.docLpcTitle', descKey: 'settings.docLpcDesc' },
-  { file: 'ALGORITHM-ENERGY.md', titleKey: 'settings.docEnergyTitle', descKey: 'settings.docEnergyDesc' },
-  { file: 'ALGORITHM-CPPS.md', titleKey: 'settings.docCppsTitle', descKey: 'settings.docCppsDesc' },
+  { file: 'DEVELOPMENT.md', titleKey: 'settings.docDevTitle', descKey: 'settings.docDevDesc', group: 'start' },
+  { file: 'ARCHITECTURE-I18N.md', titleKey: 'settings.docI18nTitle', descKey: 'settings.docI18nDesc', group: 'architecture' },
+  { file: 'ARCHITECTURE-THEME.md', titleKey: 'settings.docThemeTitle', descKey: 'settings.docThemeDesc', group: 'architecture' },
+  { file: 'ARCHITECTURE-STATE.md', titleKey: 'settings.docStateTitle', descKey: 'settings.docStateDesc', group: 'architecture' },
+  { file: 'ARCHITECTURE-SETTINGS.md', titleKey: 'settings.docSettingsTitle', descKey: 'settings.docSettingsDesc', group: 'architecture' },
+  { file: 'ARCHITECTURE-AI-ASSISTANT.md', titleKey: 'settings.docAiArchTitle', descKey: 'settings.docAiArchDesc', group: 'architecture' },
+  { file: 'PARAMETERS-AI-ASSISTANT.md', titleKey: 'settings.docAiParamsTitle', descKey: 'settings.docAiParamsDesc', group: 'parameters' },
+  { file: 'ALGORITHM-YIN.md', titleKey: 'settings.docYinTitle', descKey: 'settings.docYinDesc', group: 'algorithms' },
+  { file: 'ALGORITHM-FORMANT-LPC.md', titleKey: 'settings.docLpcTitle', descKey: 'settings.docLpcDesc', group: 'algorithms' },
+  { file: 'ALGORITHM-VOICE-EXPRESSION.md', titleKey: 'settings.docVfpTitle', descKey: 'settings.docVfpDesc', group: 'algorithms' },
+  { file: 'ALGORITHM-VOWEL.md', titleKey: 'settings.docVowelTitle', descKey: 'settings.docVowelDesc', group: 'algorithms' },
+  { file: 'ALGORITHM-ENERGY.md', titleKey: 'settings.docEnergyTitle', descKey: 'settings.docEnergyDesc', group: 'algorithms' },
+  { file: 'ALGORITHM-CPPS.md', titleKey: 'settings.docCppsTitle', descKey: 'settings.docCppsDesc', group: 'algorithms' },
+  { file: 'GUIDE-PWA.md', titleKey: 'settings.docPwaTitle', descKey: 'settings.docPwaDesc', group: 'guides' },
+  { file: 'GUIDE-CAPACITOR.md', titleKey: 'settings.docCapacitorTitle', descKey: 'settings.docCapacitorDesc', group: 'guides' },
+  { file: 'GUIDE-DESKTOP.md', titleKey: 'settings.docDesktopTitle', descKey: 'settings.docDesktopDesc', group: 'guides' },
+  { file: 'RECORDS-FORMAT.md', titleKey: 'settings.docRecordsTitle', descKey: 'settings.docRecordsDesc', group: 'format' },
 ];
 
 /** 站点文档（public/ 下，fetch 读取；离线由 SW 预缓存保证） */

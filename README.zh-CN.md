@@ -188,6 +188,8 @@
 | [documentation/REFERENCES.md](documentation/REFERENCES.md) | 参考文献：各参考区间与算法取舍的文献出处 |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | 音高检测原理：YIN 差分函数、CMND、抛物线插值 |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | 共振峰提取原理：预加重、抽取、LPC、多项式求根 |
+| [documentation/ALGORITHM-VOICE-EXPRESSION.md](documentation/ALGORITHM-VOICE-EXPRESSION.md) | 声音性别表达参考分：音高 + 共鸣、55/45、分档与置信度 |
+| [documentation/ALGORITHM-VOWEL.md](documentation/ALGORITHM-VOWEL.md) | 元音与共鸣原理：稳定段检测、普通话元音自动判定、VFP 归一 |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | 能量分析原理：RMS、分贝换算、VAD 门限体系 |
 | [documentation/ALGORITHM-CPPS.md](documentation/ALGORITHM-CPPS.md) | 倒谱峰突出度原理：实倒谱、回归线基线、时间平滑 |
 

@@ -429,6 +429,8 @@ npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-
 | --- | --- |
 | [ALGORITHM-YIN.md](./ALGORITHM-YIN.md) | 音高检测：差分函数、CMND、抛物线插值 |
 | [ALGORITHM-FORMANT-LPC.md](./ALGORITHM-FORMANT-LPC.md) | 共振峰：预加重/抽取/LPC/求根全链路 |
+| [ALGORITHM-VOICE-EXPRESSION.md](./ALGORITHM-VOICE-EXPRESSION.md) | 声音性别表达参考分：音高 + 共鸣、55/45、分档与置信度 |
+| [ALGORITHM-VOWEL.md](./ALGORITHM-VOWEL.md) | 元音与共鸣：稳定段、普通话元音判定、VFP 归一 |
 | [ALGORITHM-ENERGY.md](./ALGORITHM-ENERGY.md) | 能量：RMS、分贝、VAD 门限体系 |
 | [ALGORITHM-CPPS.md](./ALGORITHM-CPPS.md) | 倒谱峰突出度：实倒谱、回归线基线、时间平滑 |
 | [ARCHITECTURE-I18N.md](./ARCHITECTURE-I18N.md) | i18n：查找链、覆盖层、AI 翻译管线与词典分享 |

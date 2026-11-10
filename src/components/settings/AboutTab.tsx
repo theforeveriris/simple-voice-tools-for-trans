@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap, ShieldCheck, MessageSquareWarning } from 'lucide-react';
+import { Activity, BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap, ShieldCheck, MessageSquareWarning } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { DocSheet } from './DocSheet';
 import { FeedbackDialog } from './FeedbackDialog';
@@ -14,7 +14,7 @@ import { t } from '@/i18n';
 import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import {
-  DEV_DOCS, PUBLIC_DOCS, USER_DOCS, docGithubUrl, loadDoc, loadPublicDoc, type DocEntry,
+  DEV_DOC_SECTIONS, DEV_DOCS, PUBLIC_DOCS, USER_DOCS, docGithubUrl, loadDoc, loadPublicDoc, type DocEntry,
 } from '@/lib/docs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
 import { SettingsSection } from './rows';
@@ -39,7 +39,22 @@ function entryToDoc(e: DocEntry): OpenDoc {
 }
 
 const USER_OPEN_DOCS: OpenDoc[] = USER_DOCS.map(entryToDoc);
-const DEV_OPEN_DOCS: OpenDoc[] = DEV_DOCS.map(entryToDoc);
+/** 开发者文档按 docs.ts 的分节拆成独立卡片块 */
+const DEV_OPEN_DOC_SECTIONS = DEV_DOC_SECTIONS
+  .map((section) => ({
+    ...section,
+    docs: DEV_DOCS
+      .filter((doc) => doc.group && section.groups.includes(doc.group))
+      .map(entryToDoc),
+  }))
+  .filter((section) => section.docs.length > 0);
+
+/** 每个分节的图标 */
+const DEV_SECTION_ICON: Record<string, typeof Code2> = {
+  dev: Code2,
+  algorithms: Activity,
+  guides: BookOpen,
+};
 
 const GUIDE_DOC: OpenDoc = {
   key: `public:${PUBLIC_DOCS.guide.file}`,
@@ -170,7 +185,7 @@ export function AboutTab() {
       <SettingsSection icon={GraduationCap} title={t('settings.userDocs')}>
         <button
           onClick={() => setOpenDoc(GUIDE_DOC)}
-          className="flex w-full items-center justify-between gap-2 py-3 text-left first:border-t-0"
+          className="flex w-full items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-left text-sm font-medium text-ink transition-colors first:border-t-0 hover:text-accent"
         >
           <span className="flex min-w-0 items-center gap-2">
             <BookOpen size={14} className="shrink-0 text-accent" />
@@ -183,9 +198,14 @@ export function AboutTab() {
         </button>
         <DocList docs={USER_OPEN_DOCS} onOpen={setOpenDoc} />
       </SettingsSection>
-      <SettingsSection icon={Code2} title={t('settings.devDocs')}>
-        <DocList docs={DEV_OPEN_DOCS} onOpen={setOpenDoc} />
-      </SettingsSection>
+      {DEV_OPEN_DOC_SECTIONS.map((section) => {
+        const Icon = DEV_SECTION_ICON[section.key] ?? Code2;
+        return (
+          <SettingsSection key={section.key} icon={Icon} title={t(section.titleKey)}>
+            <DocList docs={section.docs} onOpen={setOpenDoc} />
+          </SettingsSection>
+        );
+      })}
 
       {/* 应用内文档查看器（AnimatePresence 让关闭时的退出淡出真正播放） */}
       <AnimatePresence>

@@ -225,7 +225,12 @@ export function renderMarkdown(text: string, scale: MdScale = 'chat'): ReactNode
               <thead>
                 <tr>
                   {head.map((c, ci) => (
-                    <th key={ci} className="border-b border-black/15 px-2 py-1.5 text-left font-semibold">{parseInline(c, `${key}h${ci}`)}</th>
+                    <th
+                      key={ci}
+                      className="min-w-24 border-b border-black/15 px-2 py-1.5 text-left font-semibold whitespace-nowrap"
+                    >
+                      {parseInline(c, `${key}h${ci}`)}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -233,7 +238,12 @@ export function renderMarkdown(text: string, scale: MdScale = 'chat'): ReactNode
                 {body.map((r, ri) => (
                   <tr key={ri}>
                     {r.map((c, ci) => (
-                      <td key={ci} className="border-b border-black/[0.06] px-2 py-1.5 align-top">{parseInline(c, `${key}-${ri}-${ci}`)}</td>
+                      <td
+                        key={ci}
+                        className="min-w-24 border-b border-black/[0.06] px-2 py-1.5 align-top break-words"
+                      >
+                        {parseInline(c, `${key}-${ri}-${ci}`)}
+                      </td>
                     ))}
                   </tr>
                 ))}

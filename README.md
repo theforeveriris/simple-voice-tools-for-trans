@@ -103,6 +103,8 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 | [Privacy Policy](https://theforeveriris.github.io/simple-voice-tools-for-trans/privacy-policy.md) | What data goes where (source: `public/privacy-policy.md`) |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | Pitch detection: YIN difference function, CMND, parabolic interpolation |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | Formant extraction: pre-emphasis, decimation, LPC, polynomial root finding |
+| [documentation/ALGORITHM-VOICE-EXPRESSION.md](documentation/ALGORITHM-VOICE-EXPRESSION.md) | Voice expression score: pitch + resonance, 55/45 blend, zones and confidence |
+| [documentation/ALGORITHM-VOWEL.md](documentation/ALGORITHM-VOWEL.md) | Vowels & resonance: stable-segment detection, Mandarin vowel classification, VFP normalization |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | Energy analysis: RMS, decibel conversion, VAD threshold system |
 | [documentation/ALGORITHM-CPPS.md](documentation/ALGORITHM-CPPS.md) | CPPS: real cepstrum, regression-line baseline, time smoothing |
 

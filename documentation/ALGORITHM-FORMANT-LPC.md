@@ -137,6 +137,17 @@ $$z_i \leftarrow z_i - \frac{P(z_i)}{\prod_{j \neq i} (z_i - z_j)}$$
 录音引擎（`src/lib/audio/recorder.ts`）每 2 帧调用一次 `extractFormants`，
 并对结果做指数平滑后写入缓冲；离线管线（`analysisPipeline.ts`）同参复算。
 
+## 下游用法
+
+同一个 `{ f1, f2 }` 会被三条分析链路消费，参考集各不相同：
+
+- **元音空间散点**：i / a / u 三个视觉参考点（`constants/index.ts` 的 `VOWEL_REFS`）；
+- **声音性别表达参考分**：H95 的 12 个美式英语元音 × 男女 24 点归一（`lib/voiceExpression.ts`）；
+- **长音元音检查**：普通话 6 个主元音 × 男女参考（`lib/mandarinVowels.ts` + `lib/vowelCheck.ts`）。
+
+三套参考不要混用；逐帧落点、时长加权、稳定段与置信度的细节见
+`documentation/ALGORITHM-VOWEL.md`。
+
 ## 复杂度与实时性
 
 - 自相关 O(N·p) ≈ 1024 × 13 ≈ 13K 次乘加；
