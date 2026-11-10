@@ -31,6 +31,7 @@ import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isAbortError, languageName, llmChat, llmChatStreamMessages, llmToolCall, type LlmConfig, type LlmToolSpec } from '@/lib/llm';
 import { runAssistantTools } from '@/lib/assistantAgent';
+import { parseTextToolCalls } from '@/lib/llmTextTools';
 import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools';
 import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } from '@/lib/assistantActions';
 import { buildContextReport, buildStatsReport, type AssistantCommandReport } from '@/lib/assistantCommandRuntime';
@@ -215,8 +216,8 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     buildAssistantProfile(settings),
     '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
     '趋势、均值、中位数、波动、靶标命中率、本周 vs 上周、与基线比较，必须调用 get_trends；不要心算这些数字。',
-    '需要一组记录的汇总（条数、平均 / 中位 F0、P10–P90、靶标命中率、总时长、模式分布）时调用 get_stats；不要用 query_records 逐条累加。',
-    '需要确认当前对话固定了哪些记录、当前页面、基线、记忆 / 隐私状态时调用 get_context。',
+    '需要一组记录的汇总（条数、平均 / 中位 F0、P10–P90、靶标命中率、总时长、模式分布）时调用 get_stats；即使用户没有说「统计」二字，也不要只凭上下文里的零散记录心算。',
+    '需要确认当前对话固定了哪些记录、当前页面、基线、记忆 / 隐私状态时调用 get_context；用户问「你现在知道什么 / 引用了哪些记录」时必须调用。',
     '用户问「上次说过 / 之前聊过 / 那个练习」时，调用 search_chats 检索历史对话；不要凭空回忆。',
     '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
     '如果要一次问 2–4 个互不依赖的问题，改用 ask_choice_set：一张卡片分页展示，用户答完一次提交；如果下一题取决于上一题答案，继续用 ask_choice 逐轮询问。',
@@ -995,6 +996,26 @@ export function AssistantPage() {
       ? `【当前页面】用户刚从分析页进入；当前记录 id=${pageRecord.id}（${new Date(pageRecord.createdAt).toLocaleDateString()} · ${t(`mode.${pageRecord.mode ?? 'reading'}`)}）。用户说「这个 / 刚才 / 这条」时指这条记录。`
       : '';
     const records = await loadAllRecords();
+    const toolChat = getChat(convId);
+    /** 用户命令与模型工具共用的本地执行器；文本工具调用兜底也用它 */
+    const executeLocalTool = async (name: string, args: Record<string, unknown>) => (
+      await runAssistantDataTool(name, args, {
+        records,
+        settings,
+        chats: chats ?? [],
+        currentChatId: convId,
+        pinnedRecordIds: toolChat?.pinnedRecordIds ?? [],
+        currentPage: { tab: page.lastTab, recordId: page.currentAnalysis?.id ?? null },
+        chatTitle: toolChat?.title,
+        messageCount: toolChat?.messages.length,
+        privacy: toolChat?.privacy,
+        memoryOff: toolChat?.memoryOff,
+      })
+      ?? await runAssistantActionTool(name, args, { records, settings })
+      ?? await runPracticePlanTool(name, args, { records, settings })
+      ?? runAssistantChoiceTool(name, args)
+      ?? runAssistantChoiceSetTool(name, args)
+    );
     let toolRun: {
       supported: boolean;
       contextText: string;
@@ -1008,25 +1029,6 @@ export function AssistantPage() {
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
     if (lastUserMsg && !privateChat && !isSmallTalk(lastUserText)) {
       setToolNote(t('assistant.toolSearching'));
-      const toolChat = getChat(convId);
-      const executeTool = async (name: string, args: Record<string, unknown>) => (
-        await runAssistantDataTool(name, args, {
-          records,
-          settings,
-          chats: chats ?? [],
-          currentChatId: convId,
-          pinnedRecordIds: toolChat?.pinnedRecordIds ?? [],
-          currentPage: { tab: page.lastTab, recordId: page.currentAnalysis?.id ?? null },
-          chatTitle: toolChat?.title,
-          messageCount: toolChat?.messages.length,
-          privacy: toolChat?.privacy,
-          memoryOff: toolChat?.memoryOff,
-        })
-        ?? await runAssistantActionTool(name, args, { records, settings })
-        ?? await runPracticePlanTool(name, args, { records, settings })
-        ?? runAssistantChoiceTool(name, args)
-        ?? runAssistantChoiceSetTool(name, args)
-      );
       const runPlanner = (plannerCfg: LlmConfig) => runAssistantTools({
         cfg: plannerCfg,
         system: toolPlannerSystem(settings),
@@ -1039,7 +1041,7 @@ export function AssistantPage() {
           ASSISTANT_CHOICE_TOOL,
           ASSISTANT_CHOICE_SET_TOOL,
         ],
-        execute: executeTool,
+        execute: executeLocalTool,
         signal: controller.signal,
       });
       try {
@@ -1244,21 +1246,74 @@ export function AssistantPage() {
         },
       });
       let finalReply = reply;
+      // 部分模型把工具调用写成 <tool_call>...</tool_call> 文本；规划器没解析到时，
+      // 在最终回答前兜底执行一次，再用结果重新生成回答。
+      let textToolContext = '';
+      if (!controller.signal.aborted) {
+        const textCalls = parseTextToolCalls(reply);
+        if (textCalls.length > 0) {
+          const blocks: string[] = [];
+          const traces: { name: string; summary: string; ok: boolean; ms: number }[] = [];
+          const extraIds: string[] = [];
+          for (const call of textCalls.slice(0, 3)) {
+            const started = Date.now();
+            try {
+              const outcome = await executeLocalTool(call.name, call.arguments);
+              const ms = Date.now() - started;
+              if (!outcome) {
+                traces.push({ name: call.name, summary: '未知工具', ok: false, ms });
+                continue;
+              }
+              traces.push({ name: call.name, summary: outcome.summary, ok: true, ms });
+              blocks.push(`【${call.name}】\n${outcome.text}`);
+              if (outcome.recordIds?.length) extraIds.push(...outcome.recordIds);
+              if (outcome.pendingAction) contextMeta.pendingAction = outcome.pendingAction;
+            } catch {
+              traces.push({ name: call.name, summary: '执行失败', ok: false, ms: Date.now() - started });
+            }
+          }
+          if (blocks.length > 0) {
+            textToolContext = blocks.join('\n\n');
+            contextMeta.toolCalls = [...(contextMeta.toolCalls ?? []), ...traces];
+            if (extraIds.length > 0) {
+              contextMeta.recordIds = [...new Set([...(contextMeta.recordIds ?? []), ...extraIds])];
+            }
+            const retrySystem = `${sys}\n\n【工具执行结果】\n${textToolContext}\n\n请根据以上结果直接回答用户，不要再输出 <tool_call> 或任何工具调用文本。`;
+            const retry = await llmChatStreamMessages(cfg, turns, {
+              feature: 'assistant',
+              signal: controller.signal,
+              system: retrySystem,
+              onDelta: (acc) => {
+                textAcc = acc;
+                setStreamText(acc);
+                persistDraft();
+              },
+              onThink: (acc) => {
+                thinkAcc = acc;
+                setStreamThink(acc);
+                persistDraft();
+              },
+            });
+            if (retry.trim()) finalReply = retry;
+          }
+        }
+      }
       // 只在本轮确实调用过工具时校验关键数字；普通常识回答不做数字审查
-      if (toolRun.traces.length > 0 && !controller.signal.aborted) {
+      if ((toolRun.traces.length > 0 || textToolContext) && !controller.signal.aborted) {
         const sources = [
           sys,
           hist.history,
           toolRun.contextText,
+          textToolContext,
           docHit.text,
           memoryHit.text,
           attachmentText,
           planSummary,
         ];
-        const claims = findUnverifiedClaims(reply, sources);
+        const claims = findUnverifiedClaims(finalReply, sources);
         if (claims.length > 0) {
           try {
-            const repaired = await repairNumericAnswer(auxCfg ?? cfg, reply, claims, sources, controller.signal);
+            const repaired = await repairNumericAnswer(auxCfg ?? cfg, finalReply, claims, sources, controller.signal);
             const remaining = repaired ? findUnverifiedClaims(repaired, sources) : claims;
             if (repaired && remaining.length < claims.length) {
               finalReply = remaining.length === 0
@@ -1266,12 +1321,12 @@ export function AssistantPage() {
                 : `${repaired}\n\n> ${t('assistant.numericUnverified')}`;
               contextMeta.numericCheck = remaining.length === 0 ? 'repaired' : 'flagged';
             } else {
-              finalReply = `${reply}\n\n> ${t('assistant.numericUnverified')}`;
+              finalReply = `${finalReply}\n\n> ${t('assistant.numericUnverified')}`;
               contextMeta.numericCheck = 'flagged';
             }
           } catch {
             if (!controller.signal.aborted) {
-              finalReply = `${reply}\n\n> ${t('assistant.numericUnverified')}`;
+              finalReply = `${finalReply}\n\n> ${t('assistant.numericUnverified')}`;
               contextMeta.numericCheck = 'flagged';
             }
           }

@@ -23,7 +23,7 @@ import {
   qualityLabel,
   type MdcMetric,
 } from './measurement';
-import { buildContextReport, buildStatsReport } from './assistantCommandRuntime';
+import { buildContextReport, buildStatsReport, normalizeModeArg, normalizeRangeSelector } from './assistantCommandRuntime';
 
 export type AssistantToolContext = {
   records: AnalysisRecord[];
@@ -177,13 +177,21 @@ export const ASSISTANT_DATA_TOOLS: LlmToolSpec[] = [
   {
     name: 'get_stats',
     description:
-      '对一组历史录音做本地聚合统计（条数、平均 / 中位 F0、P10–P90、靶标命中率、总时长、模式分布）。用户问「这周整体怎么样」「最近状态」或需要汇总时使用；不要用 query_records 逐条累加。',
+      '对一组历史录音做本地聚合统计（条数、平均 / 中位 F0、P10–P90、靶标命中率、总时长、模式分布）。用户问「这周整体怎么样」「最近状态」或需要汇总时使用；不要用 query_records 逐条累加。可以只给 range / mode，也可以给 selector。',
     parameters: {
       type: 'object',
       properties: {
         selector: {
           type: 'string',
-          description: '记录选择器：week（默认）/ today / yesterday / month / all / last:N / latest / mode:reading|sustained|glide / date:YYYY-MM-DD；多个用空格分隔',
+          description: '组合选择器：week / today / yesterday / month / all / last:N / latest / mode:reading|sustained|glide / date:YYYY-MM-DD；多个用空格分隔（可选）',
+        },
+        range: {
+          type: 'string',
+          description: '时间范围：week（默认）/ today / yesterday / month / all / last:N；与 mode 同时给出时取交集（可选）',
+        },
+        mode: {
+          type: 'string',
+          description: '测试模式：reading / sustained / glide，也接受「朗读 / 长音 / 滑音」（可选）',
         },
       },
       required: [],
@@ -460,11 +468,15 @@ export async function runAssistantDataTool(
     case 'search_chats':
       return searchChatTool(args, ctx);
     case 'get_stats': {
-      const raw = typeof args.selector === 'string' ? args.selector.trim() : '';
+      const rawSelector = typeof args.selector === 'string' ? args.selector.trim() : '';
+      const selectors = rawSelector
+        ? rawSelector.split(/\s+/)
+        : [normalizeRangeSelector(args.range)];
       const report = buildStatsReport(
         ctx.records,
-        raw ? raw.split(/\s+/) : ['week'],
+        selectors,
         ctx.settings.baselineRecordId,
+        normalizeModeArg(args.mode),
       );
       return { text: report.text, summary: report.summary, recordIds: report.recordIds };
     }

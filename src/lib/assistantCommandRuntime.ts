@@ -33,6 +33,60 @@ const MODE_LABEL: Record<string, string> = {
   glide: '滑音',
 };
 
+/** 工具调用里的 range 别名 → assistantCommands 选择器 */
+export function normalizeRangeSelector(range: unknown): string {
+  if (typeof range !== 'string') return 'week';
+  const text = range.trim().toLowerCase();
+  if (!text) return 'week';
+  const map: Record<string, string> = {
+    'last_7d': 'week',
+    'last7d': 'week',
+    '7d': 'week',
+    'week': 'week',
+    'past_week': 'week',
+    '本周': 'week',
+    '最近7天': 'week',
+    today: 'today',
+    '今天': 'today',
+    yesterday: 'yesterday',
+    '昨天': 'yesterday',
+    month: 'month',
+    '30d': 'month',
+    'last_30d': 'month',
+    '本月': 'month',
+    '最近30天': 'month',
+    all: 'all',
+    '全部': 'all',
+    latest: 'latest',
+    '最新': 'latest',
+  };
+  if (map[text]) return map[text];
+  const last = text.match(/^last[:_\s-]?(\d+)$/);
+  if (last) return `last:${last[1]}`;
+  if (/^\d+$/.test(text)) return `last:${text}`;
+  if (text.startsWith('date:') || text.startsWith('mode:') || text.startsWith('id:')) return text;
+  return text;
+}
+
+/** 工具调用里的 mode 别名 → reading / sustained / glide */
+export function normalizeModeArg(mode: unknown): 'reading' | 'sustained' | 'glide' | null {
+  if (typeof mode !== 'string') return null;
+  const text = mode.trim().toLowerCase();
+  const map: Record<string, 'reading' | 'sustained' | 'glide'> = {
+    reading: 'reading',
+    read: 'reading',
+    '朗读': 'reading',
+    '阅读': 'reading',
+    sustained: 'sustained',
+    sustain: 'sustained',
+    '长音': 'sustained',
+    '持续': 'sustained',
+    glide: 'glide',
+    '滑音': 'glide',
+  };
+  return map[text] ?? null;
+}
+
 function one(n: number): string {
   if (!Number.isFinite(n)) return '—';
   return n.toFixed(1).replace(/\.0$/, '');
@@ -94,8 +148,12 @@ export function buildStatsReport(
   records: AnalysisRecord[],
   selectors: string[],
   baselineRecordId?: string | null,
+  mode?: 'reading' | 'sustained' | 'glide' | null,
 ): AssistantCommandReport {
-  const matched = resolveRecordSelectors(selectors, records, baselineRecordId ?? undefined);
+  const resolved = resolveRecordSelectors(selectors, records, baselineRecordId ?? undefined);
+  const matched = mode
+    ? resolved.filter((r) => (r.mode ?? 'reading') === mode)
+    : resolved;
   if (!matched.length) {
     return {
       title: '统计',
@@ -104,6 +162,9 @@ export function buildStatsReport(
       recordIds: [],
     };
   }
+  const rangeLabel = mode
+    ? `${selectorLabel(selectors)} · 模式：${MODE_LABEL[mode]}`
+    : selectorLabel(selectors);
   const sorted = [...matched].sort((a, b) => a.createdAt - b.createdAt);
   const count = sorted.length;
   const avgF0 = mean(sorted.map((r) => r.stats.avgF0));
@@ -127,7 +188,7 @@ export function buildStatsReport(
     : `${dateText(sorted[0].createdAt)}–${dateText(sorted[count - 1].createdAt)}`;
 
   const lines = [
-    `范围：${selectorLabel(selectors)} · ${count} 条`,
+    `范围：${rangeLabel} · ${count} 条`,
     dateRange,
     `平均 F0 ${one(avgF0)} Hz · 中位 ${one(medianF0)} Hz`,
     `P10–P90 ${one(p10)}–${one(p90)} Hz`,

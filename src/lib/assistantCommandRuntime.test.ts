@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisRecord, VoiceStats } from '@/types';
-import { buildContextReport, buildStatsReport, selectorLabel } from './assistantCommandRuntime';
+import { buildContextReport, buildStatsReport, normalizeModeArg, normalizeRangeSelector, selectorLabel } from './assistantCommandRuntime';
 
 function stats(overrides: Partial<VoiceStats> = {}): VoiceStats {
   return {
@@ -80,6 +80,15 @@ describe('buildStatsReport', () => {
     const sustained = buildStatsReport(records, ['mode:sustained']);
     expect(sustained.text).toContain('1 条');
     expect(sustained.text).toContain('平均 F0 150 Hz');
+  });
+
+  it('range + mode 取交集，支持工具参数别名', () => {
+    expect(normalizeRangeSelector('last_7d')).toBe('week');
+    expect(normalizeModeArg('朗读')).toBe('reading');
+    const report = buildStatsReport(records, [normalizeRangeSelector('all')], undefined, normalizeModeArg('朗读'));
+    expect(report.recordIds).toEqual(['a']);
+    expect(report.text).toContain('范围：全部 · 模式：朗读 · 1 条');
+    expect(report.text).toContain('平均 F0 160 Hz');
   });
 
   it('无匹配记录时返回空结果', () => {

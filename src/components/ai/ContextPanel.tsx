@@ -220,8 +220,8 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
         <div className="px-0 py-1">
           {toolCalls.map((tool, i) => (
             <p key={`${tool.name}-${i}`} className="flex items-center gap-1.5 py-1 text-[11px]">
-              <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
-                {t('assistant.ctx.toolTag')}
+              <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 font-mono text-[9px] text-ink-2">
+                {tool.name}
               </span>
               <span className="min-w-0 flex-1 truncate text-ink">{tool.summary}</span>
               {!tool.ok && (

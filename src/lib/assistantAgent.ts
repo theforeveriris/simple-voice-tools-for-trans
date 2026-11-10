@@ -21,6 +21,7 @@ import {
 } from './llm';
 import type { AssistantToolOutcome } from './assistantTools';
 import { validateToolArgs } from './assistantToolValidation';
+import { parseTextToolCalls } from './llmTextTools';
 
 export interface AssistantToolTrace {
   name: string;
@@ -75,6 +76,8 @@ const READ_ONLY_TOOLS = new Set([
   'get_plan',
   'get_trends',
   'search_chats',
+  'get_stats',
+  'get_context',
 ]);
 
 function errorText(err: unknown): string {
@@ -284,7 +287,22 @@ export async function runAssistantTools(opts: {
         maxTokens: 500,
         temperature: 0,
       });
-      if (res.toolCalls.length === 0) break;
+      if (res.toolCalls.length === 0) {
+        // 部分模型（如 agnes）把调用写成文本 <tool_call>get_stats(...)</tool_call>。
+        // 解析后执行一次；不再回填 tool 消息，最终回答直接使用工具结果上下文。
+        const textCalls = parseTextToolCalls(res.content);
+        if (textCalls.length === 0) break;
+        const accepted = textCalls.slice(0, Math.max(0, MAX_CALLS - callsUsed));
+        callsUsed += accepted.length;
+        for (const call of accepted) {
+          const result = await executeOne(call);
+          if (processResult(result)) {
+            halt = true;
+            break;
+          }
+        }
+        break;
+      }
       messages.push({ role: 'assistant', content: res.content, toolCalls: res.toolCalls });
 
       const accepted = res.toolCalls.slice(0, Math.max(0, MAX_CALLS - callsUsed));
