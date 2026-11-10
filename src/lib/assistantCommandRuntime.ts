@@ -5,6 +5,7 @@
  * 模型通过 `get_stats` / `get_context` 工具调用同一套函数，结果作为 tool result 回填。
  */
 import type { AnalysisRecord } from '@/types';
+import type { LlmToolSpec } from '@/lib/llm';
 import { resolveRecordSelectors } from './assistantCommands';
 
 export interface AssistantCommandReport {
@@ -26,6 +27,36 @@ export interface ContextReportInput {
   memoryOff?: boolean;
   baselineRecordId?: string | null;
 }
+
+/**
+ * 模型可调用的本地命令入口（与用户 / 命令共用能力层）。
+ * 只开放只读 / 低风险命令；录音、清空、删除、新建对话等仍归用户。
+ */
+export const ASSISTANT_COMMAND_TOOL: LlmToolSpec = {
+  name: 'run_command',
+  description:
+    '执行本地助手命令（和用户输入的 / 命令同一套能力）。可用：stats（统计记录）、context（查看引用记录 / 页面 / 记忆状态）、attach（固定记录）、detach（取消固定）、open（打开页面）。用户命令本身对模型不可见；需要这些能力时主动调用本工具。',
+  parameters: {
+    type: 'object',
+    properties: {
+      command: {
+        type: 'string',
+        enum: ['stats', 'context', 'attach', 'detach', 'open'],
+        description: 'stats=统计；context=查看上下文；attach=固定记录；detach=取消固定；open=打开页面',
+      },
+      args: {
+        type: 'string',
+        description: '命令参数：stats 用 week/today/last:N/all/mode:...；attach 用 latest/last:N/today/id:...；detach 可空或 all；open 用 test/analysis/history/assistant/settings',
+      },
+      params: {
+        type: 'object',
+        description: '可选的结构化参数（部分模型会用它代替 args）；stats 可传 range / mode',
+        additionalProperties: true,
+      },
+    },
+    required: ['command'],
+  },
+};
 
 const MODE_LABEL: Record<string, string> = {
   reading: '朗读',

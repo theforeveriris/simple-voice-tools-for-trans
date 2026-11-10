@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisRecord, VoiceStats } from '@/types';
-import { buildContextReport, buildStatsReport, normalizeModeArg, normalizeRangeSelector, selectorLabel } from './assistantCommandRuntime';
+import { ASSISTANT_COMMAND_TOOL, buildContextReport, buildStatsReport, normalizeModeArg, normalizeRangeSelector, selectorLabel } from './assistantCommandRuntime';
 
 function stats(overrides: Partial<VoiceStats> = {}): VoiceStats {
   return {
@@ -101,6 +101,18 @@ describe('buildStatsReport', () => {
     expect(selectorLabel(['week'])).toBe('最近 7 天');
     expect(selectorLabel(['last:5'])).toBe('最近 5 条');
     expect(selectorLabel(['mode:sustained'])).toContain('长音');
+  });
+});
+
+describe('ASSISTANT_COMMAND_TOOL', () => {
+  it('exposes only the safe command set to the model', () => {
+    expect(ASSISTANT_COMMAND_TOOL.name).toBe('run_command');
+    const params = ASSISTANT_COMMAND_TOOL.parameters as {
+      properties?: { command?: { enum?: string[] } };
+    };
+    expect(params.properties?.command?.enum).toEqual([
+      'stats', 'context', 'attach', 'detach', 'open',
+    ]);
   });
 });
 

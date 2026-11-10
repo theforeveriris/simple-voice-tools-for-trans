@@ -33,8 +33,9 @@ import { isAbortError, languageName, llmChat, llmChatStreamMessages, llmToolCall
 import { runAssistantTools } from '@/lib/assistantAgent';
 import { parseTextToolCalls } from '@/lib/llmTextTools';
 import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools';
+import type { AssistantToolOutcome } from '@/lib/assistantTools';
 import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } from '@/lib/assistantActions';
-import { buildContextReport, buildStatsReport, type AssistantCommandReport } from '@/lib/assistantCommandRuntime';
+import { ASSISTANT_COMMAND_TOOL, buildContextReport, buildStatsReport, normalizeModeArg, normalizeRangeSelector, type AssistantCommandReport } from '@/lib/assistantCommandRuntime';
 import { PRACTICE_PLAN_TOOLS, runPracticePlanTool } from '@/lib/practicePlanTools';
 import { getPracticePlanState, planSummaryForPrompt } from '@/lib/practicePlan';
 import {
@@ -89,7 +90,7 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { estimateTokens } from '@/lib/llmUsage';
-import type { AnalysisRecord, TestMode } from '@/types';
+import type { AnalysisRecord, TestMode, ViewType } from '@/types';
 import { cn } from '@/lib/utils';
 
 /** Token 粗估：CJK 1 字 ≈ 1 token，其余 4 字符 ≈ 1 token（与用量统计同一口径） */
@@ -218,6 +219,7 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     '趋势、均值、中位数、波动、靶标命中率、本周 vs 上周、与基线比较，必须调用 get_trends；不要心算这些数字。',
     '需要一组记录的汇总（条数、平均 / 中位 F0、P10–P90、靶标命中率、总时长、模式分布）时调用 get_stats；即使用户没有说「统计」二字，也不要只凭上下文里的零散记录心算。',
     '需要确认当前对话固定了哪些记录、当前页面、基线、记忆 / 隐私状态时调用 get_context；用户问「你现在知道什么 / 引用了哪些记录」时必须调用。',
+    '需要固定 / 取消固定记录、打开页面，或希望用统一的 / 命令能力时调用 run_command（command=stats/context/attach/detach/open，args 传参数）；不要回答「没有斜杠命令工具」。',
     '用户问「上次说过 / 之前聊过 / 那个练习」时，调用 search_chats 检索历史对话；不要凭空回忆。',
     '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
     '如果要一次问 2–4 个互不依赖的问题，改用 ask_choice_set：一张卡片分页展示，用户答完一次提交；如果下一题取决于上一题答案，继续用 ask_choice 逐轮询问。',
@@ -997,6 +999,96 @@ export function AssistantPage() {
       : '';
     const records = await loadAllRecords();
     const toolChat = getChat(convId);
+    /** 模型可调用的本地命令：与用户 / 命令共用同一套能力，但参数由工具 schema 描述 */
+    const runLocalCommandTool = async (name: string, args: Record<string, unknown>): Promise<AssistantToolOutcome | null> => {
+      if (name !== 'run_command') return null;
+      const command = typeof args.command === 'string' ? args.command.trim().toLowerCase() : '';
+      const argText = typeof args.args === 'string' ? args.args.trim() : '';
+      const params = args.params && typeof args.params === 'object'
+        ? args.params as Record<string, unknown>
+        : null;
+      if (command === 'stats') {
+        const report = buildStatsReport(
+          records,
+          argText ? argText.split(/\s+/) : [normalizeRangeSelector(params?.range)],
+          settings.baselineRecordId,
+          normalizeModeArg(params?.mode),
+        );
+        return { text: report.text, summary: report.summary, recordIds: report.recordIds };
+      }
+      if (command === 'context') {
+        const report = buildContextReport({
+          records,
+          pinnedRecordIds: getChat(convId)?.pinnedRecordIds,
+          currentPage: { tab: page.lastTab, recordId: page.currentAnalysis?.id ?? null },
+          chatTitle: toolChat?.title,
+          messageCount: toolChat?.messages.length,
+          privacy: toolChat?.privacy,
+          memoryOff: toolChat?.memoryOff,
+          baselineRecordId: settings.baselineRecordId,
+        });
+        return { text: report.text, summary: report.summary, recordIds: report.recordIds };
+      }
+      if (command === 'attach') {
+        const matched = resolveRecordSelectors(
+          argText ? argText.split(/\s+/) : ['latest'],
+          records,
+          settings.baselineRecordId,
+        );
+        if (!matched.length) {
+          return { text: '没有匹配的记录。', summary: '固定记录：0 条', recordIds: [] };
+        }
+        const current = getChat(convId)?.pinnedRecordIds ?? [];
+        setPinnedRecords(convId, [...new Set([...current, ...matched.map((r) => r.id)])]);
+        return {
+          text: `已固定 ${matched.length} 条记录。`,
+          summary: `固定记录：${matched.length} 条`,
+          recordIds: matched.map((r) => r.id),
+        };
+      }
+      if (command === 'detach') {
+        const current = getChat(convId)?.pinnedRecordIds ?? [];
+        if (!argText || argText.toLowerCase() === 'all') {
+          setPinnedRecords(convId, []);
+          return { text: '已清空固定记录。', summary: '固定记录：已清空', recordIds: [] };
+        }
+        const matched = resolveRecordSelectors(
+          argText.split(/\s+/),
+          records,
+          settings.baselineRecordId,
+        );
+        const drop = new Set(matched.map((r) => r.id));
+        const next = current.filter((id) => !drop.has(id));
+        setPinnedRecords(convId, next);
+        return {
+          text: `已取消固定 ${current.length - next.length} 条记录。`,
+          summary: `固定记录：取消 ${current.length - next.length} 条`,
+          recordIds: next,
+        };
+      }
+      if (command === 'open') {
+        const targets: Record<string, ViewType> = {
+          test: 'test',
+          analysis: 'analysis',
+          history: 'history',
+          records: 'history',
+          assistant: 'assistant',
+          ai: 'assistant',
+          settings: 'settings',
+        };
+        const target = targets[argText.toLowerCase()];
+        if (!target) {
+          return {
+            text: '未知页面。可用：test / analysis / history / assistant / settings。',
+            summary: '打开页面：参数无效',
+            recordIds: [],
+          };
+        }
+        useStore.getState().setTab(target);
+        return { text: `已打开 ${target} 页。`, summary: `打开页面：${target}`, recordIds: [] };
+      }
+      return { text: `未知命令：${command}`, summary: '命令：参数无效', recordIds: [] };
+    };
     /** 用户命令与模型工具共用的本地执行器；文本工具调用兜底也用它 */
     const executeLocalTool = async (name: string, args: Record<string, unknown>) => (
       await runAssistantDataTool(name, args, {
@@ -1004,13 +1096,14 @@ export function AssistantPage() {
         settings,
         chats: chats ?? [],
         currentChatId: convId,
-        pinnedRecordIds: toolChat?.pinnedRecordIds ?? [],
+        pinnedRecordIds: getChat(convId)?.pinnedRecordIds ?? [],
         currentPage: { tab: page.lastTab, recordId: page.currentAnalysis?.id ?? null },
         chatTitle: toolChat?.title,
         messageCount: toolChat?.messages.length,
         privacy: toolChat?.privacy,
         memoryOff: toolChat?.memoryOff,
       })
+      ?? await runLocalCommandTool(name, args)
       ?? await runAssistantActionTool(name, args, { records, settings })
       ?? await runPracticePlanTool(name, args, { records, settings })
       ?? runAssistantChoiceTool(name, args)
@@ -1036,6 +1129,7 @@ export function AssistantPage() {
         userText: lastUserText,
         tools: [
           ...ASSISTANT_DATA_TOOLS,
+          ASSISTANT_COMMAND_TOOL,
           ...ASSISTANT_ACTION_TOOLS,
           ...PRACTICE_PLAN_TOOLS,
           ASSISTANT_CHOICE_TOOL,
@@ -1112,7 +1206,10 @@ export function AssistantPage() {
     const minorSafety = settings.ageGroup === 'child' || settings.ageGroup === 'adolescent'
       ? '【未成年安全】不主动询问激素、手术、过渡阶段或出柜状态；不把 passing 当作目标；不建议强力压音或长时间连续练习；涉及医疗问题时建议与监护人 / 医生沟通；不假设家庭已知情；训练强度保持温和，优先休息。'
       : '';
-    const baseExtra = [minorSafety, privateChat ? '' : extraContext, pageContext, toolRun.contextText, planSummary, attachmentText].filter(Boolean).join('\n\n');
+    const commandCapability = privateChat
+      ? ''
+      : '【可用本地命令】run_command：stats / context / attach / detach / open；用户问「能不能用斜杠命令 / 能做什么」时按此范围回答。';
+    const baseExtra = [minorSafety, privateChat ? '' : extraContext, pageContext, toolRun.contextText, planSummary, attachmentText, commandCapability].filter(Boolean).join('\n\n');
     const storedChat = getChat(convId);
     // 只有完整历史才能安全使用/更新摘要；redo / retry 传的是切片，跳过摘要
     const canSummarize = !!storedChat && storedChat.messages === history;
