@@ -32,7 +32,7 @@ export function SettingsSubPage({
         transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
         className="flex flex-col gap-3.5"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" data-theme-part="topbar">
           <button
             onClick={onBack}
             aria-label={t('common.back')}

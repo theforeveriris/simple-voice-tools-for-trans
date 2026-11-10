@@ -337,7 +337,7 @@ HSL 派生变量、`colorScheme` 与 `<meta name="theme-color">`；
 应用时机：`main.tsx` 渲染前读取持久化设置解析 hue 与 dark，`applyTheme(savedHue, dark)`
 （山桃红兜底）→ 原生壳内若壁纸取色（`lib/theme/dynamic.ts`）成功，用壁纸色相再次应用 →
 App 内监听设置变化（hue / accentHue / darkHue / huePreset / prideFlag / theme，
-含 system 明暗）重新应用；
+含 system 明暗；custom 预设下还应用 `customTheme` 覆盖层与页面图片背景）重新应用；
 `applyTheme` 完成后派发 `app:themechange` 事件，`chartPainters` 据此失效调色板缓存。
 `index.css` 的 `:root` 保留一套 hue=15 的静态回退值（首帧防闪烁）。
 新增主题相关颜色时：先在 `buildTokens` 加令牌，再到 `tailwind.config.js` 映射。

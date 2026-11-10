@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { NAV as TABS } from '@/components/settings/navItems'
 import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
+import { applyCustomTheme, normalizeCustomTheme } from '@/lib/theme/customTheme'
 import { loadBgImage } from '@/lib/theme/bgImage'
 import { initPwaInstall } from '@/lib/pwa'
 import { AppShortcuts, isNative, isTauri, syncNativeSystemBars } from '@/lib/platform'
@@ -19,7 +20,7 @@ import type { Locale, ThemeMode, ViewType } from '@/types'
 const saved = (() => {
   try {
     const raw = localStorage.getItem('svt:settings:v1');
-    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; accentHue?: number; darkHue?: number; theme?: ThemeMode; language?: string; huePreset?: string; prideFlag?: string; aiLanguage?: string } } }) : null;
+    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; accentHue?: number; darkHue?: number; theme?: ThemeMode; language?: string; huePreset?: string; prideFlag?: string; aiLanguage?: string; customTheme?: unknown } } }) : null;
     return parsed?.state?.settings ?? {};
   } catch {
     return {};
@@ -40,6 +41,7 @@ const savedPreset = presetSpec(
   saved.darkHue ?? saved.hue ?? 15,
 );
 applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, savedPrideFlagOf(saved, isLegacyFlag))
+applyCustomTheme(saved.huePreset === 'custom' ? normalizeCustomTheme(saved.customTheme) : null)
 // 原生壳：状态栏/手势条底色对齐首帧主题（后续变化由 App 的主题 effect 接管）
 if (isNative) syncNativeSystemBars()
 

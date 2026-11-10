@@ -1,7 +1,8 @@
 # 主题系统架构（莫奈取色与骄傲旗预设）
 
 本文描述配色系统的完整链路：OKLCH 令牌生成、预设机制、CSS 变量分层、
-骄傲旗渐变与毛玻璃参数化，以及已踩过的坑。实现：`src/lib/theme/monet.ts`、
+骄傲旗渐变与毛玻璃参数化、自定义组件外观，以及已踩过的坑。实现：
+`src/lib/theme/monet.ts`、`src/lib/theme/customTheme.ts`、
 `src/index.css`（主题相关区块在文件尾部）、`vite.config.ts`。
 
 ## 双变量令牌（一切的基础）
@@ -40,7 +41,7 @@ userDarkHue = userHue)` → `{ hue, accentHue, spec }`；
 
 调用点三处：`main.tsx`（首帧前；原生壳内壁纸取色成功后再次调用，见下节）、
 `App.tsx`（订阅 hue / accentHue / darkHue / huePreset / prideFlag / theme /
-系统深浅变化）、外观页 `applyPreset`（立即重放）。
+customTheme / 系统深浅变化）、外观页 `applyPreset`（立即重放）。
 
 ## 莫奈取色首启默认 = 壁纸色（Material You，dynamic.ts）
 
@@ -64,9 +65,10 @@ userDarkHue = userHue)` → `{ hue, accentHue, spec }`；
 - **骄傲旗三款**：`themeClass: 'theme-pride'` 共用一套渐变/毛玻璃 CSS，
   渐变按 `data-pride-flag` 区分，强调色与深浅铺底各自指定。
 
-外观页的预设选择为**三张卡片**（`ThemeCard`：色板预览 + 名称 + 选中描边）：
+外观页的预设选择为**卡片网格**（`ThemeCard`：色板预览 + 名称 + 选中描边）：
 莫奈卡用 OKLCH 渐变实时预览当前色相，骄傲旗卡渲染当前旗帜条纹，
-自定义图片卡显示当前背景图缩略图（未选图时占位图标）；旗帜三选一
+自定义图片卡显示当前背景图缩略图（未选图时占位图标），第四张「自定义」卡
+进入组件外观子页（见下节）；解锁彩蛋后追加「粉团子」卡。旗帜三选一
 同为条纹卡片。预设规格在 `lib/theme/monet.ts` 的 `THEME_PRESETS`
 （`monet` / `transPride` / `nonbinary` / `genderfluid` 四项），
 `constants` 里没有同名导出。
@@ -105,7 +107,8 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 
 ## 自定义背景图片（bgImage.ts）
 
-预设配色第三选（`huePreset = 'image'`，外观页预设卡片之一）：背景层
+「自定义图片」预设（`huePreset = 'image'`）与组件外观的页面「图片」背景
+（`customTheme` 当前模式 `page.image = true`）共用：背景层
 （`body::before`）被图片**整体接管**——pride 渐变、凌晨极光、莫奈纯色均被覆盖，
 没有与渐变的混合模式；色板（表面 / 强调 / 深色三个色相滑条）沿用莫奈逻辑，
 `presetSpec` 对 'image' 走与 monet 相同的用户色相分支。接管规则置于全部渐变规则
@@ -126,8 +129,42 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 - **备份**：ZIP 完整备份（手动 / 本地自动 / WebDAV 共用 `buildFullBackupZip`）
   打包 `bg-image/bg-image.{ext}` 条目，`importFullBackup` 恢复后立即生效；
   设置导出 JSON 只带参数不带图；GitHub 云备份暂不含背景图。
-- **毛玻璃强度**共用 `prideGlassBlur` 设置，外观页在 pride 参数区与
-  背景图分区各有一处入口（按预设互斥显示）。
+- **毛玻璃强度**共用 `prideGlassBlur` 设置；参数 UI 抽成 `BgImageControls`，
+  在「自定义图片」预设与组件外观的页面「图片」背景两种入口下复用同一份参数；
+  后者用 compact 模式内联选图，焦点/模糊/压暗等折叠进「图片参数」。
+
+## 自定义组件外观（customTheme.ts）
+
+第四张预设卡「自定义」（`huePreset = 'custom'`）进入 `CustomThemePage` 子页，
+在现有莫奈色板之上按**组件部位**覆盖样式；未修改的属性继续继承当前主题。
+
+- **部位与挂接**：页面背景 `.app-root`、卡片 `.card-surface`、
+  顶栏 / 底栏 `[data-theme-part="topbar"|"bottombar"]`、
+  主按钮 `button.bg-accent`、文本输入 `input:not([type])…` / `textarea`、
+  弹层 `[data-slot="dialog-content"]` 等。新增组件时优先加
+  `data-theme-part`，不要为配色改组件自身的样式类。
+- **外观页**：custom 预设下隐藏「主题色 / 强调色相 / 深色色相」三条基础
+  色相滑条（颜色由组件外观接管），保留深浅模式、预设卡与声音染色；
+  需要调基础色板时先切回莫奈 / 图片预设。
+- **数据模型**：`CustomTheme { version: 1, light, dark }`，
+  每个部位 `CustomPartStyle { bg, gradient, image, text, border, borderWidth,
+  radius, blur, opacity }`；存 `AppSettings.customTheme`，随设置导出与
+  `.svt-theme` 主题包往返，导入经 `normalizeCustomTheme` 白名单清洗
+  （仅 hex 颜色、数值夹取范围）。
+- **应用**：`applyCustomTheme` 生成 `<style id="svt-custom-theme">`，
+  规则形如 `html:not(.dark) [data-theme-part="topbar"] { … !important }`；
+  非 custom 预设或空主题时移除节点。首帧由 `main.tsx` 在 `applyTheme` 后同步应用。
+- **对比度兜底**：只改背景未设文字色时，按 WCAG 亮度自动推导 `--c-ink` /
+  `--c-ink-2`（亮底近黑、暗底近白）；卡片 / 弹层的 `--c-surface-hi` 与
+  `--c-line` 也向背景混合，避免嵌套胶囊出现深底深字。主按钮额外推导
+  `--c-on-accent`。显式文字色始终优先。
+- **图片背景**：仅页面部位可选「图片」，复用 `bgImage` 的同一张图和参数
+  （IndexedDB 单份存储）。`applyBgImage` 在 `huePreset='image'` 或
+  custom 当前深浅模式的 `page.image` 为 true 时挂 `html.bg-image`；
+  `app-root` 让出底色，由 `body::before` 铺图。
+- **恢复**：单部位恢复删除该部位键；「全部恢复」清空 `customTheme`。
+  自定义页有覆盖时在顶栏显示「全部恢复」图标（不悬浮在内容上遮挡滑条），
+  避免把卡片改成低对比度后找不到出口。
 
 ## 氛围彩蛋（ambient.ts）
 

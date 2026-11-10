@@ -83,6 +83,30 @@ describe('parseThemeFile', () => {
     const res = parseThemeFile(raw)!;
     expect(res.patch).toEqual({ hue: 42 });
   });
+
+  it('customTheme 随主题包往返并清洗', () => {
+    const raw = JSON.stringify({
+      kind: 'theme', version: 1, name: 'custom',
+      theme: {
+        huePreset: 'custom',
+        customTheme: {
+          version: 1,
+          light: { page: { image: true }, dialog: { bg: '#101014', blur: 999 } },
+          dark: {},
+        },
+      },
+    });
+    const res = parseThemeFile(raw)!;
+    expect(res.patch.huePreset).toBe('custom');
+    expect(res.patch.customTheme?.light.page?.image).toBe(true);
+    expect(res.patch.customTheme?.light.dialog).toEqual({ bg: '#101014', blur: 40 });
+
+    const bad = parseThemeFile(JSON.stringify({
+      kind: 'theme', version: 1, name: 'bad',
+      theme: { customTheme: { version: 1, light: { page: { bg: 'red' } }, dark: {} } },
+    }))!;
+    expect(bad.patch.customTheme).toBeUndefined();
+  });
 });
 
 describe('themeFileName', () => {

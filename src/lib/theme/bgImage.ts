@@ -15,6 +15,7 @@
  */
 
 import { idbDeleteKV, idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import { hasPageImage } from '@/lib/theme/customTheme';
 import type { AppSettings, BgImageFocus } from '@/types';
 
 /** 背景图片在 IndexedDB kv 仓库中的键名（ZIP 备份打包 / 恢复共用） */
@@ -60,8 +61,10 @@ export function getBgImageUrl(): string | null {
 /** 把背景图参数同步到 CSS 变量与开关类（不依赖深浅模式，压暗的深色加深在 CSS 内完成） */
 export function applyBgImage(s: AppSettings): void {
   const el = document.documentElement;
-  // 预设配色第三选：image = 背景层由图片接管（pride 渐变 / 莫奈纯色让位）
-  const active = s.huePreset === 'image';
+  // 预设配色：image = 背景层由图片接管；custom 且页面背景选择「图片」时同样接管
+  const dark = document.documentElement.classList.contains('dark');
+  const active = s.huePreset === 'image'
+    || (s.huePreset === 'custom' && hasPageImage(s.customTheme, dark));
   el.classList.toggle('bg-image', active);
   el.classList.toggle('bg-image-static', !s.bgImageDrift);
   const style = el.style;

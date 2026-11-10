@@ -153,4 +153,25 @@ describe('parseSettingsPayload', () => {
     }));
     expect(bad.navStyle).toBeUndefined();
   });
+
+  it('customTheme：随导出往返，导入经 normalize 清洗', () => {
+    const payload = buildSettingsPayload({
+      ...SAMPLE,
+      huePreset: 'custom',
+      customTheme: {
+        version: 1,
+        light: { page: { image: true }, card: { bg: '#ffffff', radius: 99, text: 'red' } },
+        dark: {},
+      },
+    });
+    const parsed = parseSettingsPayload(JSON.stringify(payload));
+    expect(parsed.huePreset).toBe('custom');
+    expect(parsed.customTheme?.light.page?.image).toBe(true);
+    expect(parsed.customTheme?.light.card).toEqual({ bg: '#ffffff', radius: 40 });
+
+    const bad = parseSettingsPayload(JSON.stringify({
+      kind: 'settings', version: 1, settings: { customTheme: { version: 2, light: {}, dark: {} } },
+    }));
+    expect(bad.customTheme).toBeUndefined();
+  });
 });

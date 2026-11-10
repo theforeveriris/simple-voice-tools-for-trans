@@ -9,6 +9,7 @@
 
 import type { AppSettings } from '@/types';
 import { APP_ID } from '@/lib/appId';
+import { normalizeCustomTheme } from '@/lib/theme/customTheme';
 
 export interface ThemeExport {
   app: typeof APP_ID;
@@ -21,7 +22,7 @@ export interface ThemeExport {
 
 /** 收进主题包的字段白名单（不含语言、麦克风、LLM 等非外观项） */
 const THEME_KEYS = [
-  'theme', 'huePreset', 'hue', 'accentHue', 'darkHue', 'catThemeUnlocked',
+  'theme', 'huePreset', 'hue', 'accentHue', 'darkHue', 'catThemeUnlocked', 'customTheme',
   'prideFlag', 'prideGlow', 'prideSaturation', 'prideGlassBlur', 'prideDrift',
   'bgImageFocus', 'bgImageBlur', 'bgImageDim', 'bgImageSaturation', 'bgImageOpacity', 'bgImageDrift',
   'specColormap', 'showGrid',
@@ -48,7 +49,7 @@ export function buildThemeExport(settings: AppSettings, name: string): ThemeExpo
 
 const STRING_ENUMS: Partial<Record<ThemeKey, readonly string[]>> = {
   theme: ['light', 'dark', 'system'],
-  huePreset: ['monet', 'pride', 'image', 'cat'],
+  huePreset: ['monet', 'pride', 'image', 'cat', 'custom'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   bgImageFocus: ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'],
   specColormap: ['magma', 'gray', 'accent'],
@@ -83,6 +84,11 @@ export function parseThemeFile(raw: string): { name: string; patch: Partial<AppS
   for (const key of THEME_KEYS) {
     const v = src[key];
     if (v === undefined || v === null) continue;
+    if (key === 'customTheme') {
+      const custom = normalizeCustomTheme(v);
+      if (custom) patch[key] = custom;
+      continue;
+    }
     if (STRING_ENUMS[key]) {
       if (typeof v === 'string' && (STRING_ENUMS[key] as readonly string[]).includes(v)) patch[key] = v;
     } else if (BOOL_KEYS.includes(key)) {

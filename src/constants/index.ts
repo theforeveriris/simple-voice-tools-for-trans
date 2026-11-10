@@ -179,6 +179,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   language: 'en',
   huePreset: 'monet',
+  customTheme: null,
   catThemeUnlocked: false,
   prideFlag: 'transPride',
   prideGlow: 1,

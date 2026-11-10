@@ -22,6 +22,8 @@ import { AssistantPage } from '@/components/ai/AssistantPage';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme, presetSpec } from '@/lib/theme/monet';
+import { applyCustomTheme } from '@/lib/theme/customTheme';
+import { applyBgImage } from '@/lib/theme/bgImage';
 import { smoothThemeChange } from '@/lib/theme/smooth';
 import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
@@ -116,6 +118,7 @@ function App() {
   const accentHue = useStore((s) => s.settings.accentHue);
   const darkHue = useStore((s) => s.settings.darkHue);
   const huePreset = useStore((s) => s.settings.huePreset);
+  const customTheme = useStore((s) => s.settings.customTheme);
   const prideFlag = useStore((s) => s.settings.prideFlag);
   const theme = useStore((s) => s.settings.theme);
   const navStyle = useStore((s) => s.settings.navStyle);
@@ -284,6 +287,10 @@ function App() {
     const applyNow = () => {
       const preset = presetSpec(huePreset, hue, prideFlag, accentHue, darkHue);
       applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec, prideFlag);
+      // 自定义组件外观：非 custom 预设时移除覆盖层
+      applyCustomTheme(huePreset === 'custom' ? customTheme : null);
+      // 深浅切换后重新判定背景图开关（custom 页面背景图按当前模式生效）
+      applyBgImage(useStore.getState().settings);
       // 原生壳：系统栏（状态栏/手势条）底色跟随主题（含深浅切换与自定义色相）
       syncNativeSystemBars();
     };
@@ -301,7 +308,7 @@ function App() {
       mq.addEventListener('change', applyIfNeeded);
       return () => mq.removeEventListener('change', applyIfNeeded);
     }
-  }, [hue, accentHue, darkHue, huePreset, prideFlag, theme]);
+  }, [hue, accentHue, darkHue, huePreset, prideFlag, theme, customTheme]);
 
   // 每日练习提醒：每分钟 + 回到前台时检查（到点且当天无录音 → 本地通知）
   const reminderEnabled = useStore((s) => s.settings.practiceReminderEnabled);

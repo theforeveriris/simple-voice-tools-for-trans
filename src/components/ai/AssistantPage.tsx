@@ -2100,7 +2100,7 @@ export function AssistantPage() {
   const topBar = (
     // 安全区单独做上边距，内容行固定 56px 居中：
     // 旧写法把 safe-area 塞进同一容器，浏览器里 env() 恒为 0 时内容比栏中心低 6px。
-    <div className="shrink-0 bg-surface pt-[env(safe-area-inset-top)]">
+    <div className="shrink-0 bg-surface pt-[env(safe-area-inset-top)]" data-theme-part="topbar">
       <div className="flex h-14 items-center gap-2 px-3">
         {aiWorkspace ? (
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">

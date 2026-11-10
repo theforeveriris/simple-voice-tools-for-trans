@@ -29,7 +29,48 @@ export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'es' | 'fr' | 'ai
  * pride：骄傲旗主题（旗帜由 prideFlag 选择，氤氲渐变 + 毛玻璃，参数可调）；
  * image：自定义图片（背景层由图片接管，色板同莫奈逻辑）
  */
-export type HuePreset = 'monet' | 'pride' | 'image' | 'cat';
+export type HuePreset = 'monet' | 'pride' | 'image' | 'cat' | 'custom';
+
+/* ------------------------------ 自定义组件外观 ------------------------------ */
+
+/** 可覆盖的内置组件部位 */
+export type CustomThemePart =
+  | 'page'
+  | 'card'
+  | 'topbar'
+  | 'bottombar'
+  | 'primaryButton'
+  | 'input'
+  | 'dialog';
+
+export interface CustomGradient {
+  /** 渐变方向（deg，0 = 向上，90 = 向右） */
+  angle: number;
+  from: string;
+  to: string;
+}
+
+/** 单个组件部位的覆盖样式；未设置的字段继续继承当前主题 */
+export interface CustomPartStyle {
+  /** 纯色背景（gradient 存在时忽略） */
+  bg?: string;
+  gradient?: CustomGradient | null;
+  /** 背景使用自定义图片（当前仅 page 支持；参数复用 bgImage*，图片存 IndexedDB） */
+  image?: boolean;
+  text?: string;
+  border?: string;
+  borderWidth?: number;
+  radius?: number;
+  blur?: number;
+  opacity?: number;
+}
+
+/** 自定义外观：浅色 / 深色各一套；版本化，便于以后迁移 */
+export interface CustomTheme {
+  version: 1;
+  light: Partial<Record<CustomThemePart, CustomPartStyle>>;
+  dark: Partial<Record<CustomThemePart, CustomPartStyle>>;
+}
 
 /**
  * 骄傲旗主题的旗帜
@@ -305,8 +346,10 @@ export interface AppSettings {
   theme: ThemeMode;
   /** 界面语言 */
   language: Locale;
-  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），pride 骄傲旗（旗帜见 prideFlag），cat 彩蛋「粉团子」 */
+  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），pride 骄傲旗（旗帜见 prideFlag），cat 彩蛋「粉团子」，custom 组件外观 */
   huePreset: HuePreset;
+  /** 自定义组件外观（huePreset = custom 时生效；未覆盖字段继承当前主题） */
+  customTheme: CustomTheme | null;
   /** 彩蛋「喵喵练声」首次通关后解锁「粉团子」主题（解锁后预设配色出现第四张卡） */
   catThemeUnlocked: boolean;
   /* ---------- 骄傲旗主题（huePreset = pride 时生效） ---------- */
