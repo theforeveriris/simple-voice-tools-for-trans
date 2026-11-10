@@ -67,7 +67,7 @@ customTheme / 系统深浅变化）、外观页 `applyPreset`（立即重放）�
 
 外观页的预设选择为**卡片网格**（`ThemeCard`：色板预览 + 名称 + 选中描边）：
 莫奈卡用 OKLCH 渐变实时预览当前色相，骄傲旗卡渲染当前旗帜条纹，
-自定义图片卡显示当前背景图缩略图（未选图时占位图标），第四张「自定义」卡
+图片背景卡显示当前背景图缩略图（未选图时占位图标），第四张「自定义」卡
 进入组件外观子页（见下节）；解锁彩蛋后追加「粉团子」卡。旗帜三选一
 同为条纹卡片。预设规格在 `lib/theme/monet.ts` 的 `THEME_PRESETS`
 （`monet` / `transPride` / `nonbinary` / `genderfluid` 四项），
@@ -107,7 +107,7 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 
 ## 自定义背景图片（bgImage.ts）
 
-「自定义图片」预设（`huePreset = 'image'`）与组件外观的页面「图片」背景
+「图片背景」预设（`huePreset = 'image'`）与组件外观的页面「图片」背景
 （`customTheme` 当前模式 `page.image = true`）共用：背景层
 （`body::before`）被图片**整体接管**——pride 渐变、凌晨极光、莫奈纯色均被覆盖，
 没有与渐变的混合模式；色板（表面 / 强调 / 深色三个色相滑条）沿用莫奈逻辑，
@@ -130,7 +130,7 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
   打包 `bg-image/bg-image.{ext}` 条目，`importFullBackup` 恢复后立即生效；
   设置导出 JSON 只带参数不带图；GitHub 云备份暂不含背景图。
 - **毛玻璃强度**共用 `prideGlassBlur` 设置；参数 UI 抽成 `BgImageControls`，
-  在「自定义图片」预设与组件外观的页面「图片」背景两种入口下复用同一份参数；
+  在「图片背景」预设与组件外观的页面「图片」背景两种入口下复用同一份参数；
   后者用 compact 模式内联选图，焦点/模糊/压暗等折叠进「图片参数」。
 
 ## 自定义组件外观（customTheme.ts）
