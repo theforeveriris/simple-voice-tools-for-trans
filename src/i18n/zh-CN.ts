@@ -793,7 +793,6 @@ export const zhCN = {
   'settings.guideLoadFail': '说明加载失败',
   'settings.versionLabel': '当前版本',
   'settings.updateNotesTitle': '本次更新内容',
-  'settings.updateNotes': '· 新增语言子页面：AI 翻译任意语言、编辑词条、术语表与词典分享\n· 骄傲旗主题三款旗帜，渐变浓度 / 饱和度 / 毛玻璃可调\n· 底栏被挤走与移动端横滑问题修复\n· 应用子页：版本信息、运行状态与检查更新',
   'settings.updateNotesDismiss': '知道了',
   'toast.updatedTo': '应用已更新到 v{version}',
   'settings.statusSection': '运行状态',

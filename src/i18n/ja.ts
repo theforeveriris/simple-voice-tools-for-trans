@@ -792,7 +792,6 @@ export const ja = {
   'settings.guideLoadFail': 'ガイドの読み込みに失敗しました',
   'settings.versionLabel': '現在のバージョン',
   'settings.updateNotesTitle': '今回の更新内容',
-  'settings.updateNotes': '· 言語サブページを追加：任意言語の AI 翻訳、項目編集、用語集、辞書共有\n· プライド旗テーマ 3 種、グラデーション濃度 / 彩度 / すりガラスを調整可能\n· ボトムバーの位置ずれとモバイルの横スクロールを修正\n· アプリサブページ：バージョン情報・実行状態・更新確認',
   'settings.updateNotesDismiss': 'OK',
   'toast.updatedTo': 'アプリを v{version} に更新しました',
   'settings.statusSection': '実行状態',

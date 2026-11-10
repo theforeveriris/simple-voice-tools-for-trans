@@ -792,7 +792,6 @@ export const fr = {
   'settings.guideLoadFail': 'Échec du chargement du guide',
   'settings.versionLabel': 'Version actuelle',
   'settings.updateNotesTitle': 'Nouveautés',
-  'settings.updateNotes': '· Nouvelle sous-page Langue : traduction AI dans n\'importe quelle langue, modification des chaînes, glossaire et partage du dictionnaire\n· Trois thèmes drapeau fierté, intensité du dégradé / saturation / verre réglables\n· Correction de la barre du bas repoussée et du défilement horizontal sur mobile\n· Sous-page App : version, état d\'exécution et recherche de mises à jour',
   'settings.updateNotesDismiss': 'Compris',
   'toast.updatedTo': 'App mise à jour vers v{version}',
   'settings.statusSection': 'État d\'exécution',

@@ -19,7 +19,7 @@ import {
   type SwStatus,
 } from '@/lib/pwa';
 import { checkNativeAppUpdate, openApkDownload, type NativeUpdateInfo } from '@/lib/appUpdate';
-import { t, localeTag } from '@/i18n';
+import { t, getLocale, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isNative } from '@/lib/platform';
 import { cn } from '@/lib/utils';
@@ -63,6 +63,11 @@ export function AppPage({
   onBack: () => void;
 }) {
   useI18n();
+  /** 当前语言的本版本更新内容；构建时由 release-notes/<version>.json 注入 */
+  const releaseNotes = __APP_VERSION_NOTES__[getLocale()]
+    ?? __APP_VERSION_NOTES__.en
+    ?? __APP_VERSION_NOTES__['zh-CN']
+    ?? '';
   const install = usePwaInstall();
   const [checking, setChecking] = useState(false);
   // 原生壳：检查更新发现的新版本（PWA 端发现即自动刷新，无需状态）
@@ -285,11 +290,11 @@ export function AppPage({
 
         {/* 版本与更新 */}
         <SettingsSection icon={RefreshCw} title={t('settings.updateSection')}>
-          {updateUnseen && (
+          {updateUnseen && releaseNotes && (
             <div className="mb-1 rounded-2xl bg-accent-soft/60 px-4 py-3">
               <p className="text-xs font-semibold text-on-accent-soft">{t('settings.updateNotesTitle')}</p>
               <p className="mt-1 whitespace-pre-line text-[11px] leading-relaxed text-on-accent-soft/90">
-                {t('settings.updateNotes')}
+                {releaseNotes}
               </p>
               <button
                 onClick={() => {

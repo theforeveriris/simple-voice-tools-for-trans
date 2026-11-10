@@ -7,6 +7,30 @@ import { inspectAttr } from 'kimi-plugin-inspect-react'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as { version: string }
 
+/** 当前版本的更新内容：release-notes/<version>.json，构建时注入设置页 */
+const releaseNotes: Record<string, string> = (() => {
+  try {
+    const raw = JSON.parse(
+      readFileSync(new URL(`./release-notes/${pkg.version}.json`, import.meta.url), 'utf-8'),
+    ) as { version?: unknown; notes?: Record<string, unknown> };
+    if (raw.version !== pkg.version) {
+      throw new Error(`version 不匹配：应为 ${pkg.version}，实际为 ${String(raw.version)}`);
+    }
+    const notes: Record<string, string> = {};
+    for (const [locale, text] of Object.entries(raw.notes ?? {})) {
+      if (typeof text === 'string' && text.trim()) notes[locale] = text;
+    }
+    if (Object.keys(notes).length === 0) throw new Error('notes 为空');
+    return notes;
+  } catch (err) {
+    console.warn(
+      `[release-notes] release-notes/${pkg.version}.json 缺失或无效；开发环境将不显示更新内容，生产构建会失败。`,
+      err,
+    );
+    return {};
+  }
+})();
+
 // 本次构建的时间戳（毫秒）：define 注入页面 + version.json 双写必须同源同值，
 // 检查更新以两者相等判定「页面运行的构建 = 线上构建」
 const buildAt = Date.now()
@@ -35,6 +59,7 @@ export default defineConfig(({ command }) => ({
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
     __BUILD_AT__: JSON.stringify(buildAt),
+    __APP_VERSION_NOTES__: JSON.stringify(releaseNotes),
   },
   plugins: [
     // 开发期 DOM 检查辅助插件，不进生产构建
@@ -42,6 +67,17 @@ export default defineConfig(({ command }) => ({
     react(),
     // 构建信息清单：检查更新 fetch 它与页面内的 __BUILD_AT__ 比对。
     // 故意不进 SW 预缓存（globPatterns 不含 json）——fetch 才能直达网络拿到线上最新
+    {
+      name: 'check-release-notes',
+      apply: 'build',
+      buildStart() {
+        if (Object.keys(releaseNotes).length === 0) {
+          this.error(
+            `release-notes/${pkg.version}.json 缺失或无效：发版前请补齐当前版本的更新内容。`,
+          );
+        }
+      },
+    },
     {
       name: 'emit-version-json',
       apply: 'build',

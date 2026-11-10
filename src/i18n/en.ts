@@ -791,7 +791,6 @@ export const en = {
   'settings.guideLoadFail': 'Failed to load the guide',
   'settings.versionLabel': 'Current version',
   'settings.updateNotesTitle': "What's new",
-  'settings.updateNotes': '· New Language subpage: AI translation into any language, string overrides, glossary, dictionary sharing\n· Three pride-flag themes with tunable gradient intensity / saturation / glass\n· Fixed the bottom bar being pushed away and mobile horizontal panning\n· App subpage: version info, runtime status, check for updates',
   'settings.updateNotesDismiss': 'Got it',
   'toast.updatedTo': 'App updated to v{version}',
   'settings.statusSection': 'Runtime status',

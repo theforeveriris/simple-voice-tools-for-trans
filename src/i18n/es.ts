@@ -792,7 +792,6 @@ export const es = {
   'settings.guideLoadFail': 'No se pudo cargar la guía',
   'settings.versionLabel': 'Versión actual',
   'settings.updateNotesTitle': 'Novedades',
-  'settings.updateNotes': '· Nueva subpágina de Idioma: traducción AI a cualquier idioma, edición de cadenas, glosario y compartición del diccionario\n· Tres temas de banderas del orgullo con intensidad del degradado / saturación / efecto cristal ajustables\n· Corregidos la barra inferior desplazada y el desplazamiento horizontal en móvil\n· Subpágina de la app: información de versión, estado de ejecución y buscar actualizaciones',
   'settings.updateNotesDismiss': 'Entendido',
   'toast.updatedTo': 'App actualizada a la v{version}',
   'settings.statusSection': 'Estado de ejecución',

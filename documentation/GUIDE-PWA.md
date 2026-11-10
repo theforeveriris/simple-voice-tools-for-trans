@@ -55,9 +55,11 @@ define: {
 - `App.tsx` 挂载时对比 `localStorage['svt:update-seen']` 与 `__APP_VERSION__`：
   升级（seen 存在且不同）→ toast 一次 + 写标记 `svt:update-notes-open = '1'`；
   无论是否升级都刷新 `svt:update-seen`。
-- 应用子页读到该标记 → 「版本与更新」区顶部显示
-  `settings.updateNotes` 卡片（每版本维护一段 i18n 文案，**发版时记得更新七语言**），
-  点「知道了」清除标记。
+- 应用子页读到该标记 → 「版本与更新」区顶部显示本版本更新内容
+  （`release-notes/<version>.json` 的 `notes`，构建时注入 `__APP_VERSION_NOTES__`；
+  生产构建缺当前版本会失败），点「知道了」清除标记。
+- 维护：每次改 `package.json` 版本时新增同名 `release-notes/<version>.json`，
+  格式见 `release-notes/README.md`。
 
 ## 修复工具（resetAppRuntime）
 

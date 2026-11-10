@@ -792,7 +792,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.guideLoadFail': '說之載未成',
   'settings.versionLabel': '今之版',
   'settings.updateNotesTitle': '此番所增',
-  'settings.updateNotes': '· 新語言之頁：AI 譯任意之語、删潤词条、譯名之表、詞典相授\n· 驕傲旗之題三旗，漸染之濃淡、色彩、霧玻璃皆可調\n· 底欄被擠、手機橫移之患已除\n· 應用之頁：版本、運行之態、省視新版',
   'settings.updateNotesDismiss': '諾',
   'toast.updatedTo': '應用已新至 v{version}',
   'settings.statusSection': '運行之態',

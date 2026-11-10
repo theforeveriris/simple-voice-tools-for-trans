@@ -791,7 +791,6 @@ export const zhTW = {
   'settings.guideLoadFail': '說明載入失敗',
   'settings.versionLabel': '目前版本',
   'settings.updateNotesTitle': '本次更新內容',
-  'settings.updateNotes': '· 新增語言子頁面：AI 翻譯任意語言、編輯詞條、術語表與詞典分享\n· 驕傲旗主題三款旗幟，漸變濃度 / 飽和度 / 毛玻璃可調\n· 底欄被擠走與行動端橫滑問題修復\n· 應用子頁：版本資訊、執行狀態與檢查更新',
   'settings.updateNotesDismiss': '知道了',
   'toast.updatedTo': '應用已更新到 v{version}',
   'settings.statusSection': '執行狀態',
