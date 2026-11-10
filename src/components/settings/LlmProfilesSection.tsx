@@ -114,17 +114,23 @@ export function LlmProfilesSection({
               {t('settings.llmAuxProfileDesc')}
             </p>
           </div>
-          <select
-            value={settings.llmAuxProfileId ?? ''}
-            onChange={(e) => update({ llmAuxProfileId: e.target.value || undefined })}
-            aria-label={t('settings.llmAuxProfile')}
-            className="max-w-32 shrink-0 rounded-xl border border-black/10 bg-card px-2 py-1.5 text-[11px] text-ink outline-none"
+          <Select
+            value={settings.llmAuxProfileId ?? '__follow__'}
+            onValueChange={(v) => update({ llmAuxProfileId: v === '__follow__' ? undefined : v })}
           >
-            <option value="">{t('settings.llmAuxProfileSame')}</option>
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+            <SelectTrigger
+              aria-label={t('settings.llmAuxProfile')}
+              className="h-7 w-32 shrink-0 rounded-xl border-black/10 bg-card px-2.5 text-[11px]"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+              <SelectItem value="__follow__">{t('settings.llmAuxProfileSame')}</SelectItem>
+              {profiles.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
