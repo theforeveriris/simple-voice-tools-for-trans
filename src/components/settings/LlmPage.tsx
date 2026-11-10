@@ -19,6 +19,7 @@ import type { AppSettings } from '@/types';
 import { SettingsSection, SettingRow } from './rows';
 import { LlmProfilesSection } from './LlmProfilesSection';
 import { LlmUsageSection } from './LlmUsageSection';
+import { WebSearchSection } from './WebSearchSection';
 import { PromptPage } from './PromptPage';
 import { MemoryPage } from './MemoryPage';
 import { useStore } from '@/store/useStore';
@@ -186,7 +187,10 @@ export function LlmPage({
           </SettingRow>
         </SettingsSection>
 
-        {/* ⑥ 用量与费用 */}
+        {/* ⑥ 联网搜索（Tavily BYOK） */}
+        <WebSearchSection settings={settings} update={update} />
+
+        {/* ⑦ 用量与费用 */}
         <LlmUsageSection settings={settings} />
       </motion.div>
 

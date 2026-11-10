@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTextToolCalls } from './llmTextTools';
+import { extractThinkTags, parseTextToolCalls } from './llmTextTools';
 
 describe('parseTextToolCalls', () => {
   it('解析函数调用式文本并转换 kwargs', () => {
@@ -34,6 +34,33 @@ describe('parseTextToolCalls', () => {
     expect(calls).toHaveLength(2);
     expect(calls[0].arguments).toEqual({ lastN: 3, all: true });
     expect(calls[1].arguments).toEqual({});
+  });
+
+  it('解析 YAML 风格的 name / arguments', () => {
+    const calls = parseTextToolCalls(
+      '<tool_call>\nname: run_command\narguments: {"command": "web_search 跨性别女性 声学 F0"}\n</tool_call>',
+    );
+    expect(calls[0]).toMatchObject({
+      name: 'run_command',
+      arguments: { command: 'web_search 跨性别女性 声学 F0' },
+    });
+  });
+
+  it('解析 XML function / arg_key 格式', () => {
+    const calls = parseTextToolCalls(
+      '<tool_call>\n<function=run_command>\n<arg_key>command</arg_key>\n<arg_value>web_search</arg_value>\n<arg_key>query</arg_key>\n<arg_value>跨性别女性声学数据</arg_value>\n</function>\n</tool_call>',
+    );
+    expect(calls[0]).toMatchObject({
+      name: 'run_command',
+      arguments: { command: 'web_search', query: '跨性别女性声学数据' },
+    });
+  });
+
+  it('去掉正文里的 think 标签并保留思考内容', () => {
+    const parsed = extractThinkTags('说明<think>内部推理</think>答案<think>补充</think>');
+    expect(parsed.text).toBe('说明答案');
+    expect(parsed.think).toContain('内部推理');
+    expect(parsed.think).toContain('补充');
   });
 
   it('普通文本不误判', () => {

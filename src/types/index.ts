@@ -528,6 +528,8 @@ export interface AppSettings {
   memoryAutoSave: 'auto' | 'off';
   /** AI 写操作权限：关闭 / 每次确认 */
   assistantWrites: 'off' | 'confirm';
+  /** 联网搜索：允许助手调用 Tavily 搜索公开网页（Key 存 IDB，默认关闭） */
+  webSearchEnabled: boolean;
   /* ---------- AI 翻译语言（语言子页面） ---------- */
   /** 允许 AI 翻译：用实验性功能的大模型把界面翻译成其他语言 */
   aiTranslateEnabled: boolean;

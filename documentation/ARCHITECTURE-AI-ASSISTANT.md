@@ -190,6 +190,10 @@ maxTok       = max(1024, context − 系统提示 tokens − replyReserve)
 | `search_docs` | 数据 | 检索内置文档 | 只查文档，不查录音 |
 | `get_trends` | 数据 | 均值 / 中位 / 波动 / 斜率 / 命中率 / 与上期或基线对比 | 最近 N 条上限 20 |
 | `search_chats` | 数据 | 跨对话检索「上次说过」 | 排除私密对话 |
+| `get_stats` | 数据 | 一组记录的本地聚合（条数 / 均值 / 中位 / P10–P90 / 靶标 / 时长 / 模式） | 只读；range + mode 取交集 |
+| `get_context` | 数据 | 当前对话 pinned 记录 / 页面 / 基线 / 记忆与隐私状态 | 只读 |
+| `run_command` | 命令 | 执行 stats / context / attach / detach / open | 与用户 / 命令同一能力；录音、删除、新建对话不开放 |
+| `web_search` | 网络 | Tavily BYOK 搜索公开网页 | 默认关闭；Key 存 IDB；私密对话禁用；最多 5 条 |
 | `propose_action` | 写操作 | 调整目标区间 / 设置基线 / 导出 CSV | 必须用户确认；`assistantWrites=off` 时禁用 |
 | `open_page` | 导航 | 打开测试 / 分析 / 历史 / 设置 / 助手 | 不改数据 |
 | `get_plan` | 计划 | 读取当前练习计划与进度 | —— |
@@ -202,6 +206,8 @@ maxTok       = max(1024, context − 系统提示 tokens − replyReserve)
 | `save_memory` | 记忆 | 写入一条长期记忆 | 仅记忆写作模型调用；主对话不可直接写 |
 
 > 主对话没有「直接写记忆」的工具；`save_memory` 只出现在自动 / 手动记忆写作请求里，避免模型在回答中悄悄改记忆。
+>
+> `web_search` 只在 设置 → 大模型 → 联网搜索 开启并配置 Tavily Key 时出现；搜索 query 会发送给 Tavily，结果按不可信资料处理，回答气泡的「本轮上下文」显示来源链接。
 
 ---
 

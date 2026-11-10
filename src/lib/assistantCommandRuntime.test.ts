@@ -105,14 +105,13 @@ describe('buildStatsReport', () => {
 });
 
 describe('ASSISTANT_COMMAND_TOOL', () => {
-  it('exposes only the safe command set to the model', () => {
+  it('exposes the safe command set to the model', () => {
     expect(ASSISTANT_COMMAND_TOOL.name).toBe('run_command');
     const params = ASSISTANT_COMMAND_TOOL.parameters as {
-      properties?: { command?: { enum?: string[] } };
+      properties?: { command?: { enum?: string[]; description?: string } };
     };
-    expect(params.properties?.command?.enum).toEqual([
-      'stats', 'context', 'attach', 'detach', 'open',
-    ]);
+    expect(params.properties?.command?.description).toContain('stats');
+    expect(params.properties?.command?.description).toContain('web_search');
   });
 });
 

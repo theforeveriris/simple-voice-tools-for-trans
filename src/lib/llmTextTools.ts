@@ -98,6 +98,38 @@ function toCall(body: string, index: number): LlmToolCall | null {
     }
   }
 
+  // 兼容 YAML 风格：
+  // name: run_command
+  // arguments: {"command": "web_search ..."}
+  const yamlName = body.match(/(?:^|\n)\s*name\s*:\s*([A-Za-z_][\w]*)\s*(?:\n|$)/i);
+  if (yamlName) {
+    const argsMatch = body.match(/(?:^|\n)\s*arguments\s*:\s*([\s\S]*)$/i);
+    const rawArgs = argsMatch?.[1].trim() ?? '';
+    let args: Record<string, unknown> = {};
+    if (rawArgs) {
+      const parsed = tryJson(rawArgs);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        args = parsed as Record<string, unknown>;
+      } else {
+        const kwargs = parseKwargs(rawArgs);
+        if (!kwargs) return null;
+        args = kwargs;
+      }
+    }
+    return { id: `text-${index + 1}`, name: yamlName[1], arguments: args };
+  }
+
+  // 兼容 <tool_call><function=run_command><arg_key>...</arg_key>... 格式
+  const fnMatch = body.match(/<function=([A-Za-z_][\w]*)>([\s\S]*?)<\/function>/i);
+  if (fnMatch) {
+    const args: Record<string, unknown> = {};
+    const argRe = /<arg_key>([\s\S]*?)<\/arg_key>\s*<arg_value>([\s\S]*?)<\/arg_value>/gi;
+    for (const arg of fnMatch[2].matchAll(argRe)) {
+      args[arg[1].trim()] = parseValue(arg[2].trim());
+    }
+    return { id: `text-${index + 1}`, name: fnMatch[1], arguments: args };
+  }
+
   const match = body.match(CALL_RE);
   if (!match) return null;
   const name = match[1];
@@ -113,6 +145,17 @@ function toCall(body: string, index: number): LlmToolCall | null {
   }
   const kwargs = parseKwargs(rawArgs);
   return kwargs ? { id: `text-${index + 1}`, name, arguments: kwargs } : null;
+}
+
+/** 去掉正文里的 <think> 标签，并把内容转到思考面板 */
+export function extractThinkTags(content: string): { text: string; think: string } {
+  const thinks: string[] = [];
+  const text = content.replace(/<think>([\s\S]*?)<\/think>/gi, (_, inner: string) => {
+    const trimmed = inner.trim();
+    if (trimmed) thinks.push(trimmed);
+    return '';
+  }).trim();
+  return { text, think: thinks.join('\n\n').trim() };
 }
 
 /** 从模型正文中提取文本形式的工具调用；没有则返回空数组 */

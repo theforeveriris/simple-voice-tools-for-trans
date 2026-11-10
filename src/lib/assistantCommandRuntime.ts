@@ -41,8 +41,7 @@ export const ASSISTANT_COMMAND_TOOL: LlmToolSpec = {
     properties: {
       command: {
         type: 'string',
-        enum: ['stats', 'context', 'attach', 'detach', 'open'],
-        description: 'stats=统计；context=查看上下文；attach=固定记录；detach=取消固定；open=打开页面',
+        description: 'stats=统计；context=查看上下文；attach=固定记录；detach=取消固定；open=打开页面。web_search 是独立工具，请直接调用 web_search；若走本工具，可写 "web_search <关键词>"。',
       },
       args: {
         type: 'string',
@@ -52,6 +51,10 @@ export const ASSISTANT_COMMAND_TOOL: LlmToolSpec = {
         type: 'object',
         description: '可选的结构化参数（部分模型会用它代替 args）；stats 可传 range / mode',
         additionalProperties: true,
+      },
+      query: {
+        type: 'string',
+        description: 'web_search 的关键词（兼容部分模型把 query 放在顶层参数）',
       },
     },
     required: ['command'],

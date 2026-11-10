@@ -17,6 +17,14 @@ import { useI18n } from '@/i18n/hook';
 /** 面板里最多逐条列出多少条记录（其余只给计数） */
 const MAX_ROWS = 8;
 
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 const KIND_KEY = {
   fact: 'settings.memoryKindFact',
   preference: 'settings.memoryKindPreference',
@@ -57,6 +65,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const toolCalls = meta.toolCalls ?? [];
+  const webSources = meta.webSources ?? [];
   const numericCheck = meta.numericCheck;
   const byId = useMemo(() => new Map(records.map((r) => [r.id, r])), [records]);
   const hidden = Math.max(0, (meta.totalRecords ?? 0) - ids.length);
@@ -68,6 +77,7 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
     && memoryItems.length === 0
     && !memoryQuery
     && toolCalls.length === 0
+    && webSources.length === 0
     && !numericCheck
   ) return null;
 
@@ -213,6 +223,26 @@ export function ContextPanel({ meta }: { meta: ChatContextMeta }) {
               {t('assistant.ctx.memoryQuery', { q: memoryQuery })}
             </p>
           )}
+        </div>
+      )}
+
+      {webSources.length > 0 && (
+        <div className="px-0 py-1">
+          {webSources.map((source, i) => (
+            <a
+              key={`${source.url}-${i}`}
+              href={source.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="flex items-center gap-1.5 py-1 text-[11px] text-ink transition-colors hover:text-accent"
+            >
+              <span className="shrink-0 rounded bg-surface-hi px-1 py-0.5 text-[9px] text-ink-2">
+                {t('assistant.ctx.webTag')}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{source.title}</span>
+              <span className="shrink-0 text-[9px] text-ink-2/70">{hostOf(source.url)}</span>
+            </a>
+          ))}
         </div>
       )}
 

@@ -38,6 +38,8 @@ export interface AssistantToolRun {
   traces: AssistantToolTrace[];
   recordIds: string[];
   docs: { title: string; chars: number }[];
+  /** 本轮联网搜索的来源 */
+  webSources?: import('./webSearch').WebSearchSource[];
   /** 跨对话检索命中的来源 */
   chatRefs?: import('./llmChats').ChatRef[];
   /** 本轮提出的待确认写操作 */
@@ -78,6 +80,7 @@ const READ_ONLY_TOOLS = new Set([
   'search_chats',
   'get_stats',
   'get_context',
+  'web_search',
 ]);
 
 function errorText(err: unknown): string {
@@ -190,6 +193,8 @@ export async function runAssistantTools(opts: {
   const seenDocs = new Set<string>();
   const chatRefs: import('./llmChats').ChatRef[] = [];
   const seenChatRefs = new Set<string>();
+  const webSources: import('./webSearch').WebSearchSource[] = [];
+  const seenWebUrls = new Set<string>();
   const toolByName = new Map(tools.map((tool) => [tool.name, tool]));
   const repairAttempts = new Map<string, number>();
   let pendingAction: AssistantToolRun['pendingAction'];
@@ -275,6 +280,11 @@ export async function runAssistantTools(opts: {
         seenChatRefs.add(key);
         chatRefs.push(ref);
       }
+      for (const source of outcome.webSources ?? []) {
+        if (seenWebUrls.has(source.url)) continue;
+        seenWebUrls.add(source.url);
+        webSources.push(source);
+      }
     }
     return !!pendingChoice || !!pendingChoiceSet;
   };
@@ -353,6 +363,7 @@ export async function runAssistantTools(opts: {
     traces,
     recordIds,
     docs,
+    ...(webSources.length > 0 ? { webSources } : {}),
     ...(chatRefs.length > 0 ? { chatRefs } : {}),
     ...(pendingAction ? { pendingAction } : {}),
     ...(pendingChoice ? { pendingChoice } : {}),

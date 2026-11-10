@@ -17,8 +17,8 @@ import { useI18n } from '@/i18n/hook';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 
-/** 四条数据边界说明（合成一段放进 ⓘ 浮窗） */
-const BOUNDARY_KEYS = ['privacy.lineLocal', 'privacy.lineCloud', 'privacy.lineLocalBackup', 'privacy.lineLlm'] as const;
+/** 五条数据边界说明（合成一段放进 ⓘ 浮窗） */
+const BOUNDARY_KEYS = ['privacy.lineLocal', 'privacy.lineCloud', 'privacy.lineLocalBackup', 'privacy.lineLlm', 'privacy.lineWebSearch'] as const;
 
 export function PrivacyPanel() {
   useI18n();

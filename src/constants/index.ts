@@ -240,6 +240,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   practiceReminderTime: '20:00',
   memoryAutoSave: 'auto',
   assistantWrites: 'confirm',
+  webSearchEnabled: false,
   // AI 翻译语言（语言子页面）
   aiTranslateEnabled: false,
   // 配置子页面扩展

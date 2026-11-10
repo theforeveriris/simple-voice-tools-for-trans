@@ -41,6 +41,8 @@ export interface ChatContextMeta {
   totalRecords: number;
   /** 注入的内置文档摘录 */
   docs: { title: string; chars: number }[];
+  /** 本轮联网搜索的来源 */
+  webSources?: import('./webSearch').WebSearchSource[];
   /** 本轮注入的长期记忆条数 */
   memories?: number;
   /** 本轮实际注入的记忆 id（ContextPanel 逐条展示/编辑） */
