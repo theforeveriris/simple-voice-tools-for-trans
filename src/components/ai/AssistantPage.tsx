@@ -33,6 +33,7 @@ import { isAbortError, languageName, llmChat, llmChatStreamMessages, llmToolCall
 import { runAssistantTools } from '@/lib/assistantAgent';
 import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from '@/lib/assistantTools';
 import { ASSISTANT_ACTION_TOOLS, runAssistantActionTool, type AssistantAction } from '@/lib/assistantActions';
+import { buildContextReport, buildStatsReport, type AssistantCommandReport } from '@/lib/assistantCommandRuntime';
 import { PRACTICE_PLAN_TOOLS, runPracticePlanTool } from '@/lib/practicePlanTools';
 import { getPracticePlanState, planSummaryForPrompt } from '@/lib/practicePlan';
 import {
@@ -81,7 +82,7 @@ import { MemorySavedCard } from '@/components/ai/MemorySavedCard';
 import { ActionCard } from '@/components/ai/ActionCard';
 import { PlanCard, PlanStrip } from '@/components/ai/PlanCard';
 import { QuickPrompts } from '@/components/ai/QuickPrompts';
-import { Textarea } from '@/components/ui';
+import { Textarea, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { recorder } from '@/lib/audio/recorder';
@@ -214,6 +215,8 @@ function toolPlannerSystem(settings: Parameters<typeof buildAssistantProfile>[0]
     buildAssistantProfile(settings),
     '规则：需要用户的具体录音数据或官方文档时先查询；不要凭空编造记录 id、日期或指标；不要回答用户的问题，也不要解释。',
     '趋势、均值、中位数、波动、靶标命中率、本周 vs 上周、与基线比较，必须调用 get_trends；不要心算这些数字。',
+    '需要一组记录的汇总（条数、平均 / 中位 F0、P10–P90、靶标命中率、总时长、模式分布）时调用 get_stats；不要用 query_records 逐条累加。',
+    '需要确认当前对话固定了哪些记录、当前页面、基线、记忆 / 隐私状态时调用 get_context。',
     '用户问「上次说过 / 之前聊过 / 那个练习」时，调用 search_chats 检索历史对话；不要凭空回忆。',
     '当回答取决于用户的选择（训练方向、范围、偏好、下一步等）时，调用 ask_choice 展示统一选择器；不要在正文里问完就结束。',
     '如果要一次问 2–4 个互不依赖的问题，改用 ask_choice_set：一张卡片分页展示，用户答完一次提交；如果下一题取决于上一题答案，继续用 ask_choice 逐轮询问。',
@@ -760,6 +763,8 @@ export function AssistantPage() {
   const voiceActiveRef = useRef(false);
   const [commandIndex, setCommandIndex] = useState(0);
   const [commandDismissed, setCommandDismissed] = useState(false);
+  /** 用户本地命令结果（/stats /context）：只在此对话框展示，不写入聊天消息 */
+  const [commandReport, setCommandReport] = useState<AssistantCommandReport | null>(null);
   /** 跨对话跳转：目标消息下标，渲染后滚动并清除 */
   const [jumpIndex, setJumpIndex] = useState<number | null>(null);
   const historyRecords = useHistoryStore((s) => s.records);
@@ -1003,8 +1008,20 @@ export function AssistantPage() {
     } = { supported: false, contextText: '', traces: [], recordIds: [], docs: [] };
     if (lastUserMsg && !privateChat && !isSmallTalk(lastUserText)) {
       setToolNote(t('assistant.toolSearching'));
+      const toolChat = getChat(convId);
       const executeTool = async (name: string, args: Record<string, unknown>) => (
-        await runAssistantDataTool(name, args, { records, settings, chats: chats ?? [], currentChatId: convId })
+        await runAssistantDataTool(name, args, {
+          records,
+          settings,
+          chats: chats ?? [],
+          currentChatId: convId,
+          pinnedRecordIds: toolChat?.pinnedRecordIds ?? [],
+          currentPage: { tab: page.lastTab, recordId: page.currentAnalysis?.id ?? null },
+          chatTitle: toolChat?.title,
+          messageCount: toolChat?.messages.length,
+          privacy: toolChat?.privacy,
+          memoryOff: toolChat?.memoryOff,
+        })
         ?? await runAssistantActionTool(name, args, { records, settings })
         ?? await runPracticePlanTool(name, args, { records, settings })
         ?? runAssistantChoiceTool(name, args)
@@ -1636,6 +1653,38 @@ export function AssistantPage() {
         ].join('\n');
         setInput('');
         sendMessage(t('assistant.cmd.reviewAsk', { range: t(rangeKey) }), extra);
+        return;
+      }
+
+      case 'stats': {
+        const all = await records();
+        const selectors = cmd.args.length ? cmd.args : ['week'];
+        const report = buildStatsReport(all, selectors, settings.baselineRecordId);
+        setInput('');
+        if (!report.recordIds.length) {
+          toast.error(t('assistant.cmd.noRecords'));
+          return;
+        }
+        setCommandReport(report);
+        return;
+      }
+
+      case 'context': {
+        const all = await records();
+        const id = activeId && getChat(activeId) ? activeId : null;
+        const chat = id ? getChat(id) : null;
+        const page = useStore.getState();
+        setInput('');
+        setCommandReport(buildContextReport({
+          records: all,
+          pinnedRecordIds: id ? pinnedOf(id) : [],
+          currentPage: { tab: page.lastTab, recordId: page.currentAnalysis?.id ?? null },
+          chatTitle: chat?.title,
+          messageCount: chat?.messages.length ?? 0,
+          privacy: chat?.privacy,
+          memoryOff: chat?.memoryOff,
+          baselineRecordId: settings.baselineRecordId,
+        }));
         return;
       }
 
@@ -2733,6 +2782,40 @@ export function AssistantPage() {
         </div>,
         document.body,
       )}
+
+      {/* 用户本地命令结果：只给用户看，不写入聊天消息，模型无感 */}
+      <Dialog
+        open={!!commandReport}
+        onOpenChange={(open) => {
+          if (!open) setCommandReport(null);
+        }}
+      >
+        <DialogContent
+          className="gap-3"
+          style={{ maxWidth: 'min(34rem, calc(100vw - 1.5rem))', maxHeight: '80dvh' }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold text-ink">
+              {commandReport?.title}
+            </DialogTitle>
+            <DialogDescription className="text-[11px] text-ink-2">
+              {t('assistant.localCommandHint')}
+            </DialogDescription>
+          </DialogHeader>
+          <pre className="max-h-[55vh] overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-surface-hi p-3 font-mono text-[11px] leading-relaxed text-ink">
+            {commandReport?.text}
+          </pre>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCommandReport(null)}
+              className="rounded-full bg-accent px-4 py-1.5 text-[11px] font-semibold text-on-accent transition-transform active:scale-95 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
+            >
+              {t('common.close')}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

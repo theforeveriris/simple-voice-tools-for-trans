@@ -1,7 +1,9 @@
 /**
  * AI 助手 Slash 命令：解析、能力注册表与记录选择器。
  *
- * 命令只在用户输入框最开头识别，由客户端执行；模型不能生成或触发命令。
+ * 用户命令只在输入框最开头识别，由客户端执行，不写入聊天消息——模型上下文
+ * 不会知道用户用过命令。模型不能输出 `/` 命令文本；需要同类能力时，通过工具
+ * 调用 `assistantCommandRuntime` 的只读实现（如 get_stats / get_context）。
  * 解析与选择器都是纯函数，便于单测。
  */
 
@@ -17,6 +19,8 @@ export type AssistantCommandId =
   | 'detach'
   | 'compare'
   | 'review'
+  | 'stats'
+  | 'context'
   | 'open'
   | 'unknown';
 
@@ -81,6 +85,18 @@ export const ASSISTANT_COMMANDS: AssistantCommandSpec[] = [
     descriptionKey: 'assistant.cmd.review',
   },
   {
+    id: 'stats',
+    usage: '/stats [selector]',
+    category: 'analysis',
+    descriptionKey: 'assistant.cmd.stats',
+  },
+  {
+    id: 'context',
+    usage: '/context',
+    category: 'context',
+    descriptionKey: 'assistant.cmd.context',
+  },
+  {
     id: 'open',
     usage: '/open <analysis|records|settings> [id|latest]',
     category: 'open',
@@ -116,6 +132,10 @@ const ALIASES: Record<string, AssistantCommandId> = {
   '/对比': 'compare',
   '/review': 'review',
   '/整理': 'review',
+  '/stats': 'stats',
+  '/统计': 'stats',
+  '/context': 'context',
+  '/上下文': 'context',
   '/open': 'open',
   '/new': 'new',
   '/新对话': 'new',
@@ -316,7 +336,7 @@ export interface CommandCompletion {
 type Translate = (key: DictKey) => string;
 
 const ARG_COMMANDS: ReadonlySet<AssistantCommandId> = new Set([
-  'record', 'attach', 'detach', 'compare', 'review', 'open', 'help',
+  'record', 'attach', 'detach', 'compare', 'review', 'stats', 'open', 'help',
 ]);
 
 function commandCompletions(tr: Translate, query = ''): CommandCompletion[] {
@@ -446,7 +466,7 @@ export function buildCommandCompletions(
   } else if (parsed.id === 'open' && openPage === 'analysis' && argIndex === (isPageShortcut ? 0 : 1)) {
     items = selectorCompletions(tr, head, prior, records);
   } else if (
-    (parsed.id === 'attach' || parsed.id === 'detach' || parsed.id === 'compare')
+    (parsed.id === 'attach' || parsed.id === 'detach' || parsed.id === 'compare' || parsed.id === 'stats')
     && (parsed.id === 'compare' ? argIndex < 2 : true)
   ) {
     items = selectorCompletions(tr, head, prior, records);

@@ -23,6 +23,7 @@ import {
   qualityLabel,
   type MdcMetric,
 } from './measurement';
+import { buildContextReport, buildStatsReport } from './assistantCommandRuntime';
 
 export type AssistantToolContext = {
   records: AnalysisRecord[];
@@ -32,6 +33,14 @@ export type AssistantToolContext = {
   /** 本地对话列表（search_chats 用） */
   chats?: ChatConversation[];
   currentChatId?: string;
+  /** 当前对话已固定（pinned）的记录 id（get_context 用） */
+  pinnedRecordIds?: string[];
+  /** 当前页面（get_context 用） */
+  currentPage?: { tab: string; recordId?: string | null };
+  chatTitle?: string;
+  messageCount?: number;
+  privacy?: string;
+  memoryOff?: boolean;
 };
 
 export type AssistantToolOutcome = {
@@ -163,6 +172,31 @@ export const ASSISTANT_DATA_TOOLS: LlmToolSpec[] = [
         limit: { type: 'integer', minimum: 1, maximum: 8, description: '最多返回几个对话，默认 5' },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'get_stats',
+    description:
+      '对一组历史录音做本地聚合统计（条数、平均 / 中位 F0、P10–P90、靶标命中率、总时长、模式分布）。用户问「这周整体怎么样」「最近状态」或需要汇总时使用；不要用 query_records 逐条累加。',
+    parameters: {
+      type: 'object',
+      properties: {
+        selector: {
+          type: 'string',
+          description: '记录选择器：week（默认）/ today / yesterday / month / all / last:N / latest / mode:reading|sustained|glide / date:YYYY-MM-DD；多个用空格分隔',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_context',
+    description:
+      '读取当前对话的上下文摘要：已固定（pinned）的记录、当前页面、基线、记忆和隐私状态。用户问「你现在知道什么」「引用了哪些记录」或需要确认上下文时使用。',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: [],
     },
   },
 ];
@@ -425,6 +459,28 @@ export async function runAssistantDataTool(
       return getTrends(args, ctx);
     case 'search_chats':
       return searchChatTool(args, ctx);
+    case 'get_stats': {
+      const raw = typeof args.selector === 'string' ? args.selector.trim() : '';
+      const report = buildStatsReport(
+        ctx.records,
+        raw ? raw.split(/\s+/) : ['week'],
+        ctx.settings.baselineRecordId,
+      );
+      return { text: report.text, summary: report.summary, recordIds: report.recordIds };
+    }
+    case 'get_context': {
+      const report = buildContextReport({
+        records: ctx.records,
+        pinnedRecordIds: ctx.pinnedRecordIds,
+        currentPage: ctx.currentPage,
+        chatTitle: ctx.chatTitle,
+        messageCount: ctx.messageCount,
+        privacy: ctx.privacy,
+        memoryOff: ctx.memoryOff,
+        baselineRecordId: ctx.settings.baselineRecordId,
+      });
+      return { text: report.text, summary: report.summary, recordIds: report.recordIds };
+    }
     default:
       return null;
   }

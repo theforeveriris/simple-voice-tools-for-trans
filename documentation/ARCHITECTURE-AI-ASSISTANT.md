@@ -72,7 +72,7 @@
 
 ### 1. 输入
 
-文本输入、语音输入、附件（选中的录音）、选择卡答案、Slash 命令都最终落到同一条发送路径。Slash 命令在客户端解析执行，模型不能生成或触发命令。
+文本输入、语音输入、附件（选中的录音）、选择卡答案、Slash 命令都最终落到同一条发送路径。Slash 命令在客户端解析执行，用户命令不写入聊天消息，模型上下文无感；模型不能输出 `/` 命令文本，但可通过 `get_stats` / `get_context` 等工具调用同一 runtime 的只读实现。
 
 ### 2. 安全检测
 
@@ -267,7 +267,7 @@ maxTok       = max(1024, context − 系统提示 tokens − replyReserve)
 - **停止**：中止当前流式请求，草稿保留；
 - **附件**：记录图表以引用形式附加；图片字段已预留，当前版本不发送给视觉模型；
 - **摘要**：只在历史超预算时启用；本地摘录先兜底，后台小模型生成正式摘要，正文上限 1600 字符；
-- **Slash 命令**：`/record` `/stop` `/attach` `/detach` `/compare` `/review` `/open` `/new` `/help`，只在输入框开头识别，由客户端执行。
+- **Slash 命令**：`/record` `/stop` `/attach` `/detach` `/compare` `/review` `/stats` `/context` `/open` `/new` `/help`，只在输入框开头识别，由客户端执行。`/stats`、`/context` 的结果只在本地对话框展示，不写入聊天消息；模型侧通过 `get_stats`、`get_context` 工具使用同一套 `assistantCommandRuntime`。
 
 ---
 

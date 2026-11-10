@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisRecord, VoiceStats } from '@/types';
-import { runAssistantDataTool } from './assistantTools';
+import { ASSISTANT_DATA_TOOLS, runAssistantDataTool } from './assistantTools';
 
 function stats(overrides: Partial<VoiceStats> = {}): VoiceStats {
   return {
@@ -53,6 +53,11 @@ const ctx = {
 };
 
 describe('runAssistantDataTool', () => {
+  it('exposes the shared command tools', () => {
+    const names = ASSISTANT_DATA_TOOLS.map((t) => t.name);
+    expect(names).toContain('get_stats');
+    expect(names).toContain('get_context');
+  });
   it('queries records by mode and returns newest first', async () => {
     const out = await runAssistantDataTool('query_records', { mode: 'reading' }, ctx);
     expect(out).not.toBeNull();
@@ -147,6 +152,29 @@ describe('runAssistantDataTool', () => {
     expect((await runAssistantDataTool('get_record', { id: 'missing' }, ctx))!.summary).toBe('读取记录：未找到');
     expect((await runAssistantDataTool('query_records', { from: '2030-01-01' }, ctx))!.summary).toBe('查询记录：0 条');
     expect((await runAssistantDataTool('search_docs', { query: '  ' }, ctx))!.summary).toBe('读取文档：0 篇');
+  });
+
+  it('aggregates local stats through get_stats', async () => {
+    const out = await runAssistantDataTool('get_stats', { selector: 'all' }, ctx);
+    expect(out!.summary).toBe('统计：3 条 · 平均 170 Hz');
+    expect(out!.text).toContain('模式：朗读 2 · 长音 1');
+    expect(out!.recordIds).toEqual(['a', 'b', 'c']);
+  });
+
+  it('reads pinned and page context through get_context', async () => {
+    const out = await runAssistantDataTool('get_context', {}, {
+      ...ctx,
+      pinnedRecordIds: ['a', 'b'],
+      currentPage: { tab: 'analysis', recordId: 'a' },
+      chatTitle: '训练复盘',
+      messageCount: 5,
+      privacy: 'normal',
+      settings: { ...ctx.settings, baselineRecordId: 'c' },
+    });
+    expect(out!.text).toContain('对话：训练复盘');
+    expect(out!.text).toContain('已引用 2 条记录');
+    expect(out!.text).toContain('当前页面：analysis');
+    expect(out!.recordIds).toEqual(['a', 'b', 'a', 'c']);
   });
 
   it('returns null for unknown tools', async () => {
