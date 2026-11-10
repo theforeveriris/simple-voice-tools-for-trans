@@ -1375,6 +1375,7 @@ export const en = {
 
   /* ---------- About tab: doc groups & disclaimer ---------- */
   'settings.userDocs': 'User guide',
+  'settings.helpSupport': 'Help & support',
   'settings.devDocs': 'Developer docs',
   'settings.docGuideTitle': 'Parameter guide',
   'settings.docGuideDesc': 'What every metric measures, how it sounds, and what it means for training',

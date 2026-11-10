@@ -1375,6 +1375,7 @@ export const zhTW = {
 
   /* ---------- 關於頁：文件分組與免責聲明 ---------- */
   'settings.userDocs': '使用說明',
+  'settings.helpSupport': '幫助與支援',
   'settings.devDocs': '開發者文件',
   'settings.docGuideTitle': '參數說明書',
   'settings.docGuideDesc': '逐項解讀每個參數的物理意義、聽感與訓練意義',

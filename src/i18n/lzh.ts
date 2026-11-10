@@ -1376,6 +1376,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
 
   /* ---------- 關於之頁：文書之分與免責之辭 ---------- */
   'settings.userDocs': '使用之明',
+  'settings.helpSupport': '助與所援',
   'settings.devDocs': '作者之文書',
   'settings.docGuideTitle': '參數之書',
   'settings.docGuideDesc': '逐詮諸參之物理、聽感與練聲之義',

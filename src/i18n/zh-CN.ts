@@ -1378,6 +1378,7 @@ export const zhCN = {
 
   /* ---------- 关于页：文档分组与免责声明 ---------- */
   'settings.userDocs': '使用说明',
+  'settings.helpSupport': '帮助与支持',
   'settings.devDocs': '开发者文档',
   'settings.docGuideTitle': '参数说明书',
   'settings.docGuideDesc': '逐项解读每个参数的物理含义、听感与训练意义',

@@ -1376,6 +1376,7 @@ export const ja = {
 
   /* ---------- 情報ページ: 文書グループと免責事項 ---------- */
   'settings.userDocs': '使い方ガイド',
+  'settings.helpSupport': 'ヘルプとサポート',
   'settings.devDocs': '開発者ドキュメント',
   'settings.docGuideTitle': 'パラメーター説明書',
   'settings.docGuideDesc': 'すべての指標の物理的な意味・聴こえ方・トレーニングでの意味を一つずつ解説',

@@ -162,27 +162,11 @@ export function AboutTab() {
           <p className="text-sm font-semibold text-ink">Simple Voice Tool for Trans</p>
           <p className="mt-1">{t('settings.aboutVersion', { version: __APP_VERSION__ })}</p>
           <p className="mt-1">{t('settings.aboutPrivacy')}</p>
-          {/* 隐私政策全文：应用内可读（public/privacy-policy.md） */}
-          <button
-            onClick={() => setOpenDoc(PRIVACY_DOC)}
-            className="mt-2 inline-flex items-center gap-1 font-medium text-accent transition-opacity hover:opacity-70"
-          >
-            <ShieldCheck size={13} />
-            {t('settings.privacyPolicy')}
-          </button>
-          {/* 问题反馈：自动收集非敏感诊断，预览确认后才离开设备 */}
-          <button
-            onClick={() => setFeedbackOpen(true)}
-            className="mt-1.5 flex items-center gap-1 font-medium text-accent transition-opacity hover:opacity-70"
-          >
-            <MessageSquareWarning size={13} />
-            {t('settings.feedback')}
-          </button>
         </div>
       </SettingsSection>
 
-      {/* 文档：使用说明 + 参数说明 + 开发者文档，全部应用内可读（懒加载，离线可用） */}
-      <SettingsSection icon={GraduationCap} title={t('settings.userDocs')}>
+      {/* 帮助与支持：使用说明 + 文档 + 隐私政策 + 问题反馈 */}
+      <SettingsSection icon={GraduationCap} title={t('settings.helpSupport')}>
         <button
           onClick={() => setOpenDoc(GUIDE_DOC)}
           className="flex w-full items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-left text-sm font-medium text-ink transition-colors first:border-t-0 hover:text-accent"
@@ -197,6 +181,26 @@ export function AboutTab() {
           <ChevronRight size={15} className="shrink-0 text-ink-2" />
         </button>
         <DocList docs={USER_OPEN_DOCS} onOpen={setOpenDoc} />
+        <button
+          onClick={() => setOpenDoc(PRIVACY_DOC)}
+          className="flex w-full items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-left text-sm font-medium text-ink transition-colors hover:text-accent"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <ShieldCheck size={14} className="shrink-0 text-accent" />
+            <span className="truncate">{t('settings.privacyPolicy')}</span>
+          </span>
+          <ChevronRight size={15} className="shrink-0 text-ink-2" />
+        </button>
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          className="flex w-full items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-left text-sm font-medium text-ink transition-colors hover:text-accent"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <MessageSquareWarning size={14} className="shrink-0 text-accent" />
+            <span className="truncate">{t('settings.feedback')}</span>
+          </span>
+          <ChevronRight size={15} className="shrink-0 text-ink-2" />
+        </button>
       </SettingsSection>
       {DEV_OPEN_DOC_SECTIONS.map((section) => {
         const Icon = DEV_SECTION_ICON[section.key] ?? Code2;

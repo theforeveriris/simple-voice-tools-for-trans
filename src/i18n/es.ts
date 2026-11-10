@@ -1378,6 +1378,7 @@ export const es = {
 
   /* ---------- 关于页：文档分组与免责声明 ---------- */
   'settings.userDocs': 'Guía de uso',
+  'settings.helpSupport': 'Ayuda y soporte',
   'settings.devDocs': 'Documentación para desarrolladores',
   'settings.docGuideTitle': 'Guía de parámetros',
   'settings.docGuideDesc': 'Qué mide cada parámetro, cómo suena y qué significa para el entrenamiento',

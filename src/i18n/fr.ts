@@ -1378,6 +1378,7 @@ export const fr = {
 
   /* ---------- 关于页：文档分组与免责声明 ---------- */
   'settings.userDocs': 'Guide d\'utilisation',
+  'settings.helpSupport': 'Aide et support',
   'settings.devDocs': 'Docs développeur',
   'settings.docGuideTitle': 'Guide des paramètres',
   'settings.docGuideDesc': 'Ce que mesure chaque indicateur, comment il sonne et ce qu\'il implique pour l\'entraînement',
