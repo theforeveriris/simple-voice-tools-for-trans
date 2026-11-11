@@ -13,7 +13,9 @@
 - 录音音频与全部分析记录（音高 / 共振峰 / 能量 / 嗓音质量统计）；
 - 备注、训练靶标、基线、提醒时间等设置；
 - 长期记忆（事实 / 偏好 / 要求 / 注意）、AI 助手对话历史与 AI 请求日志；
-- 导出模板、Lua 脚本与主题偏好、界面语言、自定义词条。
+- 导出模板、Lua 脚本与主题偏好、界面语言、自定义词条；
+- 应用锁配置：PIN 哈希、恢复码哈希、失败计数与 WebAuthn 凭据 id（仅本机 IndexedDB，
+  不进入设置导出、云备份或局域网同步；生物识别由系统处理，应用不接触原始生物数据）。
 
 清空浏览器数据或卸载应用即彻底删除（云端备份除外，见下）。局域网同步只在你主动操作时
 把记录与音频直接传到同一 Wi-Fi 下的另一台设备，不经过任何服务器。
@@ -56,7 +58,8 @@
 | --- | --- |
 | 麦克风 | 仅在录音与实时监听时采样，不后台录音 |
 | 相机（可选） | 仅在 设置 → 数据 → 局域网同步 扫码时打开，关闭弹窗即释放 |
-| 通知（可选） | 练习提醒 |
+| 生物识别（可选） | 应用锁解锁/重置；由系统 BiometricPrompt / Windows Hello / WebAuthn 处理，应用不接触原始生物数据 |
+| 通知（可选） | 练习提醒（低调模式下暂停） |
 | 文件夹访问（可选） | 本地自动备份写入 |
 | 系统分享接收（可选，安装为应用后） | 接收你主动分享的音频做离线分析 |
 
@@ -99,5 +102,9 @@ device on the same Wi-Fi via LAN sync, or (d) the app checks GitHub Releases for
 updates (no user data attached). No analytics, no ads, no crash reporting. You can
 inspect recent AI request payloads in Settings → Data → **AI request log** (last 10
 only, long messages truncated, storage failure never blocks a request), export or
-wipe all data at any time, and clear memories individually.
+wipe all data at any time, and clear memories individually. App-lock credentials
+(PIN/recovery hashes, failure counters, WebAuthn credential IDs) stay in local
+IndexedDB and are excluded from settings export, cloud backup, and LAN sync;
+biometric verification is handled by the system and the app never receives raw
+biometric data.
 Contact: the repository's issue tracker.

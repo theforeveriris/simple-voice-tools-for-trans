@@ -158,7 +158,9 @@ export function CustomThemePage({
 }) {
   useI18n();
   const onBackRef = useRef(onBack);
-  onBackRef.current = onBack;
+  useEffect(() => {
+    onBackRef.current = onBack;
+  }, [onBack]);
   // 嵌套子页：返回手势先关本页，再回外观页
   useEffect(() => registerBackClose(() => onBackRef.current()), []);
 

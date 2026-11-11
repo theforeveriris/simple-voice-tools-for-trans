@@ -11,6 +11,7 @@ import { AppShortcuts, isNative, isTauri, syncNativeSystemBars } from '@/lib/pla
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { runStartupSideEffects } from '@/store/startup'
+import { initSecurity } from '@/lib/security/state'
 import { setLocale, DEFAULT_LOCALE, LOCALES } from '@/i18n'
 import { hydrateAiLocale } from '@/i18n/aiLocale'
 import { getWallpaperHues } from '@/lib/theme/dynamic'
@@ -132,6 +133,9 @@ void useHistoryStore.getState().hydrate();
 // v0.9.0 LLM 档案迁移。原在 useStore 模块顶层随 import 执行，现集中此处，
 // 早于首帧渲染（保证画笔 / DSP 单例与设置一致），store 模块得以保持纯定义
 runStartupSideEffects()
+
+// 应用锁：异步读取 IDB 配置；LockGate 会在 ready 前显示纯色启动底
+void initSecurity()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

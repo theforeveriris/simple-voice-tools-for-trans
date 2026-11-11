@@ -13,6 +13,7 @@ import { RecordingMiniView } from '@/components/layout/RecordingMiniView';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
 import { SplashScreen } from '@/components/layout/SplashScreen';
+import { LockGate } from '@/components/security/LockGate';
 import { OnboardingSheet } from '@/components/settings/OnboardingSheet';
 import { TestPage } from '@/components/pages/TestPage';
 import { AnalysisPage } from '@/components/pages/AnalysisPage';
@@ -21,6 +22,8 @@ import { SettingsPage } from '@/components/pages/SettingsPage';
 import { AssistantPage } from '@/components/ai/AssistantPage';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
+import { useSecurity } from '@/lib/security/hook';
+import { lockNowSafely } from '@/lib/security/manualLock';
 import { applyTheme, presetSpec } from '@/lib/theme/monet';
 import { applyCustomTheme } from '@/lib/theme/customTheme';
 import { applyBgImage } from '@/lib/theme/bgImage';
@@ -126,6 +129,7 @@ function App() {
   const addRecord = useHistoryStore((s) => s.addRecord);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
+  const security = useSecurity();
 
   // 语言切换（同步 <html lang> 与词典）
   useI18n();
@@ -228,7 +232,14 @@ function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // 手动锁定：Ctrl/⌘ + Shift + L（锁屏时不响应其他快捷键）
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        if (security.enabled) void lockNowSafely();
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (security.locked) return;
       const target = e.target as HTMLElement | null;
       if (
         target
@@ -270,7 +281,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shortcutsOpen]);
+  }, [shortcutsOpen, security.enabled, security.locked]);
 
   const isDark = theme === 'dark'
     || (theme === 'system'
@@ -422,6 +433,7 @@ function App() {
   }, [importSharedFile]);
 
   return (
+    <LockGate>
       <div className="app-root min-h-dvh bg-surface text-ink">
       <Toaster
         position="top-center"
@@ -483,7 +495,8 @@ function App() {
       {/* 快捷键帮助（? 呼出）。面板自身渲染到 body portal，因此不用 AnimatePresence 包裹：
           关闭时直接卸载（入场动画保留），不依赖 portal 内退出动画的上报 */}
       {shortcutsOpen && <ShortcutsHelpSheet onClose={() => setShortcutsOpen(false)} />}
-    </div>
+      </div>
+    </LockGate>
   );
 }
 

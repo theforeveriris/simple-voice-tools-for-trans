@@ -18,11 +18,6 @@
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
 
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
             <!-- 系统「分享到」：接收音频文件（对齐应用导入白名单的 audio/* 类型），
                  由 ShareTargetPlugin 落缓存目录后交给 Web 层导入分析管线 -->
             <intent-filter>
@@ -45,6 +40,61 @@
             </intent-filter>
 
         </activity>
+
+        <!-- 应用锁低调模式：activity-alias 在预设名称/图标之间切换。
+             MainActivity 本身不再持有 LAUNCHER intent，避免出现两个入口。 -->
+        <activity-alias
+            android:name=".LauncherNormal"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherVoiceNotes"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:label="@string/discreet_name_voice_notes"
+            android:icon="@drawable/ic_launcher_voice_notes"
+            android:roundIcon="@drawable/ic_launcher_voice_notes">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherVocalLog"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:label="@string/discreet_name_vocal_log"
+            android:icon="@drawable/ic_launcher_vocal_log"
+            android:roundIcon="@drawable/ic_launcher_vocal_log">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherAudioJournal"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:label="@string/discreet_name_audio_journal"
+            android:icon="@drawable/ic_launcher_audio_journal"
+            android:roundIcon="@drawable/ic_launcher_audio_journal">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -99,6 +149,9 @@
     <!-- 麦克风录音：WebView 的 getUserMedia 授权请求会映射到 RECORD_AUDIO 运行时弹窗 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- 应用锁：生物识别（由系统 BiometricPrompt 处理，应用不接触原始生物数据） -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <!-- 相机：局域网同步扫码（可选能力；没有相机的设备仍可复制粘贴连接文本） -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />

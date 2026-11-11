@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
+import { readDiscreetHint } from '@/lib/security/store';
 
 /** 最短驻留：保证品牌页可见（系统启动画面同样有最短展示） */
 const MIN_DISPLAY_MS = 900;
@@ -15,6 +16,7 @@ const FADE_MS = 300;
 
 export function SplashScreen() {
   const [show] = useState(() => useStore.getState().settings.splashScreen);
+  const [discreet] = useState(() => readDiscreetHint() !== 'normal');
   const [phase, setPhase] = useState<'show' | 'fade' | 'gone'>(show ? 'show' : 'gone');
 
   useEffect(() => {
@@ -34,11 +36,25 @@ export function SplashScreen() {
       className="fixed inset-0 z-[200] grid place-items-center bg-surface"
       style={{ opacity: phase === 'fade' ? 0 : 1, transition: `opacity ${FADE_MS}ms ease-out` }}
     >
-      <img
-        src="icon-512.png"
-        alt=""
-        className="w-[min(58vmin,320px)] rounded-[18%] shadow-[0_10px_44px_rgba(96,78,168,0.16),0_2px_12px_rgba(96,78,168,0.08)]"
-      />
+      {discreet ? (
+        <div className="grid size-[min(46vmin,240px)] place-items-center rounded-[22%] bg-[#394150] shadow-[0_10px_44px_rgba(28,25,45,0.18)]">
+          <svg viewBox="0 0 24 24" className="w-[46%]" aria-hidden>
+            <path
+              d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+      ) : (
+        <img
+          src="icon-512.png"
+          alt=""
+          className="w-[min(58vmin,320px)] rounded-[18%] shadow-[0_10px_44px_rgba(96,78,168,0.16),0_2px_12px_rgba(96,78,168,0.08)]"
+        />
+      )}
     </div>
   );
 }

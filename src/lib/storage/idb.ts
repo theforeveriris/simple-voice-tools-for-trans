@@ -145,6 +145,20 @@ export async function idbGetAllAudio<T>(): Promise<T[]> {
 
 /* ------------------------------- 键值仓库 ------------------------------- */
 
+/** 清空全部记录、音频与 kv（应用锁「清除所有数据」用） */
+export async function idbClearAll(): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([STORE_RECORDS, STORE_AUDIO, STORE_KV], 'readwrite');
+    tx.objectStore(STORE_RECORDS).clear();
+    tx.objectStore(STORE_AUDIO).clear();
+    tx.objectStore(STORE_KV).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB clear failed'));
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB clear aborted'));
+  });
+}
+
 export async function idbGetKV<T>(key: string): Promise<T | undefined> {
   return withStore<T | undefined>(STORE_KV, 'readonly', (s) => s.get(key) as IDBRequest<T | undefined>);
 }

@@ -16,6 +16,7 @@ type NativePermissionState = NativePermissionStatus['display'];
 import { isNative } from '@/lib/platform';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { nextPracticeStep } from '@/lib/practicePlan';
+import { readDiscreetHint } from '@/lib/security/store';
 import { t } from '@/i18n';
 
 /** 原生通知固定 id：同 id 重复发送自动替换，模拟 Web 端 tag 去重 */
@@ -44,7 +45,7 @@ async function ensureChannel(): Promise<void> {
   try {
     await LocalNotifications.createChannel({
       id: NATIVE_CHANNEL_ID,
-      name: 'Simple Voice Tool for Trans',
+      name: 'Practice reminders',
       importance: 3, // IMPORTANCE_DEFAULT
     });
     channelReady = true;
@@ -104,6 +105,8 @@ function firedKey(): string {
 /** 发一条提醒通知；点击聚焦应用 */
 export function showPracticeReminder(): void {
   if (!reminderSupported()) return;
+  // 低调模式：通知会暴露应用名称，直接暂停
+  if (readDiscreetHint() !== 'normal') return;
   const step = nextPracticeStep();
   const body = step ? t('reminder.bodyPlan', { step: step.title }) : t('reminder.body');
   if (isNative) {
@@ -154,6 +157,8 @@ async function webNotify(body: string): Promise<void> {
  */
 export function checkPracticeReminder(enabled: boolean, time: string): void {
   if (!enabled || reminderPermission() !== 'granted') return;
+  // 低调模式：通知会暴露应用名称，直接暂停
+  if (readDiscreetHint() !== 'normal') return;
   const key = firedKey();
   // localStorage 在隐私模式 / 禁用 Cookie 时会抛异常，不能让轮询因此中断
   let fired = false;

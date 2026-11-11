@@ -1,0 +1,31 @@
+/**
+ * 应用锁根 Gate：锁定时完全不挂载主界面，避免内容出现在截图/读屏里。
+ * 初始化完成前显示纯色启动底，不闪出任何应用内容。
+ */
+
+import type { ReactNode } from 'react';
+import { useSecurity, useSecurityLifecycle } from '@/lib/security/hook';
+import { LockScreen } from './LockScreen';
+
+/** 切后台时的全屏遮罩；不渲染任何内容，只挡住最近任务预览 */
+function PrivacyMask() {
+  return <div className="fixed inset-0 z-[250] bg-surface" aria-hidden />;
+}
+
+export function LockGate({ children }: { children: ReactNode }) {
+  const security = useSecurity();
+  useSecurityLifecycle();
+
+  if (!security.ready) {
+    return <div className="fixed inset-0 bg-surface" aria-hidden />;
+  }
+  if (security.locked) {
+    return <LockScreen />;
+  }
+  return (
+    <>
+      {children}
+      {security.masked && <PrivacyMask />}
+    </>
+  );
+}
