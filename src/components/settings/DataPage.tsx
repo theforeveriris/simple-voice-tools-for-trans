@@ -23,6 +23,11 @@ import { readLlmRequestLog } from '@/lib/llmRequestLog';
 import { downloadBlob } from '@/lib/file';
 import { RestorePreviewDialog } from './RestorePreviewDialog';
 import { buildRestorePreview, type RestorePreview } from './restorePreview';
+import { BackupVerifyDialog } from './BackupVerifyDialog';
+import {
+  getLastBackupVerify, inspectBackupFile,
+  type BackupInspection, type BackupVerifyResult,
+} from '@/lib/backup/integrity';
 import { batchRecomputeRecords, algoParamsFingerprint, type BatchRecomputeItem } from '@/lib/audio/reanalyze';
 import {
   pickAutoBackupFolder, getAutoBackupState,
@@ -54,7 +59,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui';
 import { StorageUsage } from './StorageUsage';
-import { SettingsSection, SettingRow } from './rows';
+import { SettingsSection, SettingRow, fmtBytes } from './rows';
 import { InfoTip } from './InfoTip';
 import { PrivacyPanel } from './PrivacyPanel';
 import { LlmRequestLogPage } from './LlmRequestLogPage';
@@ -82,6 +87,7 @@ export function DataPage({
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const recordsInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
+  const verifyInputRef = useRef<HTMLInputElement>(null);
   const settingsInputRef = useRef<HTMLInputElement>(null);
   const [zipBusy, setZipBusy] = useState(false);
   // 批量重算：算法版本变更后旧记录的 VQ 指标需重算
@@ -98,6 +104,12 @@ export function DataPage({
   const [webdavLast, setWebdavLast] = useState<number | null>(null);
   // 恢复预览：导入（JSON / ZIP）先解析展示，确认后才真正合并落库
   const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
+  // 恢复演练：同一个预览弹窗，但只读不导入
+  const [previewDrill, setPreviewDrill] = useState(false);
+  // 完整性检查：最近一次结果 + 当前打开的结果弹窗
+  const [lastVerify, setLastVerify] = useState<BackupVerifyResult | null>(null);
+  const [verifyInspection, setVerifyInspection] = useState<BackupInspection | null>(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
   // 确认后要执行的导入动作（JSON 直接合并 / ZIP 走 importFullBackup 挂音频）
   const pendingImportRef = useRef<(() => void) | null>(null);
   // 云备份加密：会话未解锁时先弹口令框，成功后继续被挂起的推/拉动作
@@ -208,6 +220,10 @@ export function DataPage({
   useEffect(() => {
     refreshAutoBackup();
   }, [refreshAutoBackup]);
+
+  useEffect(() => {
+    void getLastBackupVerify().then(setLastVerify).catch(() => setLastVerify(null));
+  }, []);
 
   // 页面加载时检查有多少旧口径记录
   useEffect(() => {
@@ -334,6 +350,7 @@ export function DataPage({
         const { records: incoming } = await parseFullBackupZip(file);
         // 预览去重按全量（内存视图有 MAX_HISTORY 截断）
         const existingIds = new Set((await getAllRecords()).map((r) => r.id));
+        setPreviewDrill(false);
         pendingImportRef.current = () => {
           void (async () => {
             try {
@@ -357,6 +374,39 @@ export function DataPage({
         }
         toast.error(err instanceof Error && err.message ? err.message : t('toast.zipFail'));
       }
+    })();
+  };
+
+  /** 完整性检查：只读文件，校验加密包、ZIP 结构、记录与音频；结果写入「上次验证」 */
+  const runVerify = (file: File) => {
+    if (verifyBusy) return;
+    setVerifyBusy(true);
+    void (async () => {
+      try {
+        const inspection = await inspectBackupFile(file);
+        setVerifyInspection(inspection);
+        setLastVerify(inspection.result);
+      } catch (err) {
+        // 加密备份：先解锁口令，再重试同一个文件
+        if (err instanceof BackupLockedError) {
+          pendingActionRef.current = () => runVerify(file);
+          setPassOpen(true);
+          return;
+        }
+        toast.error(err instanceof Error && err.message ? err.message : t('backup.verifyNotZip'));
+      } finally {
+        setVerifyBusy(false);
+      }
+    })();
+  };
+
+  /** 恢复演练：只打开预览，不写库 */
+  const openDrill = (inspection: BackupInspection) => {
+    setVerifyInspection(null);
+    void (async () => {
+      const existingIds = new Set((await getAllRecords()).map((r) => r.id));
+      setPreviewDrill(true);
+      setRestorePreview(buildRestorePreview(inspection.records, existingIds));
     })();
   };
 
@@ -501,6 +551,40 @@ export function DataPage({
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) importZip(file);
+                e.target.value = '';
+              }}
+            />
+          </SettingRow>
+          {/* 完整性检查：验证文件能否恢复，并可做不落库的恢复演练 */}
+          <SettingRow
+            label={<InfoTip label={t('backup.verifyRow')} text={t('backup.verifyDesc')} />}
+            desc={lastVerify
+              ? t('backup.verifyLast', {
+                time: new Date(lastVerify.at).toLocaleString(localeTag(), {
+                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                }),
+                summary: `${lastVerify.ok ? t('backup.verifyOk') : t('backup.verifyFail', { n: lastVerify.issues.length })}${
+                  lastVerify.audio > 0 ? ` · ${fmtBytes(lastVerify.audioBytes)}` : ''
+                }`,
+              })
+              : t('backup.verifyNever')}
+          >
+            <button
+              onClick={() => verifyInputRef.current?.click()}
+              disabled={verifyBusy}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
+            >
+              <ShieldCheck size={14} />
+              {verifyBusy ? t('backup.verifyChecking') : t('backup.verifyPick')}
+            </button>
+            <input
+              ref={verifyInputRef}
+              type="file"
+              accept=".zip,.svtz,application/zip,application/octet-stream"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) runVerify(file);
                 e.target.value = '';
               }}
             />
@@ -801,17 +885,30 @@ export function DataPage({
           onDone={onPassUnlocked}
         />
 
-        {/* 恢复预览（JSON / ZIP 导入合并前）：确认后执行挂起的导入动作 */}
+        {/* 完整性检查结果 + 恢复演练入口 */}
+        <BackupVerifyDialog
+          inspection={verifyInspection}
+          open={verifyInspection != null}
+          onClose={() => setVerifyInspection(null)}
+          onDrill={() => {
+            if (verifyInspection) openDrill(verifyInspection);
+          }}
+        />
+
+        {/* 恢复预览（JSON / ZIP 导入合并前）：确认后执行挂起的导入动作；演练模式只读 */}
         <RestorePreviewDialog
           open={restorePreview != null}
+          drill={previewDrill}
           preview={restorePreview ?? { incoming: [], duplicates: 0, added: 0, range: null }}
           onConfirm={() => {
             setRestorePreview(null);
+            setPreviewDrill(false);
             pendingImportRef.current?.();
             pendingImportRef.current = null;
           }}
           onCancel={() => {
             setRestorePreview(null);
+            setPreviewDrill(false);
             pendingImportRef.current = null;
           }}
         />
