@@ -35,6 +35,7 @@ import {
   clearHidden,
   clearUnlocked,
   hiddenSince,
+  isDecoySession,
   markHidden,
   markUnlocked,
 } from './session';
@@ -63,6 +64,8 @@ let config: SecurityConfig | null = null;
 let attempts: AttemptState = emptyAttempts();
 let locked = false;
 let masked = false;
+/** 本次解锁是否进入第二 PIN 的诱饵库（只影响当前会话） */
+let decoy = false;
 let ready = false;
 let initPromise: Promise<void> | null = null;
 let channel: BroadcastChannel | null = null;
@@ -89,6 +92,9 @@ function buildSnapshot(): SecuritySnapshot {
     biometricAutoPrompt: hasAnyBiometric(biometric)
       && attempts.biometricFailed < 3
       && config?.enabled === true,
+    hasDuressPin: config?.duress?.pin != null,
+    duressWipe: config?.duress?.wipe === true,
+    decoy: config?.enabled === true && !locked && decoy,
   };
 }
 
@@ -118,6 +124,7 @@ function installChannel(): void {
     if (!config?.enabled) return;
     locked = true;
     masked = false;
+    decoy = false;
     clearUnlocked();
     emit();
   };
@@ -155,6 +162,7 @@ export function initSecurity(): Promise<void> {
     attempts = loadedAttempts;
     if (config?.enabled) {
       locked = !canResumeSession();
+      decoy = !locked && isDecoySession();
       if (locked) clearUnlocked();
       installChannel();
       await applySecureFlag(config.privacy.secureScreen);
@@ -187,6 +195,7 @@ export function lockNow(): void {
   if (!config?.enabled) return;
   locked = true;
   masked = false;
+  decoy = false;
   clearUnlocked();
   clearHidden();
   emit();
@@ -224,11 +233,12 @@ export async function installNativeLifecycle(): Promise<() => void> {
 
 /* ------------------------------ 解锁 ------------------------------ */
 
-function unlockSuccess(): void {
+function unlockSuccess(asDecoy = false): void {
   locked = false;
   masked = false;
+  decoy = asDecoy;
   clearHidden();
-  markUnlocked();
+  markUnlocked(Date.now(), asDecoy);
   emit();
 }
 
@@ -236,7 +246,12 @@ export async function unlockWithPin(pin: string): Promise<UnlockResult> {
   if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
   const retry = remainingLockMs(attempts, 'pin');
   if (retry > 0) return { ok: false, failure: 'delay', retryAfterMs: retry };
-  if (!(await verifySecret(pin, config.pin))) {
+  const real = await verifySecret(pin, config.pin);
+  // 真实 PIN 优先；不匹配时再看第二 PIN（duress / decoy）
+  const duress = !real && config.duress?.pin
+    ? await verifySecret(pin, config.duress.pin)
+    : false;
+  if (!real && !duress) {
     attempts = registerFailure(attempts, 'pin');
     await persistAttempts();
     emit();
@@ -248,7 +263,12 @@ export async function unlockWithPin(pin: string): Promise<UnlockResult> {
   }
   attempts = clearAttempts(attempts, 'pin');
   await persistAttempts();
-  unlockSuccess();
+  // 可选的紧急清除：用户已在设置里显式二次确认；执行后整页重载
+  if (duress && config.duress?.wipe) {
+    await clearAllSecurityData();
+    return { ok: true };
+  }
+  unlockSuccess(duress);
   return { ok: true };
 }
 
@@ -265,7 +285,7 @@ export async function unlockWithBiometric(): Promise<UnlockResult> {
   }
   attempts = clearBiometricFailures(attempts);
   await persistAttempts();
-  unlockSuccess();
+  unlockSuccess(false);
   return { ok: true };
 }
 
@@ -345,6 +365,7 @@ export async function disableLock(
     enabled: false,
     pin: null,
     recovery: null,
+    duress: null,
     biometric: defaultBiometric(),
     discreet: { preset: 'normal' },
     updatedAt: Date.now(),
@@ -357,6 +378,7 @@ export async function disableLock(
   await Promise.all([persistConfig(), persistAttempts()]);
   locked = false;
   masked = false;
+  decoy = false;
   clearUnlocked();
   emit();
   return { ok: true };
@@ -518,6 +540,54 @@ export async function verifyCurrentPin(pin: string): Promise<ChangeResult> {
   await persistAttempts();
   emit();
   return { ok: true };
+}
+
+/* ------------------------------ 第二 PIN（duress / decoy） ------------------------------ */
+
+/**
+ * 设置或更换第二 PIN。必须验证当前真实 PIN；第二 PIN 不能与真实 PIN 相同。
+ * 它只打开一个空的演示资料库，属于界面层保护，不是加密。
+ */
+export async function setDuressPin(currentPin: string, pin: string): Promise<ChangeResult> {
+  if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
+  if (!isSixDigitPin(pin)) return { ok: false, failure: 'error' };
+  const check = await verifyCurrentPin(currentPin);
+  if (!check.ok) return check;
+  if (await verifySecret(pin, config.pin)) return { ok: false, failure: 'error' };
+  config = {
+    ...config,
+    duress: {
+      pin: await hashSecret(pin),
+      wipe: config.duress?.wipe === true,
+    },
+    updatedAt: Date.now(),
+  };
+  await persistConfig();
+  emit();
+  return { ok: true };
+}
+
+/** 移除第二 PIN（需验证真实 PIN） */
+export async function removeDuressPin(currentPin: string): Promise<ChangeResult> {
+  if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
+  const check = await verifyCurrentPin(currentPin);
+  if (!check.ok) return check;
+  config = { ...config, duress: null, updatedAt: Date.now() };
+  await persistConfig();
+  emit();
+  return { ok: true };
+}
+
+/** 第二 PIN 是否同时清除本机数据（默认关；开启前 UI 必须二次确认） */
+export async function setDuressWipe(enabled: boolean): Promise<void> {
+  if (!config?.duress) return;
+  config = {
+    ...config,
+    duress: { ...config.duress, wipe: enabled },
+    updatedAt: Date.now(),
+  };
+  await persistConfig();
+  emit();
 }
 
 /* ------------------------------ 设置项 ------------------------------ */

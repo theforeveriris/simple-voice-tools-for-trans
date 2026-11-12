@@ -11,6 +11,8 @@ import { AUTO_LOCK_MS } from './attempts';
 
 const UNLOCK_KEY = 'svt:security:unlockedAt';
 const HIDDEN_KEY = 'svt:security:hiddenAt';
+/** 本次解锁用的是第二 PIN（只影响当前会话，刷新仍保持在诱饵库） */
+const DECOY_KEY = 'svt:security:decoy';
 
 function navigationType(): string {
   try {
@@ -21,12 +23,22 @@ function navigationType(): string {
   }
 }
 
-export function markUnlocked(now = Date.now()): void {
+export function markUnlocked(now = Date.now(), decoy = false): void {
   try {
     sessionStorage.setItem(UNLOCK_KEY, String(now));
     sessionStorage.removeItem(HIDDEN_KEY);
+    sessionStorage.setItem(DECOY_KEY, decoy ? '1' : '0');
   } catch {
     /* private mode / storage disabled */
+  }
+}
+
+/** 当前会话是否由第二 PIN 解锁 */
+export function isDecoySession(): boolean {
+  try {
+    return sessionStorage.getItem(DECOY_KEY) === '1';
+  } catch {
+    return false;
   }
 }
 
@@ -34,6 +46,7 @@ export function clearUnlocked(): void {
   try {
     sessionStorage.removeItem(UNLOCK_KEY);
     sessionStorage.removeItem(HIDDEN_KEY);
+    sessionStorage.removeItem(DECOY_KEY);
   } catch {
     /* ignore */
   }

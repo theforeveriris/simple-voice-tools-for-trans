@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react';
 import { useSecurity, useSecurityLifecycle } from '@/lib/security/hook';
 import { LockScreen } from './LockScreen';
+import { DecoyApp } from './DecoyApp';
 
 /** 切后台时的全屏遮罩；不渲染任何内容，只挡住最近任务预览 */
 function PrivacyMask() {
@@ -21,6 +22,10 @@ export function LockGate({ children }: { children: ReactNode }) {
   }
   if (security.locked) {
     return <LockScreen />;
+  }
+  // 第二 PIN：只渲染独立的空演示界面，不挂载主应用页面 / store
+  if (security.decoy) {
+    return <DecoyApp />;
   }
   return (
     <>
