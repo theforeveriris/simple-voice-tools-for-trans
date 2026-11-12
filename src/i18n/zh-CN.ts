@@ -1255,7 +1255,7 @@ export const zhCN = {
   /* ---------- 云备份加密 ---------- */
   'settings.encTitle': '云备份加密',
   'settings.encStatus': '加密状态',
-  'settings.encDesc': '开启后，GitHub / WebDAV 云备份的记录与音频先用口令派生密钥（AES-GCM）加密再上传，云端服务商无法读取内容。口令不存储在任何地方——丢失后云端加密数据将无法恢复；手动 ZIP 导出与本地自动备份保持明文',
+  'settings.encDesc': '开启后，GitHub / WebDAV 云备份的记录与音频先用口令派生密钥（AES-GCM）加密再上传，云端服务商无法读取内容。口令不存储在任何地方——丢失后云端加密数据将无法恢复。可在下方选择用同一口令加密手动 ZIP 导出与本地自动备份',
   'settings.encStatusOn': '已开启（本次会话已解锁）',
   'settings.encStatusLocked': '已开启（已锁定，使用前需输入口令）',
   'settings.encStatusOff': '未开启',
@@ -1839,6 +1839,13 @@ export const zhCN = {
   "settings.cleanupDraftAction": "清理",
   "settings.cleanupDraftNone": "没有未完成的录音",
   "settings.cleanupDraftDone": "未完成录音已清理",
+  "settings.encLocal": "本地 ZIP 与自动备份也加密",
+  "settings.encLocalDesc": "使用同一口令：手动 ZIP 导出为 .svtz 加密文件，本地自动备份同样加密；本会话未解锁时会暂停自动备份",
+  "settings.autoBackupEncrypted": "已加密 · 写入 .svtz",
+  "settings.autoBackupEncryptedLocked": "已加密，但本会话未解锁：自动备份已暂停",
+  "toast.autoBackupDoneEncrypted": "已写入加密的本地备份",
+  "toast.autoBackupNeedUnlock": "本地备份已加密：请先在 数据 → 备份加密 中解锁口令",
+  "toast.zipDoneEncrypted": "已导出加密备份：{records} 条记录、{audio} 条音频（.svtz）",
 } as const;
 
 export type DictKey = keyof typeof zhCN;

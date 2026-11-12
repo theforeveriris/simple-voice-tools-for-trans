@@ -1254,7 +1254,7 @@ export const fr = {
   /* ---------- 云备份加密 ---------- */
   'settings.encTitle': 'Chiffrement des sauvegardes cloud',
   'settings.encStatus': 'État du chiffrement',
-  'settings.encDesc': 'Une fois activé, les enregistrements et l\'audio des sauvegardes cloud (GitHub / WebDAV) sont chiffrés avec une clé dérivée de ton mot de passe (AES-GCM) avant l\'envoi : le fournisseur ne peut pas lire le contenu. Le mot de passe n\'est stocké nulle part — s\'il est perdu, les données cloud chiffrées sont irrécupérables. L\'export ZIP manuel et la sauvegarde locale automatique restent en clair',
+  'settings.encDesc': 'Une fois activé, les enregistrements et l\'audio des sauvegardes cloud (GitHub / WebDAV) sont chiffrés avec une clé dérivée de ton mot de passe (AES-GCM) avant l\'envoi : le fournisseur ne peut pas lire le contenu. Le mot de passe n\'est stocké nulle part — s\'il est perdu, les données cloud chiffrées sont irrécupérables. Tu peux aussi chiffrer l\'export ZIP manuel et les sauvegardes locales automatiques avec le même mot de passe ci-dessous',
   'settings.encStatusOn': 'Activé (déverrouillé pour cette session)',
   'settings.encStatusLocked': 'Activé (verrouillé — saisis le mot de passe pour l\'utiliser)',
   'settings.encStatusOff': 'Désactivé',
@@ -1839,4 +1839,11 @@ export const fr = {
   "settings.cleanupDraftAction": "Effacer",
   "settings.cleanupDraftNone": "Aucun enregistrement inachevé",
   "settings.cleanupDraftDone": "Enregistrements inachevés effacés",
+  "settings.encLocal": "Chiffrer le ZIP local et les sauvegardes automatiques",
+  "settings.encLocalDesc": "Utilise le même mot de passe : l\\'export ZIP manuel devient un fichier .svtz chiffré et les sauvegardes locales automatiques sont chiffrées aussi ; elles sont suspendues tant que la session est verrouillée",
+  "settings.autoBackupEncrypted": "Chiffré · écrit .svtz",
+  "settings.autoBackupEncryptedLocked": "Chiffré, mais session verrouillée : sauvegarde automatique en pause",
+  "toast.autoBackupDoneEncrypted": "Sauvegarde locale chiffrée écrite",
+  "toast.autoBackupNeedUnlock": "La sauvegarde locale est chiffrée : déverrouille le mot de passe dans Données → Chiffrement des sauvegardes",
+  "toast.zipDoneEncrypted": "Sauvegarde chiffrée exportée : {records} enregistrements, {audio} audios (.svtz)",
 } as const;

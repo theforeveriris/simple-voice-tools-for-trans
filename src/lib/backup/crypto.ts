@@ -1,8 +1,8 @@
 /**
  * 云备份加密（AES-256-GCM + PBKDF2，全部走 WebCrypto）
  *
- * 覆盖范围：GitHub 私有库与 WebDAV 的云端上传内容（records JSON + 录音音频）。
- * 手动 ZIP 导出与本地自动备份保持明文（存放在用户自己选择的位置）。
+ * 覆盖范围：GitHub 私有库与 WebDAV 的云端上传内容（records JSON + 录音音频），
+ * 以及可选的本地手动 ZIP / 自动备份（localEnabled 开关，同一口令）。
  *
  * 关键设计——确定性 IV（SIV 式构造）：
  *   GitHub 备份按文件推送，靠对比 git blob SHA 跳过未变化的文件。
@@ -52,6 +52,8 @@ export interface BackupCryptoConfig {
   /** 校验块密文，base64 */
   checkCtB64: string;
   createdAt: number;
+  /** 同一口令也用于手动 ZIP 导出与本地自动备份（默认关闭，保持旧行为） */
+  localEnabled?: boolean;
 }
 
 /** 云端操作被加密锁住时抛出：UI 捕获后弹口令对话框再重试 */
@@ -160,6 +162,22 @@ export async function isBackupEncryptionEnabled(): Promise<boolean> {
   return cfg?.enabled === true;
 }
 
+/** 本地 ZIP / 自动备份是否也使用同一口令加密 */
+export async function isLocalBackupEncryptionEnabled(): Promise<boolean> {
+  const cfg = await getBackupCryptoConfig();
+  return cfg?.enabled === true && cfg.localEnabled === true;
+}
+
+/** 切换本地备份加密（仅在云备份加密已开启时有意义） */
+export async function setLocalBackupEncryptionEnabled(enabled: boolean): Promise<void> {
+  const cfg = await getBackupCryptoConfig();
+  if (!cfg?.enabled) return;
+  const next = { ...cfg, localEnabled: enabled };
+  await idbPutKV(KV_CONFIG, next);
+  if (session) session = { ...session, config: next };
+  notifyBackupChanged();
+}
+
 /** 当前会话是否已解锁（开启且口令在内存中） */
 export function isBackupEncryptionUnlocked(): boolean {
   return session != null;
@@ -177,6 +195,8 @@ export async function enableBackupEncryption(passphrase: string): Promise<void> 
   // 校验块：随机 IV 加密已知明文，供会话解锁时验证口令
   const checkIv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const checkCt = await aesGcmEncrypt(key, checkIv, new TextEncoder().encode(CHECK_PLAINTEXT));
+  // 更换口令时保留「本地备份也加密」的选择，不强迫用户重新打开
+  const prev = await getBackupCryptoConfig();
   const config: BackupCryptoConfig = {
     enabled: true,
     saltB64: u8ToB64(salt),
@@ -184,6 +204,7 @@ export async function enableBackupEncryption(passphrase: string): Promise<void> 
     checkIvB64: u8ToB64(checkIv),
     checkCtB64: u8ToB64(checkCt),
     createdAt: Date.now(),
+    ...(prev?.localEnabled ? { localEnabled: true } : {}),
   };
   await idbPutKV(KV_CONFIG, config);
   session = { passphrase: trimmed, config };

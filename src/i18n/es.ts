@@ -1254,7 +1254,7 @@ export const es = {
   /* ---------- 云备份加密 ---------- */
   'settings.encTitle': 'Cifrado de copias en la nube',
   'settings.encStatus': 'Estado del cifrado',
-  'settings.encDesc': 'Si lo activas, las copias en la nube (GitHub / WebDAV) cifran los registros y el audio con una clave derivada de tu contraseña (AES-GCM) antes de subirlos: el proveedor de almacenamiento no puede leer el contenido. La contraseña no se guarda en ningún sitio: si la pierdes, los datos cifrados en la nube no se podrán recuperar. La exportación manual a ZIP y la copia automática local siguen sin cifrar',
+  'settings.encDesc': 'Si lo activas, las copias en la nube (GitHub / WebDAV) cifran los registros y el audio con una clave derivada de tu contraseña (AES-GCM) antes de subirlos: el proveedor de almacenamiento no puede leer el contenido. La contraseña no se guarda en ningún sitio: si la pierdes, los datos cifrados en la nube no se podrán recuperar. También puedes cifrar la exportación manual a ZIP y las copias automáticas locales con la misma contraseña',
   'settings.encStatusOn': 'Activado (desbloqueado en esta sesión)',
   'settings.encStatusLocked': 'Activado (bloqueado, introduce la contraseña para usarlo)',
   'settings.encStatusOff': 'Desactivado',
@@ -1839,4 +1839,11 @@ export const es = {
   "settings.cleanupDraftAction": "Borrar",
   "settings.cleanupDraftNone": "No hay grabaciones sin terminar",
   "settings.cleanupDraftDone": "Grabaciones sin terminar borradas",
+  "settings.encLocal": "Cifrar ZIP local y copias automáticas",
+  "settings.encLocalDesc": "Usa la misma contraseña: la exportación manual ZIP pasa a ser un archivo .svtz cifrado y las copias automáticas locales también se cifran; se pausan mientras la sesión esté bloqueada",
+  "settings.autoBackupEncrypted": "Cifrado · escribe .svtz",
+  "settings.autoBackupEncryptedLocked": "Cifrado, pero la sesión está bloqueada: copia automática en pausa",
+  "toast.autoBackupDoneEncrypted": "Copia local cifrada escrita",
+  "toast.autoBackupNeedUnlock": "La copia local está cifrada: desbloquea la contraseña en Datos → Cifrado de copias primero",
+  "toast.zipDoneEncrypted": "Copia cifrada exportada: {records} registros, {audio} audios (.svtz)",
 } as const;

@@ -34,7 +34,8 @@ import {
   testWebdav, pushWebdavBackup, pullWebdavBackup, type WebdavConfig,
 } from '@/lib/backup/webdav';
 import {
-  isBackupEncryptionEnabled, isBackupEncryptionUnlocked, BackupLockedError,
+  isBackupEncryptionEnabled, isBackupEncryptionUnlocked, isLocalBackupEncryptionEnabled,
+  BackupLockedError,
 } from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -348,6 +349,12 @@ export function DataPage({
         };
         setRestorePreview(buildRestorePreview(incoming, existingIds));
       } catch (err) {
+        // 加密备份：先解锁口令，再重试解析（预览仍不落库）
+        if (err instanceof BackupLockedError) {
+          pendingActionRef.current = () => importZip(file);
+          setPassOpen(true);
+          return;
+        }
         toast.error(err instanceof Error && err.message ? err.message : t('toast.zipFail'));
       }
     })();
@@ -380,14 +387,26 @@ export function DataPage({
     reader.readAsText(file);
   };
 
-  /** 导出完整备份 ZIP（记录 + 音频） */
+  /** 导出完整备份 ZIP（记录 + 音频；本地加密开启时用云备份口令加密为 .svtz） */
   const exportZip = async () => {
     if (zipBusy) return;
+    const encrypt = await isLocalBackupEncryptionEnabled();
+    // 已开启加密但本会话未解锁：先弹口令框，解锁成功后重试本次导出
+    if (encrypt && !isBackupEncryptionUnlocked()) {
+      pendingActionRef.current = () => void exportZip();
+      setPassOpen(true);
+      return;
+    }
     setZipBusy(true);
     try {
-      const res = await exportFullBackup();
+      const res = await exportFullBackup({ encrypt });
       if (res.records === 0) toast.info(t('toast.nothingToExport'));
-      else toast.success(t('toast.zipDone', { records: res.records, audio: res.audio }));
+      else {
+        toast.success(t(encrypt ? 'toast.zipDoneEncrypted' : 'toast.zipDone', {
+          records: res.records,
+          audio: res.audio,
+        }));
+      }
     } catch (err) {
       console.error(err);
       toast.error(t('toast.zipFail'));
@@ -477,7 +496,7 @@ export function DataPage({
             <input
               ref={zipInputRef}
               type="file"
-              accept=".zip,application/zip"
+              accept=".zip,.svtz,application/zip,application/octet-stream"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -514,7 +533,13 @@ export function DataPage({
                 <>
                   <SettingRow
                     label={t('settings.autoBackupStatus')}
-                    desc={autoBackup.permission === 'granted' ? t('settings.autoBackupOn') : t('settings.autoBackupNeedAuth')}
+                    desc={autoBackup.permission !== 'granted'
+                      ? t('settings.autoBackupNeedAuth')
+                      : !autoBackup.encrypted
+                        ? t('settings.autoBackupOn')
+                        : autoBackup.locked
+                          ? t('settings.autoBackupEncryptedLocked')
+                          : t('settings.autoBackupEncrypted')}
                   >
                     {autoBackup.permission !== 'granted' ? (
                       <button
@@ -538,6 +563,13 @@ export function DataPage({
                   >
                     <button
                       onClick={() => {
+                        if (autoBackup.encrypted && autoBackup.locked) {
+                          pendingActionRef.current = () => {
+                            void runAutoBackupNow().then(refreshAutoBackup);
+                          };
+                          setPassOpen(true);
+                          return;
+                        }
                         void runAutoBackupNow().then(refreshAutoBackup);
                       }}
                       disabled={autoBackup.permission !== 'granted'}
@@ -556,8 +588,8 @@ export function DataPage({
           )}
         </SettingsSection>
 
-        {/* 云备份加密（GitHub / WebDAV 上传内容 AES-GCM 加密） */}
-        <BackupEncryptionSection />
+        {/* 云备份加密（GitHub / WebDAV 上传内容 AES-GCM 加密，可选复用于本地备份） */}
+        <BackupEncryptionSection onChanged={refreshAutoBackup} />
 
         {/* WebDAV 同步（自托管网盘 / NAS） */}
         <SettingsSection icon={Cloud} title={t('settings.webdav')}>

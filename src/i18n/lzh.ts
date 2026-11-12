@@ -1253,7 +1253,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   /* ---------- 雲備加密 ---------- */
   'settings.encTitle': '雲備加密',
   'settings.encStatus': '加密之狀',
-  'settings.encDesc': '既啟，則傳於 GitHub / WebDAV 之記錄音聲，先以密語演鑰（AES-GCM）加密而後行，雲端之主莫能覩也。密語不藏於任何所在——失之，則雲端密文終不可復；手出之囊與本地自備，仍為明文',
+  'settings.encDesc': '既啟，則傳於 GitHub / WebDAV 之記錄音聲，先以密語演鑰（AES-GCM）加密而後行，雲端之主莫能覩也。密語不藏於任何所在——失之，則雲端密文終不可復。下方可擇以同語加密手出之囊與本地自備',
   'settings.encStatusOn': '已啟（今會已解）',
   'settings.encStatusLocked': '已啟（鎖矣，用前須輸密語）',
   'settings.encStatusOff': '未啟',
@@ -1831,5 +1831,12 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   "settings.cleanupDraftAction": "清",
   "settings.cleanupDraftNone": "無未竟之錄",
   "settings.cleanupDraftDone": "未竟之錄已清",
+  "settings.encLocal": "本地囊篋與自備亦加密",
+  "settings.encLocalDesc": "同用一語：手出之囊為 .svtz 密文，本地自備亦密；會話未解則自備暫止",
+  "settings.autoBackupEncrypted": "已密 · 書 .svtz",
+  "settings.autoBackupEncryptedLocked": "已密，然會話未解：自備暫止",
+  "toast.autoBackupDoneEncrypted": "已書加密之本地備",
+  "toast.autoBackupNeedUnlock": "本地備已密：請先於 數據 → 備份加密 解語",
+  "toast.zipDoneEncrypted": "已出加密之備：記 {records} 條、音 {audio} 條（.svtz）",
 };
 

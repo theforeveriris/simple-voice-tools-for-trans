@@ -11,7 +11,7 @@ import { idbGetKV, idbPutAudio } from '@/lib/storage/idb';
 import { BG_IMAGE_KV, saveBgImage } from '@/lib/theme/bgImage';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { audioMimeOf, downloadBlob } from '@/lib/file';
-import { isEncryptedBackup } from '@/lib/backup/crypto';
+import { decryptBackupEnvelope, encryptForBackup, isEncryptedBackup } from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { APP_ID } from '@/lib/appId';
 import type { AnalysisRecord } from '@/types';
@@ -180,13 +180,31 @@ export async function sha256Hex(data: Uint8Array): Promise<string> {
 
 /**
  * 打包并下载完整备份
+ * @param options.encrypt 用当前云备份口令加密（需会话已解锁）；文件名改为 .svtz
  * @returns 导出的记录条数与音频条数
  */
-export async function exportFullBackup(): Promise<{ records: number; audio: number }> {
+export async function exportFullBackup(
+  options: { encrypt?: boolean } = {},
+): Promise<{ records: number; audio: number }> {
   const built = await buildFullBackupZip();
   if (!built) return { records: 0, audio: 0 };
-  downloadBlob(built.filename, built.blob);
+  if (options.encrypt) {
+    const plain = new Uint8Array(await built.blob.arrayBuffer());
+    const encrypted = await encryptForBackup(plain);
+    downloadBlob(
+      built.filename.replace(/\.zip$/, '.svtz'),
+      new Blob([encrypted], { type: 'application/octet-stream' }),
+    );
+  } else {
+    downloadBlob(built.filename, built.blob);
+  }
   return { records: built.records, audio: built.audio };
+}
+
+/** 解密（如需要）并解包 ZIP；未解锁时抛 BackupLockedError，由 UI 弹口令框后重试 */
+async function unzipBackup(bytes: Uint8Array) {
+  const plain = isEncryptedBackup(bytes) ? await decryptBackupEnvelope(bytes) : bytes;
+  return unzipSync(plain);
 }
 
 export interface BackupImportResult {
@@ -202,8 +220,7 @@ export interface BackupImportResult {
  */
 export async function parseFullBackupZip(file: File): Promise<{ records: AnalysisRecord[]; hasBgImage: boolean }> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (isEncryptedBackup(bytes)) throw new Error(t('backup.errEncryptedZip'));
-  const files = unzipSync(bytes);
+  const files = await unzipBackup(bytes);
   const jsonEntry = files[JSON_NAME] ?? files[`data/${JSON_NAME}`];
   if (!jsonEntry) throw new Error(t('backup.errNoJson'));
   const { records } = parseRecordsPayload(strFromU8(jsonEntry));
@@ -217,9 +234,8 @@ export async function parseFullBackupZip(file: File): Promise<{ records: Analysi
  */
 export async function importFullBackup(file: File): Promise<BackupImportResult> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  // 云端加密包（SVTENC1 信封）不是 zip：本地手动恢复没有口令输入流程，指引用户走云恢复
-  if (isEncryptedBackup(bytes)) throw new Error(t('backup.errEncryptedZip'));
-  const files = unzipSync(bytes);
+  // 加密包（SVTENC1 信封）先解密；未解锁时抛 BackupLockedError（UI 弹口令框后重试）
+  const files = await unzipBackup(bytes);
   const jsonEntry = files[JSON_NAME] ?? files[`data/${JSON_NAME}`];
   if (!jsonEntry) throw new Error(t('backup.errNoJson'));
 

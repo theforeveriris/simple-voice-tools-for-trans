@@ -1253,7 +1253,7 @@ export const ja = {
   /* ---------- クラウドバックアップ暗号化 ---------- */
   'settings.encTitle': 'クラウドバックアップの暗号化',
   'settings.encStatus': '暗号化の状態',
-  'settings.encDesc': '有効にすると、GitHub / WebDAV へのクラウドバックアップ（記録・音声）を、パスフレーズから導出した鍵による AES-GCM 暗号化でアップロードします。ストレージ事業者は内容を読めません。パスフレーズはどこにも保存されません——紛失するとクラウド上の暗号化データは復元できません。手動 ZIP 書き出しとローカル自動バックアップは暗号化されません',
+  'settings.encDesc': '有効にすると、GitHub / WebDAV へのクラウドバックアップ（記録・音声）を、パスフレーズから導出した鍵による AES-GCM 暗号化でアップロードします。ストレージ事業者は内容を読めません。パスフレーズはどこにも保存されません——紛失するとクラウド上の暗号化データは復元できません。下の設定で、手動 ZIP 書き出しとローカル自動バックアップも同じパスフレーズで暗号化できます',
   'settings.encStatusOn': 'オン（このセッションは解除済み）',
   'settings.encStatusLocked': 'オン（ロック中——使用前にパスフレーズを入力）',
   'settings.encStatusOff': 'オフ',
@@ -1831,4 +1831,11 @@ export const ja = {
   "settings.cleanupDraftAction": "削除",
   "settings.cleanupDraftNone": "未完了の録音はありません",
   "settings.cleanupDraftDone": "未完了の録音を削除しました",
+  "settings.encLocal": "ローカル ZIP と自動バックアップも暗号化",
+  "settings.encLocalDesc": "同じパスフレーズを使用：手動 ZIP は暗号化された .svtz になり、ローカル自動バックアップも暗号化されます。セッションがロックされている間は自動バックアップを停止します",
+  "settings.autoBackupEncrypted": "暗号化済み · .svtz を書き込み",
+  "settings.autoBackupEncryptedLocked": "暗号化済みですがセッションがロック中：自動バックアップ停止",
+  "toast.autoBackupDoneEncrypted": "暗号化されたローカルバックアップを書き込みました",
+  "toast.autoBackupNeedUnlock": "ローカルバックアップは暗号化されています：先に データ → バックアップ暗号化 でパスフレーズを解除してください",
+  "toast.zipDoneEncrypted": "暗号化バックアップを書き出しました：{records} 件の記録、{audio} 件の音声（.svtz）",
 } as const;

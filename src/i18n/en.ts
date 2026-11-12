@@ -1252,7 +1252,7 @@ export const en = {
   /* ---------- Cloud backup encryption ---------- */
   'settings.encTitle': 'Cloud backup encryption',
   'settings.encStatus': 'Encryption status',
-  'settings.encDesc': 'When on, cloud backups (GitHub / WebDAV) encrypt records and audio with a key derived from your passphrase (AES-GCM) before upload — the storage provider cannot read the contents. The passphrase is never stored: if lost, encrypted cloud data cannot be recovered. Manual ZIP export and local auto-backup stay unencrypted',
+  'settings.encDesc': 'When on, cloud backups (GitHub / WebDAV) encrypt records and audio with a key derived from your passphrase (AES-GCM) before upload — the storage provider cannot read the contents. The passphrase is never stored: if lost, encrypted cloud data cannot be recovered. You can also encrypt manual ZIP exports and local auto-backups with the same passphrase below',
   'settings.encStatusOn': 'On (unlocked for this session)',
   'settings.encStatusLocked': 'On (locked — enter the passphrase to use)',
   'settings.encStatusOff': 'Off',
@@ -1830,4 +1830,11 @@ export const en = {
   "settings.cleanupDraftAction": "Clear",
   "settings.cleanupDraftNone": "No unfinished recordings",
   "settings.cleanupDraftDone": "Unfinished recordings cleared",
+  "settings.encLocal": "Encrypt local ZIP and auto backups",
+  "settings.encLocalDesc": "Uses the same passphrase: manual ZIP exports become encrypted .svtz files and local auto backups are encrypted too; auto backups pause while this session is locked",
+  "settings.autoBackupEncrypted": "Encrypted · writes .svtz",
+  "settings.autoBackupEncryptedLocked": "Encrypted, but this session is locked: auto backup paused",
+  "toast.autoBackupDoneEncrypted": "Encrypted local backup written",
+  "toast.autoBackupNeedUnlock": "Local backup is encrypted: unlock the passphrase in Data → Backup encryption first",
+  "toast.zipDoneEncrypted": "Encrypted backup exported: {records} records, {audio} audio files (.svtz)",
 } as const;

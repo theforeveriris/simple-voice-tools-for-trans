@@ -1252,7 +1252,7 @@ export const zhTW = {
   /* ---------- 雲端備份加密 ---------- */
   'settings.encTitle': '雲端備份加密',
   'settings.encStatus': '加密狀態',
-  'settings.encDesc': '開啟後，GitHub / WebDAV 雲端備份的記錄與音訊先用密碼衍生金鑰（AES-GCM）加密再上傳，雲端服務商無法讀取內容。密碼不會儲存在任何地方——遺失後雲端加密資料將無法還原；手動 ZIP 匯出與本機自動備份保持明文',
+  'settings.encDesc': '開啟後，GitHub / WebDAV 雲端備份的記錄與音訊先用密碼衍生金鑰（AES-GCM）加密再上傳，雲端服務商無法讀取內容。密碼不會儲存在任何地方——遺失後雲端加密資料將無法還原。可在下方選擇用同一密碼加密手動 ZIP 匯出與本機自動備份',
   'settings.encStatusOn': '已開啟（本次工作階段已解鎖）',
   'settings.encStatusLocked': '已開啟（已鎖定，使用前需輸入密碼）',
   'settings.encStatusOff': '未開啟',
@@ -1830,4 +1830,11 @@ export const zhTW = {
   "settings.cleanupDraftAction": "清理",
   "settings.cleanupDraftNone": "沒有未完成的錄音",
   "settings.cleanupDraftDone": "未完成錄音已清理",
+  "settings.encLocal": "本機 ZIP 與自動備份也加密",
+  "settings.encLocalDesc": "使用同一密碼：手動 ZIP 匯出為 .svtz 加密檔，本機自動備份同樣加密；本工作階段未解鎖時會暫停自動備份",
+  "settings.autoBackupEncrypted": "已加密 · 寫入 .svtz",
+  "settings.autoBackupEncryptedLocked": "已加密，但本工作階段未解鎖：自動備份已暫停",
+  "toast.autoBackupDoneEncrypted": "已寫入加密的本機備份",
+  "toast.autoBackupNeedUnlock": "本機備份已加密：請先在 資料 → 備份加密 中解鎖密碼",
+  "toast.zipDoneEncrypted": "已匯出加密備份：{records} 筆記錄、{audio} 筆音訊（.svtz）",
 } as const;
