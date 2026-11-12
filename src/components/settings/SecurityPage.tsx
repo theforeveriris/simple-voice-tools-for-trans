@@ -243,7 +243,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
                 checked={security.duressWipe}
                 onCheckedChange={(value) => {
                   if (value) setWipeConfirm(true);
-                  else void setDuressWipe(false);
+                  else void setDuressWipe(false).catch(() => toast.error(t('security.changeFailed')));
                 }}
               />
             </SettingRow>
@@ -363,7 +363,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
               className="bg-red-500 text-white hover:bg-red-500/90"
               onClick={() => {
                 setWipeConfirm(false);
-                void setDuressWipe(true);
+                void setDuressWipe(true).catch(() => toast.error(t('security.changeFailed')));
               }}
             >
               {t('security.duressWipeAction')}
