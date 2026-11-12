@@ -1291,7 +1291,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'privacy.title': '數之所之',
   'privacy.lineLocal': '記錄、音聲與設制，惟存於本機之覽器（IndexedDB）；不用下方雲功能，則無一數離機。',
   'privacy.lineCloud': '雲備（GitHub / WebDAV）傳記錄音聲於爾自藏之所；啟「雲備加密」則先加密而後傳，未啟則如原而傳。',
-  'privacy.lineLocalBackup': '手出之囊與本地自備不加密，存於爾所擇之處。',
+  "privacy.lineLocalBackup": "手出之囊與本地自備，本不加密，存於爾所擇之處；可於 數據 → 備份加密 擇以同語加密。",
   'privacy.lineLlm': '練聲之議與週報惟傳統計之數與記錄之註（不含音聲與原曲）；AI 助手另傳問答之文、所選之憶與內建典籍之節，皆不含音聲與原曲。請求之體不含 API 鑰；數據頁之「AI 請求誌」備錄每次實發之內容（至多十條，長文截短；錄誌失誤不阻其求）。',
   'privacy.lineWebSearch': '聯網之搜（可選）：惟汝於 設置 → 大模 啟之並自配 Tavily API Key，索詞乃達於 Tavily；Key 僅存本機 IndexedDB，不入設置之出、主題之包、ZIP 之備或請求之誌。私談不啟。',
   'privacy.ghRow': 'GitHub 雲備',
@@ -1927,5 +1927,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   "backup.passTitle": "入備之密語",
   "backup.passDesc": "此備已密。入其初製之語；驗與復皆在本機。",
   "backup.passPlaceholder": "備之密語",
+  "recover.discardConfirm": "確認棄之",
+  "security.clearFailed": "清之不成：本機數據猶存，請再試",
 };
 

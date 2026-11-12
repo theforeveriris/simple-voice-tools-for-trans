@@ -14,6 +14,11 @@ vi.mock('@/lib/storage/idb', () => ({
   idbDeleteKV: async (key: string) => {
     h.kv.delete(key);
   },
+  idbDeleteKVByPrefix: async (prefix: string) => {
+    for (const key of [...h.kv.keys()]) {
+      if (key.startsWith(prefix)) h.kv.delete(key);
+    }
+  },
   idbGetRecord: async (id: string) => h.records.find((record) => record.id === id),
 }));
 

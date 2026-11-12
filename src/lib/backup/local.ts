@@ -115,11 +115,18 @@ async function writeBackup(silentSkip: boolean): Promise<void> {
     if (!silentSkip) toast.error(t('toast.autoBackupNeedAuth'));
     return;
   }
-  const built = await buildFullBackupZip();
-  if (!built) return;
-  const encrypted = await isLocalBackupEncryptionEnabled();
+  // 先看锁定态：加密开启但未解锁时没必要构建整个 ZIP（大历史会明显卡顿）
+  let encrypted = await isLocalBackupEncryptionEnabled();
   if (encrypted && !isBackupEncryptionUnlocked()) {
     // 已选择加密但本会话还没解锁：不写明文，等用户在数据页解锁后手动/下次自动备份
+    if (!silentSkip) toast.error(t('toast.autoBackupNeedUnlock'));
+    return;
+  }
+  const built = await buildFullBackupZip();
+  if (!built) return;
+  // 构建期间设置可能变化：写入前再确认一次，避免刚开启加密却写出明文
+  encrypted = await isLocalBackupEncryptionEnabled();
+  if (encrypted && !isBackupEncryptionUnlocked()) {
     if (!silentSkip) toast.error(t('toast.autoBackupNeedUnlock'));
     return;
   }

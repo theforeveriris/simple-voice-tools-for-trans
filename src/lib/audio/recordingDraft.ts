@@ -6,7 +6,9 @@
  * 通过 recordId 对账后静默清理；只有找不到对应记录的草稿才会提示恢复。
  */
 
-import { idbDeleteKV, idbGetRecord, idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import {
+  idbDeleteKV, idbDeleteKVByPrefix, idbGetRecord, idbGetKV, idbPutKV,
+} from '@/lib/storage/idb';
 import type { AnalysisRecord, TestMode } from '@/types';
 
 const META_KEY = 'recording:draft:meta';
@@ -37,25 +39,19 @@ function chunkKey(id: string, index: number): string {
 }
 
 function enqueue(task: () => Promise<void>): Promise<void> {
-  const next = queue.then(task);
-  queue = next.catch(() => {});
-  return next;
+  // 磁盘满 / 隐私模式等失败不能变成未处理的 rejection，也不能卡死后续写入
+  queue = queue.then(task).catch((err) => {
+    console.warn('录音草稿写入失败:', err);
+  });
+  return queue;
 }
 
-async function deleteChunks(meta: RecordingDraftMeta): Promise<void> {
-  // 多删几个位置，覆盖「块已写、meta 还没更新」的极端情况留下的孤儿
-  const count = Math.max(0, meta.chunkCount) + 4;
-  await Promise.all(
-    Array.from({ length: count }, (_, index) => idbDeleteKV(chunkKey(meta.id, index))),
-  );
-}
-
-/** 开始新录音：覆盖旧草稿 */
+/** 开始新录音：先清掉所有旧草稿块（包括 meta 丢失留下的孤儿），再写新元数据 */
 export async function startRecordingDraft(meta: Omit<RecordingDraftMeta, 'chunkCount' | 'totalBytes'>): Promise<void> {
   activeMeta = { ...meta, chunkCount: 0, totalBytes: 0 };
   await enqueue(async () => {
-    const old = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);
-    if (old) await deleteChunks(old);
+    await idbDeleteKVByPrefix(CHUNK_PREFIX);
+    await idbDeleteKV(META_KEY);
     if (activeMeta) await idbPutKV(META_KEY, activeMeta);
   });
 }
@@ -123,13 +119,26 @@ export async function clearRecordingDraftIfSaved(): Promise<void> {
   await queue;
   const meta = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);
   if (!meta) return;
-  if (await draftRecordExists(meta)) await clearRecordingDraft();
+  if (await draftRecordExists(meta)) await clearRecordingDraft(meta.id);
 }
 
-export async function clearRecordingDraft(): Promise<void> {
+/**
+ * 清理草稿。
+ * @param targetId 指定要删的草稿 id；不传则清当前 meta。
+ *   指定 id 时不会误删排队期间刚开始的新录音。
+ */
+export async function clearRecordingDraft(targetId?: string): Promise<void> {
+  const id = targetId ?? activeMeta?.id;
   await enqueue(async () => {
-    const meta = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);
-    if (meta) await deleteChunks(meta);
+    if (id) {
+      await idbDeleteKVByPrefix(`${CHUNK_PREFIX}${id}:`);
+      const meta = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);
+      if (meta && meta.id !== id) return; // 期间已开始新录音：保留新 meta
+      await idbDeleteKV(META_KEY);
+      if (activeMeta?.id === id) activeMeta = null;
+      return;
+    }
+    await idbDeleteKVByPrefix(CHUNK_PREFIX);
     await idbDeleteKV(META_KEY);
     activeMeta = null;
   });
@@ -137,5 +146,7 @@ export async function clearRecordingDraft(): Promise<void> {
 
 /** 录音过短等不落记录的场景：立即丢弃，不等下次启动 */
 export function discardRecordingDraft(): void {
-  void clearRecordingDraft();
+  // 捕获当前草稿 id，避免清理任务排队期间误伤下一次录音
+  void clearRecordingDraft(activeMeta?.id);
+  activeMeta = null;
 }

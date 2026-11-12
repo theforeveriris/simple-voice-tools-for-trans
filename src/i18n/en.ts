@@ -1290,7 +1290,7 @@ export const en = {
   'privacy.title': 'Where your data goes',
   'privacy.lineLocal': 'Records, audio and settings stay in this browser (IndexedDB). Until you use a cloud feature below, nothing leaves this device.',
   'privacy.lineCloud': 'Cloud backup (GitHub / WebDAV) uploads records and audio to your own storage. With cloud backup encryption on, files are encrypted before upload; otherwise they are uploaded as-is.',
-  'privacy.lineLocalBackup': 'Manual ZIP export and local auto-backup are unencrypted and stored wherever you choose.',
+  "privacy.lineLocalBackup": "Manual ZIP export and local auto-backup are unencrypted by default and stored wherever you choose; Data → Backup encryption can encrypt them with the same passphrase.",
   'privacy.lineLlm': 'Training advice and weekly reports upload statistics and record notes only (no audio, no raw curves); the AI assistant additionally sends the chat text, the memories it selects and in-app doc excerpts — never audio or raw curves. The request body never contains the API key; the AI request log subpage under Data records exactly what each request sent (last 10 only, long messages truncated; a storage failure never blocks the request).',
   'privacy.lineWebSearch': 'Web search (optional): only when you enable it and configure your own Tavily API key under Settings → LLM are queries sent to Tavily. The key stays in local IndexedDB and is excluded from settings export, theme files, ZIP backups and request logs. Disabled in private chats.',
   'privacy.ghRow': 'GitHub cloud backup',
@@ -1926,4 +1926,6 @@ export const en = {
   "backup.passTitle": "Enter backup passphrase",
   "backup.passDesc": "This backup is encrypted. Enter the passphrase used when it was created; verification and restore happen on this device.",
   "backup.passPlaceholder": "Backup passphrase",
+  "recover.discardConfirm": "Confirm discard",
+  "security.clearFailed": "Clear failed: local data was kept; please try again",
 } as const;

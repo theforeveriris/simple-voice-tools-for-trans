@@ -3,7 +3,7 @@
  * 必须验证当前真实 PIN；第二 PIN 打开空演示资料库，不展示真实数据。
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -32,15 +32,18 @@ export function DuressPinDialog({
   const [pin2, setPin2] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setCurrentPin('');
-    setPin('');
-    setPin2('');
-    setError('');
-    setBusy(false);
-  }, [open, mode]);
+  // 打开或切换模式时清空上一次输入；渲染期对比派生重置，避免 effect 内同步 setState
+  const [prev, setPrev] = useState({ open, mode });
+  if (prev.open !== open || prev.mode !== mode) {
+    setPrev({ open, mode });
+    if (open) {
+      setCurrentPin('');
+      setPin('');
+      setPin2('');
+      setError('');
+      setBusy(false);
+    }
+  }
 
   const submit = () => {
     if (busy) return;
@@ -79,7 +82,7 @@ export function DuressPinDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(value) => (!value ? onClose() : undefined)}>
+    <Dialog open={open} onOpenChange={(value) => (!value && !busy ? onClose() : undefined)}>
       <DialogContent className="rounded-3xl border-0 bg-card sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-ink">

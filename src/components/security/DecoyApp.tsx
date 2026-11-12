@@ -47,6 +47,12 @@ export function DecoyApp() {
     setTab('history');
   };
 
+  const lock = () => {
+    // 诱饵录音只存在于内存，锁定前停掉，避免 lockNowSafely 把它当作真实录音落库
+    if (recording) setRecording(false);
+    void lockNowSafely();
+  };
+
   return (
     <div className="min-h-dvh bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-5 px-5 pt-8 pb-10">
@@ -56,7 +62,7 @@ export function DecoyApp() {
             <p className="text-[11px] text-ink-2">{t('decoy.subtitle')}</p>
           </div>
           <button
-            onClick={() => void lockNowSafely()}
+            onClick={lock}
             aria-label={t('decoy.lock')}
             className="grid size-10 place-items-center rounded-full bg-card text-ink-2 shadow-[0_2px_14px_rgba(28,25,45,0.05)] transition-transform active:scale-90"
           >

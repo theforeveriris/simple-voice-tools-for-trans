@@ -81,7 +81,7 @@ test('崩溃草稿：启动提示恢复，放弃后不再出现', async ({ page 
       };
       req.onsuccess = () => {
         const db = req.result;
-        const tx = db.transaction('kv', 'readwrite');
+        const tx = db.transaction(['kv', 'records'], 'readwrite');
         tx.objectStore('kv').put(
           {
             id: 'e2e-draft',
@@ -98,6 +98,15 @@ test('崩溃草稿：启动提示恢复，放弃后不再出现', async ({ page 
           new Blob(['test'], { type: 'audio/webm' }),
           'recording:draft:chunk:e2e-draft:0',
         );
+        // 同时放一条真实记录：放弃草稿不能把它一起清掉
+        tx.objectStore('records').put({
+          id: 'e2e-real',
+          createdAt: Date.now(),
+          durationSec: 1,
+          sampleHz: 30,
+          series: { t: [0], f0: [120], rmsDb: [-30], f1: [500], f2: [1500] },
+          stats: {},
+        });
         tx.oncomplete = () => {
           db.close();
           resolve();
@@ -111,11 +120,29 @@ test('崩溃草稿：启动提示恢复，放弃后不再出现', async ({ page 
   await page.reload();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible({ timeout: 15_000 });
-  // 放弃 = 弹窗第一个按钮
-  await dialog.getByRole('button').first().click();
+  // 放弃需要二次确认：同一个按钮点两次
+  const discardButton = dialog.getByRole('button').first();
+  await discardButton.click();
+  await discardButton.click();
   await expect(dialog).toBeHidden();
 
   // 草稿已清理：再次启动不应再弹
   await page.reload();
   await expect(page.getByRole('dialog')).toBeHidden({ timeout: 10_000 });
+
+  // 真实记录没有被草稿清理误删
+  const kept = await page.evaluate(async () => new Promise<boolean>((resolve) => {
+    const req = indexedDB.open('svt');
+    req.onsuccess = () => {
+      const db = req.result;
+      const get = db.transaction('records', 'readonly').objectStore('records').get('e2e-real');
+      get.onsuccess = () => {
+        resolve(Boolean(get.result));
+        db.close();
+      };
+      get.onerror = () => resolve(false);
+    };
+    req.onerror = () => resolve(false);
+  }));
+  expect(kept).toBe(true);
 });

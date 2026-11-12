@@ -178,6 +178,44 @@ export function idbClearTrash(): Promise<void> {
   return withStore(STORE_TRASH, 'readwrite', (s) => s.clear());
 }
 
+function trashTx(stores: string[], run: (tx: IDBTransaction) => void): Promise<void> {
+  return openDb().then((db) => new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(stores, 'readwrite');
+    run(tx);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB trash transaction failed'));
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB trash transaction aborted'));
+  }));
+}
+
+/** 记录 → 回收站（同一事务，避免只删了记录却没写回收站） */
+export function idbMoveRecordToTrash<T>(item: TrashedRecord<T>): Promise<void> {
+  return trashTx([STORE_RECORDS, STORE_TRASH], (tx) => {
+    tx.objectStore(STORE_TRASH).put(item);
+    tx.objectStore(STORE_RECORDS).delete(item.id);
+  });
+}
+
+/** 回收站 → 记录（同一事务） */
+export function idbRestoreTrashRecord<T>(item: TrashedRecord<T>): Promise<void> {
+  return trashTx([STORE_RECORDS, STORE_TRASH], (tx) => {
+    tx.objectStore(STORE_RECORDS).put(item.record);
+    tx.objectStore(STORE_TRASH).delete(item.id);
+  });
+}
+
+/** 永久删除回收站条目并释放音频（同一事务） */
+export function idbPurgeTrash(ids: string[]): Promise<void> {
+  return trashTx([STORE_TRASH, STORE_AUDIO], (tx) => {
+    const trash = tx.objectStore(STORE_TRASH);
+    const audio = tx.objectStore(STORE_AUDIO);
+    for (const id of ids) {
+      trash.delete(id);
+      audio.delete(id);
+    }
+  });
+}
+
 /* ------------------------------- 键值仓库 ------------------------------- */
 
 /** 清空全部记录、音频与 kv（应用锁「清除所有数据」用） */
@@ -208,5 +246,25 @@ export function idbPutKV(key: string, value: unknown): Promise<void> {
 export function idbDeleteKV(key: string): Promise<void> {
   return withStore(STORE_KV, 'readwrite', (s) => {
     s.delete(key);
+  });
+}
+
+/** 删除 kv 中指定前缀的全部键（录音草稿清理用） */
+export async function idbDeleteKVByPrefix(prefix: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_KV, 'readwrite');
+    const store = tx.objectStore(STORE_KV);
+    const range = IDBKeyRange.bound(prefix, `${prefix}\uffff`);
+    const cursor = store.openKeyCursor(range);
+    cursor.onsuccess = () => {
+      const current = cursor.result;
+      if (!current) return;
+      store.delete(current.primaryKey);
+      current.continue();
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB delete prefix failed'));
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB delete prefix aborted'));
   });
 }

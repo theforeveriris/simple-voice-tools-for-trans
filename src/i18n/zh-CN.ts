@@ -1293,7 +1293,7 @@ export const zhCN = {
   'privacy.title': '数据去向',
   'privacy.lineLocal': '记录、音频与设置只保存在本机浏览器（IndexedDB）；不使用下方任何云功能时，没有数据离开本机。',
   'privacy.lineCloud': '云备份（GitHub / WebDAV）把记录与音频上传到你自己的存储；开启「云备份加密」后先加密再上传，未开启则按原样上传。',
-  'privacy.lineLocalBackup': '手动 ZIP 导出与本地自动备份不加密，存放在你选择的位置。',
+  "privacy.lineLocalBackup": "手动 ZIP 导出与本地自动备份默认不加密，存放在你选择的位置；可在 数据 → 备份加密 中选择用同一口令加密。",
   'privacy.lineLlm': '训练建议 / 周报仅上传统计指标与备注（不含音频与原始曲线）；AI 助手另含对话文本、选中的记忆与内置文档片段，均不含音频与原始曲线。请求体不含 API Key；数据页的「AI 请求日志」记录每次实际发出的内容（最多 10 条，超长消息截断；写入失败不影响请求）。',
   'privacy.lineWebSearch': '联网搜索（可选）：仅当你在 设置 → 大模型 开启并配置自己的 Tavily API Key 时，搜索词会发送给 Tavily；Key 仅存本机 IndexedDB，不进入设置导出、主题包、ZIP 备份或请求日志。私密对话不启用。',
   'privacy.ghRow': 'GitHub 云备份',
@@ -1935,6 +1935,8 @@ export const zhCN = {
   "backup.passTitle": "输入备份口令",
   "backup.passDesc": "这份备份已加密。输入创建它时使用的口令，验证或恢复都只在本机进行。",
   "backup.passPlaceholder": "备份口令",
+  "recover.discardConfirm": "确认放弃",
+  "security.clearFailed": "清除失败：本机数据仍保留，请重试",
 } as const;
 
 export type DictKey = keyof typeof zhCN;

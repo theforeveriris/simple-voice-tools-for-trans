@@ -11,10 +11,10 @@ import type { AnalysisRecord } from '@/types';
 import { MAX_HISTORY } from '@/constants';
 import { t } from '@/i18n';
 import {
-  idbGetAllRecords, idbPutRecord, idbPutRecords, idbDeleteRecord, idbClearRecords,
-  idbGetAudio, idbPutAudio, idbDeleteAudio, idbClearAudio,
-  idbGetAllTrash, idbPutTrash, idbDeleteTrash, idbClearTrash,
-  type TrashedRecord,
+  idbGetAllRecords, idbPutRecord, idbPutRecords, idbClearRecords,
+  idbGetAudio, idbPutAudio, idbClearAudio,
+  idbGetAllTrash, idbMoveRecordToTrash, idbRestoreTrashRecord, idbPurgeTrash,
+  idbDeleteTrash, idbClearTrash, type TrashedRecord,
 } from '@/lib/storage/idb';
 
 /** 回收站保留时长：30 天 */
@@ -126,10 +126,7 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
     const expired = trash.filter((item) => now - item.deletedAt > TRASH_TTL_MS);
     if (expired.length > 0) {
       trash = trash.filter((item) => now - item.deletedAt <= TRASH_TTL_MS);
-      for (const item of expired) {
-        void idbDeleteTrash(item.id).catch(() => undefined);
-        void idbDeleteAudio(item.id).catch(() => undefined);
-      }
+      void idbPurgeTrash(expired.map((item) => item.id)).catch(() => undefined);
     }
     trash.sort((a, b) => b.deletedAt - a.deletedAt);
 
@@ -171,10 +168,7 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       trash: [{ id, deletedAt, record }, ...state.trash.filter((item) => item.id !== id)],
     }));
     // 音频留在 audio 仓库：恢复时不需要重写，30 天后才随回收站一起删
-    persist(async () => {
-      await idbPutTrash({ id, deletedAt, record });
-      await idbDeleteRecord(id);
-    });
+    persist(() => idbMoveRecordToTrash({ id, deletedAt, record }));
   },
 
   restoreTrash: (ids) => {
@@ -188,29 +182,20 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       trash: state.trash.filter((item) => !wanted.has(item.id)),
     }));
     persist(async () => {
-      for (const record of restored) {
-        await idbPutRecord(record);
-        await idbDeleteTrash(record.id);
-      }
+      for (const item of items) await idbRestoreTrashRecord(item);
     });
   },
 
   deleteTrashForever: (ids) => {
     const unwanted = new Set(ids);
     set((state) => ({ trash: state.trash.filter((item) => !unwanted.has(item.id)) }));
-    persist(async () => {
-      await Promise.all(ids.map((id) => idbDeleteTrash(id)));
-      await Promise.all(ids.map((id) => idbDeleteAudio(id)));
-    });
+    persist(() => idbPurgeTrash(ids));
   },
 
   clearTrash: () => {
     const ids = get().trash.map((item) => item.id);
     set({ trash: [] });
-    persist(async () => {
-      await idbClearTrash();
-      await Promise.all(ids.map((id) => idbDeleteAudio(id)));
-    });
+    persist(() => idbPurgeTrash(ids));
   },
 
   clearAll: () => {

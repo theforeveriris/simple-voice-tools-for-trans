@@ -19,6 +19,8 @@ interface TauriInternals {
 }
 
 let running = false;
+/** 用户意图：停止后，未完成的 start 不能再把服务拉起来 */
+let wantedRunning = false;
 
 function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const internals = (window as unknown as { __TAURI_INTERNALS__?: TauriInternals }).__TAURI_INTERNALS__;
@@ -40,6 +42,7 @@ export async function getLocalApiStatus(): Promise<LocalApiStatus> {
   try {
     const status = await invoke<LocalApiStatus>('local_api_status');
     running = status.running;
+    wantedRunning = status.running;
     return status;
   } catch {
     running = false;
@@ -49,13 +52,27 @@ export async function getLocalApiStatus(): Promise<LocalApiStatus> {
 
 export async function startLocalApi(): Promise<LocalApiStatus> {
   if (!isTauri) throw new Error('Local API is only available in the desktop app');
+  wantedRunning = true;
   const snapshotJson = await buildSnapshot();
+  // 构建快照期间可能已锁定 / 停止：不要再启动
+  if (!wantedRunning) return { running: false };
   const status = await invoke<LocalApiStatus>('local_api_start', { snapshotJson });
+  if (!wantedRunning) {
+    // start 与 stop 竞态：start 先落地，立刻补一次 stop
+    try {
+      await invoke('local_api_stop');
+    } catch {
+      /* ignore */
+    }
+    running = false;
+    return { running: false };
+  }
   running = status.running;
   return status;
 }
 
 export async function stopLocalApi(): Promise<void> {
+  wantedRunning = false;
   if (!isTauri) return;
   try {
     await invoke('local_api_stop');

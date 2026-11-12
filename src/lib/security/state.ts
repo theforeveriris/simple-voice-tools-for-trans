@@ -263,9 +263,15 @@ export async function unlockWithPin(pin: string): Promise<UnlockResult> {
   }
   attempts = clearAttempts(attempts, 'pin');
   await persistAttempts();
-  // 可选的紧急清除：用户已在设置里显式二次确认；执行后整页重载
+  // 可选的紧急清除：用户已在设置里显式二次确认；执行后整页重载。
+  // 清除失败时绝不能回落成真实资料库，改为进入诱饵库并记录错误。
   if (duress && config.duress?.wipe) {
-    await clearAllSecurityData();
+    const wiped = await clearAllSecurityData();
+    if (!wiped) {
+      console.error('紧急清除失败，进入诱饵库');
+      unlockSuccess(true);
+      return { ok: true };
+    }
     return { ok: true };
   }
   unlockSuccess(duress);
@@ -592,12 +598,14 @@ export async function removeDuressPin(currentPin: string): Promise<ChangeResult>
 /** 第二 PIN 是否同时清除本机数据（默认关；开启前 UI 必须二次确认） */
 export async function setDuressWipe(enabled: boolean): Promise<void> {
   if (!config?.duress) return;
-  config = {
+  const next: SecurityConfig = {
     ...config,
     duress: { ...config.duress, wipe: enabled },
     updatedAt: Date.now(),
   };
-  await persistConfig();
+  // 先持久化再更新内存：写入失败时不能让界面显示「已开启」而实际下次启动是关闭的
+  await saveSecurityConfig(next);
+  config = next;
   emit();
 }
 
@@ -663,16 +671,20 @@ export async function setDiscreetPreset(preset: DiscreetPreset): Promise<void> {
 
 /* ------------------------------ 清除所有数据 ------------------------------ */
 
-export async function clearAllSecurityData(): Promise<void> {
-  // 先撤掉原生层的截屏保护与低调 alias，避免清完数据后仍停留在低调启动器
-  await applySecureFlag(false);
-  await applyDiscreetPreset('normal');
-  setDiscreetHint('normal');
+/** @returns 是否已成功清空并开始重载；IndexedDB 失败时返回 false */
+export async function clearAllSecurityData(): Promise<boolean> {
+  // 记录/音频是核心数据：IndexedDB 清不掉就不继续清 localStorage（否则锁配置没了、
+  // 数据还在，反而更难保护），也不重载成假成功
   try {
     await idbClearAll();
   } catch (err) {
     console.warn('清空 IndexedDB 失败:', err);
+    return false;
   }
+  // 撤掉原生层的截屏保护与低调 alias，避免清完数据后仍停留在低调启动器
+  await applySecureFlag(false);
+  await applyDiscreetPreset('normal');
+  setDiscreetHint('normal');
   try {
     localStorage.clear();
     sessionStorage.clear();
@@ -692,6 +704,7 @@ export async function clearAllSecurityData(): Promise<void> {
     /* ignore */
   }
   location.reload();
+  return true;
 }
 
 /* 供 UI 判断某类延迟 */

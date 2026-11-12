@@ -1292,7 +1292,7 @@ export const es = {
   'privacy.title': 'A dónde van tus datos',
   'privacy.lineLocal': 'Los registros, el audio y los ajustes se guardan solo en este navegador (IndexedDB); mientras no uses ninguna función en la nube, no sale ningún dato del dispositivo.',
   'privacy.lineCloud': 'La copia en la nube (GitHub / WebDAV) sube los registros y el audio a tu propio almacenamiento. Con el cifrado de copias activado se cifran antes de subirse; si no, se suben tal cual.',
-  'privacy.lineLocalBackup': 'La exportación manual a ZIP y la copia automática local no se cifran y se guardan donde tú elijas.',
+  "privacy.lineLocalBackup": "La exportación manual a ZIP y la copia automática local no se cifran por defecto y se guardan donde tú elijas; en Datos → Cifrado de copias puedes cifrarlas con la misma contraseña.",
   'privacy.lineLlm': 'Los consejos de entrenamiento y el informe semanal solo suben estadísticas y notas de las grabaciones (sin audio ni curvas originales); el asistente AI envía además el texto de la conversación, las memorias seleccionadas y extractos de la documentación integrada, nunca audio ni curvas originales. El cuerpo de la petición nunca contiene la API Key; la subpágina «AI request log» en Datos muestra exactamente lo que envía cada petición (solo las últimas 10, mensajes largos truncados; un fallo de almacenamiento no bloquea la petición).',
   'privacy.lineWebSearch': 'Búsqueda web (opcional): solo si la activas y configuras tu propia clave API de Tavily en Ajustes → LLM se envían consultas a Tavily. La clave permanece en IndexedDB local y queda excluida de la exportación de ajustes, archivos de tema, copias ZIP y registros de solicitudes. Desactivada en chats privados.',
   'privacy.ghRow': 'Copia en la nube de GitHub',
@@ -1935,4 +1935,6 @@ export const es = {
   "backup.passTitle": "Introduce la contraseña de la copia",
   "backup.passDesc": "Esta copia está cifrada. Introduce la contraseña usada al crearla; la verificación y la restauración se hacen en este dispositivo.",
   "backup.passPlaceholder": "Contraseña de la copia",
+  "recover.discardConfirm": "Confirmar descarte",
+  "security.clearFailed": "Error al borrar: los datos locales se conservaron; inténtalo de nuevo",
 } as const;

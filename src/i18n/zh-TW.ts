@@ -1290,7 +1290,7 @@ export const zhTW = {
   'privacy.title': '資料去向',
   'privacy.lineLocal': '記錄、音訊與設定只保存在本機瀏覽器（IndexedDB）；不使用下方任何雲端功能時，沒有資料離開本機。',
   'privacy.lineCloud': '雲端備份（GitHub / WebDAV）把記錄與音訊上傳到你自己的儲存空間；開啟「雲端備份加密」後先加密再上傳，未開啟則按原樣上傳。',
-  'privacy.lineLocalBackup': '手動 ZIP 匯出與本機自動備份不加密，存放在你選擇的位置。',
+  "privacy.lineLocalBackup": "手動 ZIP 匯出與本機自動備份預設不加密，存放在你選擇的位置；可在 資料 → 備份加密 中選擇用同一密碼加密。",
   'privacy.lineLlm': '訓練建議 / 週報僅上傳統計指標與備註（不含音訊與原始曲線）；AI 助手另含對話文本、選取的記憶與內建文件片段，均不含音訊與原始曲線。請求內容不含 API Key；數據頁的「AI 請求日誌」記錄每次實際發出的內容（最多 10 條，超長訊息截斷；寫入失敗不影響請求）。',
   'privacy.lineWebSearch': '聯網搜尋（可選）：僅當你在 設定 → 大模型 開啟並設定自己的 Tavily API Key 時，搜尋詞會傳送給 Tavily；Key 僅存本機 IndexedDB，不進入設定匯出、主題包、ZIP 備份或請求日誌。私密對話不啟用。',
   'privacy.ghRow': 'GitHub 雲端備份',
@@ -1926,4 +1926,6 @@ export const zhTW = {
   "backup.passTitle": "輸入備份密碼",
   "backup.passDesc": "這份備份已加密。輸入建立時使用的密碼，驗證或還原都只在本機進行。",
   "backup.passPlaceholder": "備份密碼",
+  "recover.discardConfirm": "確認放棄",
+  "security.clearFailed": "清除失敗：本機資料仍保留，請重試",
 } as const;

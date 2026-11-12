@@ -33,7 +33,7 @@ const MONITOR_BUFFER_FRAMES = 7200;
 /** 未设置「最长录音时长」时的硬性上限（秒）：
  *  曲线缓冲 / 语谱行 / 音频块都随录音时长线性增长，放开会一直吃内存，
  *  到顶自动按正常录音收尾落库（与设置的最长档行为一致） */
-const UNLIMITED_DURATION_CAP_SEC = 600;
+export const RECORDING_MAX_SEC = 600;
 
 /**
  * 由数据序列聚合统计信息
@@ -487,7 +487,7 @@ class VoiceRecorder {
       // 0/未设置 = 不限制：仍钳制到硬性上限，防止缓冲与音频块无界增长
       this.maxDurationSec = opts.maxDurationSec && opts.maxDurationSec > 0
         ? opts.maxDurationSec
-        : UNLIMITED_DURATION_CAP_SEC;
+        : RECORDING_MAX_SEC;
       this.onAutoStop = opts.onAutoStop ?? null;
       this.autoStopFired = false;
       this.pendingMode = opts.mode;

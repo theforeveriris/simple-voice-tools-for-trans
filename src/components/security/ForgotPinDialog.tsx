@@ -129,7 +129,11 @@ export function ForgotPinDialog({ open, onClose }: { open: boolean; onClose: () 
       return;
     }
     setBusy(true);
-    await clearAllSecurityData();
+    const ok = await clearAllSecurityData();
+    if (!ok) {
+      setBusy(false);
+      setError(t('security.clearFailed'));
+    }
   };
 
   return (

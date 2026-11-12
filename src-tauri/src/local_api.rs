@@ -138,7 +138,7 @@ fn serve(listener: TcpListener, token: String, stop: Arc<AtomicBool>) {
       break;
     }
     match listener.accept() {
-      Ok((mut stream, _)) => handle(&mut stream, &token),
+      Ok((mut stream, _)) => handle(&mut stream, &token, &stop),
       Err(err) if err.kind() == ErrorKind::WouldBlock => {
         thread::sleep(Duration::from_millis(80));
       }
@@ -147,14 +147,30 @@ fn serve(listener: TcpListener, token: String, stop: Arc<AtomicBool>) {
   }
 }
 
-fn handle(stream: &mut TcpStream, token: &str) {
+fn handle(stream: &mut TcpStream, token: &str, stop: &AtomicBool) {
+  // accepted socket 可能继承 listener 的非阻塞标志；切回阻塞并限制读写时长
+  let _ = stream.set_nonblocking(false);
   let _ = stream.set_read_timeout(Some(Duration::from_secs(3)));
-  let mut buffer = [0u8; 8192];
-  let read = match stream.read(&mut buffer) {
-    Ok(0) | Err(_) => return,
-    Ok(n) => n,
-  };
-  let request = String::from_utf8_lossy(&buffer[..read]);
+  let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
+  let mut buffer: Vec<u8> = Vec::with_capacity(8192);
+  let mut chunk = [0u8; 4096];
+  loop {
+    match stream.read(&mut chunk) {
+      Ok(0) => break,
+      Ok(read) => {
+        buffer.extend_from_slice(&chunk[..read]);
+        // 读完整个头部再解析；同时限制上限，避免慢客户端无限占用内存
+        if buffer.windows(4).any(|window| window == b"\r\n\r\n") || buffer.len() >= 64 * 1024 {
+          break;
+        }
+      }
+      Err(_) => return,
+    }
+  }
+  if buffer.is_empty() {
+    return;
+  }
+  let request = String::from_utf8_lossy(&buffer);
   let mut lines = request.split("\r\n");
   let Some(request_line) = lines.next() else {
     return;
@@ -168,6 +184,10 @@ fn handle(stream: &mut TcpStream, token: &str) {
     respond(stream, "204 No Content", "text/plain", "");
     return;
   }
+  if stop.load(Ordering::Relaxed) {
+    respond_json(stream, "503 Service Unavailable", r#"{"error":"stopping"}"#);
+    return;
+  }
   if method != "GET" {
     respond_json(stream, "405 Method Not Allowed", r#"{"error":"method_not_allowed"}"#);
     return;
@@ -179,6 +199,11 @@ fn handle(stream: &mut TcpStream, token: &str) {
   let (path, query) = target.split_once('?').unwrap_or((target, ""));
   if !authorized(&headers, query, token) {
     respond_json(stream, "401 Unauthorized", r#"{"error":"unauthorized"}"#);
+    return;
+  }
+  // 锁定 / 进入诱饵库会设置 stop；已建立的连接也不能继续拿到真实快照
+  if stop.load(Ordering::Relaxed) {
+    respond_json(stream, "503 Service Unavailable", r#"{"error":"stopping"}"#);
     return;
   }
 

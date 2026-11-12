@@ -12,8 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
 import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
+import { RECORDING_MAX_SEC } from '@/lib/audio/recorder';
 import {
   clearRecordingDraft,
+  clearRecordingDraftIfSaved,
   draftRecordExists,
   hasRecordingDraft,
   loadRecordingDraft,
@@ -63,6 +65,7 @@ export function RecordingRecoveryPrompt() {
   useI18n();
   const [draft, setDraft] = useState<RecordingDraft | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,9 +80,14 @@ export function RecordingRecoveryPrompt() {
   if (!draft) return null;
 
   const discard = () => {
+    if (!confirmDiscard) {
+      setConfirmDiscard(true);
+      return;
+    }
+    const id = draft?.meta.id;
     setDraft(null);
     startupScan = Promise.resolve(null);
-    void clearRecordingDraft();
+    void clearRecordingDraft(id);
     toast.success(t('recover.discarded'));
   };
 
@@ -94,6 +102,8 @@ export function RecordingRecoveryPrompt() {
       const { record, audio: savedAudio } = await analyzeAudioFile(file, {
         targetRange: meta.targetRange,
         saveAudio: useStore.getState().settings.audioSave,
+        // 实时录音上限 10 分钟；恢复时不能按外部导入的 5 分钟截断
+        maxSec: RECORDING_MAX_SEC,
       });
       // 恢复的记录不是「导入文件」：去掉文件名备注，并还原录音时间与模式
       delete record.note;
@@ -101,8 +111,9 @@ export function RecordingRecoveryPrompt() {
       if (MODES.includes(meta.mode)) record.mode = meta.mode;
 
       useHistoryStore.getState().addRecord(record, savedAudio ?? undefined);
-      await clearRecordingDraft();
       setDraft(null);
+      // 等记录真正落库后再删草稿；写库失败时保留，下次启动还能再试
+      window.setTimeout(() => void clearRecordingDraftIfSaved(), 1500);
       // 应用锁切换会卸载/重挂本组件；清掉扫描缓存，避免恢复后再次弹出
       startupScan = Promise.resolve(null);
       useStore.getState().setCurrentAnalysis(record);
@@ -123,7 +134,7 @@ export function RecordingRecoveryPrompt() {
   ).padStart(2, '0')}:${String(started.getMinutes()).padStart(2, '0')}`;
 
   return (
-    <Dialog open onOpenChange={(open) => (!open && !restoring ? discard() : undefined)}>
+    <Dialog open onOpenChange={() => undefined}>
       <DialogContent className="rounded-3xl border-0 bg-card sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-ink">{t('recover.title')}</DialogTitle>
@@ -137,7 +148,7 @@ export function RecordingRecoveryPrompt() {
             disabled={restoring}
             className="flex-1 rounded-full bg-surface-hi py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-80 disabled:opacity-50"
           >
-            {t('recover.discard')}
+            {confirmDiscard ? t('recover.discardConfirm') : t('recover.discard')}
           </button>
           <button
             onClick={() => void restore()}

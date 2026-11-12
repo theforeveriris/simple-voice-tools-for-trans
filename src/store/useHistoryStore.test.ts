@@ -18,6 +18,17 @@ vi.mock('@/lib/storage/idb', () => ({
   idbPutTrash: async (item: { id: string }) => { h.trash.set(item.id, item); },
   idbDeleteTrash: async (id: string) => { h.trash.delete(id); },
   idbClearTrash: async () => { h.trash.clear(); },
+  idbMoveRecordToTrash: async (item: { id: string }) => {
+    h.trash.set(item.id, item);
+    h.records.delete(item.id);
+  },
+  idbRestoreTrashRecord: async (item: { id: string; record: unknown }) => {
+    h.records.set(item.id, item.record);
+    h.trash.delete(item.id);
+  },
+  idbPurgeTrash: async (ids: string[]) => {
+    for (const id of ids) h.trash.delete(id);
+  },
   idbGetAudio: async () => null,
   idbPutAudio: async () => {},
   idbDeleteAudio: async () => {},

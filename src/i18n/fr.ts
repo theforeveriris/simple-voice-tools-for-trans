@@ -1292,7 +1292,7 @@ export const fr = {
   'privacy.title': 'Où vont tes données',
   'privacy.lineLocal': 'Les enregistrements, l\'audio et les réglages restent dans ce navigateur (IndexedDB). Tant que tu n\'utilises aucune fonction cloud ci-dessous, rien ne quitte cet appareil.',
   'privacy.lineCloud': 'La sauvegarde cloud (GitHub / WebDAV) envoie les enregistrements et l\'audio vers ton propre stockage. Si le chiffrement des sauvegardes cloud est activé, les fichiers sont chiffrés avant l\'envoi ; sinon, ils sont envoyés tels quels.',
-  'privacy.lineLocalBackup': 'L\'export ZIP manuel et la sauvegarde locale automatique ne sont pas chiffrés et sont stockés là où tu le choisis.',
+  "privacy.lineLocalBackup": "L’export ZIP manuel et la sauvegarde locale automatique ne sont pas chiffrés par défaut et sont stockés là où tu le choisis ; Données → Chiffrement des sauvegardes permet de les chiffrer avec le même mot de passe.",
   'privacy.lineLlm': 'Les conseils d\'entraînement et le rapport hebdomadaire n\'envoient que des statistiques et les notes des enregistrements (sans audio ni courbes brutes) ; l\'assistant AI envoie en plus le texte de la conversation, les mémoires sélectionnées et des extraits de la documentation intégrée, jamais l\'audio ni les courbes brutes. Le corps de la requête ne contient jamais de API Key ; la sous-page « AI request log » dans Données indique exactement ce que chaque requête a envoyé (10 dernières seulement, messages longs tronqués ; un échec d\'écriture ne bloque pas la requête).',
   'privacy.lineWebSearch': 'Recherche web (facultative) : les requêtes ne sont envoyées à Tavily que si vous l\'activez et configurez votre propre clé API Tavily dans Réglages → LLM. La clé reste dans IndexedDB local et est exclue de l\'export des réglages, des fichiers de thème, des sauvegardes ZIP et des journaux de requêtes. Désactivée dans les conversations privées.',
   'privacy.ghRow': 'Sauvegarde cloud GitHub',
@@ -1935,4 +1935,6 @@ export const fr = {
   "backup.passTitle": "Saisir le mot de passe de la sauvegarde",
   "backup.passDesc": "Cette sauvegarde est chiffrée. Saisissez le mot de passe utilisé lors de sa création ; la vérification et la restauration restent sur cet appareil.",
   "backup.passPlaceholder": "Mot de passe de la sauvegarde",
+  "recover.discardConfirm": "Confirmer l’abandon",
+  "security.clearFailed": "Échec de l’effacement : les données locales sont conservées ; réessayez",
 } as const;
