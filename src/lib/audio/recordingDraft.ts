@@ -118,6 +118,14 @@ export async function draftRecordExists(meta: RecordingDraftMeta): Promise<boole
   return records.some((record) => record.id === meta.recordId);
 }
 
+/** 正常保存成功后延迟对账清理；记录尚未落库时保留草稿，交给下次启动恢复 */
+export async function clearRecordingDraftIfSaved(): Promise<void> {
+  await queue;
+  const meta = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);
+  if (!meta) return;
+  if (await draftRecordExists(meta)) await clearRecordingDraft();
+}
+
 export async function clearRecordingDraft(): Promise<void> {
   await enqueue(async () => {
     const meta = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);

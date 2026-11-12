@@ -19,6 +19,7 @@ vi.mock('@/lib/storage/idb', () => ({
 
 import {
   clearRecordingDraft,
+  clearRecordingDraftIfSaved,
   draftRecordExists,
   hasRecordingDraft,
   loadRecordingDraft,
@@ -84,6 +85,19 @@ describe('recordingDraft', () => {
 
     h.records.push({ id: 'record-1' });
     expect(await draftRecordExists(draft!.meta)).toBe(true);
+  });
+
+  it('保存成功后对账清理；记录尚未落库时保留草稿', async () => {
+    await startRecordingDraft(meta);
+    appendRecordingDraftChunk(0, new Blob(['abc']));
+    markRecordingDraftRecordId('record-1');
+
+    await clearRecordingDraftIfSaved();
+    expect(await hasRecordingDraft()).toBe(true);
+
+    h.records.push({ id: 'record-1' });
+    await clearRecordingDraftIfSaved();
+    expect(await hasRecordingDraft()).toBe(false);
   });
 
   it('清理后元数据与音频块一并删除', async () => {

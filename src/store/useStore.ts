@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
 import { DEFAULT_SETTINGS, MODE_META } from '@/constants';
 import { recorder } from '@/lib/audio/recorder';
+import { clearRecordingDraftIfSaved } from '@/lib/audio/recordingDraft';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
 import { useHistoryStore } from './useHistoryStore';
@@ -132,6 +133,8 @@ export const useStore = create<AppState>()(
         // 音频解码 + 嗓音质量计算（失败时自动降级为无音频记录）
         const { record, audio } = await recorder.finishRecord(raw);
         useHistoryStore.getState().addRecord(record, audio ?? undefined);
+        // 落库后再对账清理录音草稿；失败（写库未完成 / 崩溃）时保留，由下次启动提示恢复
+        window.setTimeout(() => void clearRecordingDraftIfSaved(), 3000);
         autoLogPracticeForRecord(record);
         // 实验性：本地自动备份（选择了文件夹时按天写入，内部自行节流）
         void maybeAutoBackup('record');
