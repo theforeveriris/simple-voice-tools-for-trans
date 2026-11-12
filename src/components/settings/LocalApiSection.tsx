@@ -49,7 +49,9 @@ export function LocalApiSection() {
   };
 
   const copy = (value: string, key: string) => {
-    void navigator.clipboard?.writeText(value).then(() => {
+    const write = navigator.clipboard?.writeText(value);
+    if (!write) return;
+    void write.then(() => {
       setCopied(key);
       window.setTimeout(() => setCopied(null), 1500);
     }).catch(() => undefined);
