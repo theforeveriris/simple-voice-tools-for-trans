@@ -27,7 +27,7 @@ fn verify_windows_hello_impl(message: &str) -> bool {
 fn windows_hello_available() -> bool {
   #[cfg(windows)]
   {
-    return windows_hello_available_impl();
+    windows_hello_available_impl()
   }
   #[cfg(not(windows))]
   {
@@ -40,7 +40,7 @@ fn windows_hello_available() -> bool {
 fn verify_windows_hello(message: String) -> bool {
   #[cfg(windows)]
   {
-    return verify_windows_hello_impl(&message);
+    verify_windows_hello_impl(&message)
   }
   #[cfg(not(windows))]
   {

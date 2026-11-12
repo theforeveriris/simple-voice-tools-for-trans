@@ -275,7 +275,7 @@ fn respond_json(stream: &mut TcpStream, status: &str, body: &str) {
 fn respond(stream: &mut TcpStream, status: &str, content_type: &str, body: &str) {
   let response = format!(
     "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Authorization\r\nAccess-Control-Allow-Methods: GET, OPTIONS\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n{body}",
-    body.as_bytes().len()
+    body.len()
   );
   let _ = stream.write_all(response.as_bytes());
   let _ = stream.flush();
@@ -299,15 +299,15 @@ fn record_number(record: &Value, path: &[&str]) -> Option<f64> {
 }
 
 fn in_range(ts: f64, since: Option<f64>, until: Option<f64>) -> bool {
-  if let Some(start) = since {
-    if ts < start {
-      return false;
-    }
+  if let Some(start) = since
+    && ts < start
+  {
+    return false;
   }
-  if let Some(end) = until {
-    if ts > end {
-      return false;
-    }
+  if let Some(end) = until
+    && ts > end
+  {
+    return false;
   }
   true
 }
