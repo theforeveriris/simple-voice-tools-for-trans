@@ -102,6 +102,7 @@ export function BackupEncryptionSection({ onChanged }: { onChanged?: () => void 
                     onClick={() => {
                       void disableBackupEncryption().then(() => {
                         refresh();
+                        onChanged?.();
                         toast.success(t('toast.encDisabled'));
                       });
                     }}
