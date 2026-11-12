@@ -66,6 +66,7 @@ import { LlmRequestLogPage } from './LlmRequestLogPage';
 import { LanSyncSection } from './LanSyncSection';
 import { ImportAudioSection } from './ImportAudioSection';
 import { GithubBackupSection } from './GithubBackupSection';
+import { LocalApiSection } from './LocalApiSection';
 import { BackupEncryptionSection } from './BackupEncryptionSection';
 import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
@@ -873,6 +874,9 @@ export function DataPage({
 
         {/* GitHub 云备份（原「实验性功能」迁入：备份体系归数据） */}
         <GithubBackupSection settings={settings} update={update} />
+
+        {/* 桌面本地只读 API（仅 Tauri；默认关闭） */}
+        <LocalApiSection />
 
         {/* 云备份加密口令对话框（推/拉撞上锁定态时弹出） */}
         <BackupPassphraseDialog

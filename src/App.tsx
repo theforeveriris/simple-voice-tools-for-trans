@@ -33,7 +33,8 @@ import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
-import { isNative, ShareTarget, syncNativeSystemBars, type ShareTargetBatch } from '@/lib/platform';
+import { isNative, isTauri, ShareTarget, syncNativeSystemBars, type ShareTargetBatch } from '@/lib/platform';
+import { getLocalApiStatus, pushLocalApiSnapshot } from '@/lib/desktop/localApi';
 import { missingKeys } from '@/i18n/aiLocale';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
@@ -432,6 +433,26 @@ function App() {
       void handle?.remove();
     };
   }, [importSharedFile]);
+
+  // 桌面本地只读 API：服务运行期间跟随记录变化刷新快照（未启动时 push 直接跳过）
+  useEffect(() => {
+    if (!isTauri) return;
+    void getLocalApiStatus();
+    let timer: number | undefined;
+    const schedule = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void pushLocalApiSnapshot(), 1500);
+    };
+    const unsubscribe = useHistoryStore.subscribe((state, prev) => {
+      if (state.records !== prev.records) schedule();
+    });
+    const interval = window.setInterval(() => void pushLocalApiSnapshot(), 30_000);
+    return () => {
+      unsubscribe();
+      window.clearInterval(interval);
+      if (timer) window.clearTimeout(timer);
+    };
+  }, []);
 
   return (
     <LockGate>

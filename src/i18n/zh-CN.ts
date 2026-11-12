@@ -1900,6 +1900,20 @@ export const zhCN = {
   "security.duressWipeTitle": "开启紧急清除？",
   "security.duressWipeConfirm": "开启后，每次输入第二 PIN 都会立即删除本机全部记录、音频、设置与密钥并重载应用，无法撤销。只在你能接受这一后果时开启。",
   "security.duressWipeAction": "开启清除",
+  "settings.localApi": "本地只读 API",
+  "settings.localApiDesc": "仅桌面版：在本机 127.0.0.1 上提供记录查询，方便 R / Python / CLI 读取。只读、需要 token、默认关闭；关闭应用即停止。",
+  "settings.localApiOn": "运行中",
+  "settings.localApiOff": "未启动",
+  "settings.localApiStart": "启动",
+  "settings.localApiStop": "停止",
+  "settings.localApiUrl": "地址",
+  "settings.localApiToken": "Token",
+  "settings.localApiEndpoints": "接口",
+  "settings.localApiEndpointsDesc": "均为 GET；记录快照来自当前资料库",
+  "settings.localApiReadonly": "只有读取接口：无法通过 API 修改或删除记录。端口固定为 47821，被占用时会启动失败。",
+  "settings.localApiCopy": "复制",
+  "settings.localApiCopied": "已复制",
+  "settings.localApiStartFail": "本地 API 启动失败",
 } as const;
 
 export type DictKey = keyof typeof zhCN;
