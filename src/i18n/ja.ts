@@ -1893,7 +1893,7 @@ export const ja = {
   "security.duressWipeConfirm": "有効にすると、第2 PIN を入力するたびにローカルの記録・音声・設定・鍵が直ちに削除され、アプリが再読み込みされます。元に戻せません。この結果を受け入れられる場合のみ有効にしてください。",
   "security.duressWipeAction": "消去を有効化",
   "settings.localApi": "ローカル読み取り専用 API",
-  "settings.localApiDesc": "デスクトップ版のみ：記録データを 127.0.0.1 で公開し、R / Python / CLI から読めます。読み取り専用・token 必須・既定でオフ。アプリを閉じると停止します。",
+  "settings.localApiDesc": "デスクトップ版のみ：記録データを 127.0.0.1 で公開し、R / Python / CLI から読めます。読み取り専用・token 必須・既定でオフ。アプリをロックまたは終了すると停止します。",
   "settings.localApiOn": "実行中",
   "settings.localApiOff": "停止中",
   "settings.localApiStart": "開始",

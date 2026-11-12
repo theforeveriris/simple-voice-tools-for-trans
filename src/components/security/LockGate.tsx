@@ -3,8 +3,9 @@
  * 初始化完成前显示纯色启动底，不闪出任何应用内容。
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useSecurity, useSecurityLifecycle } from '@/lib/security/hook';
+import { stopLocalApi } from '@/lib/desktop/localApi';
 import { LockScreen } from './LockScreen';
 import { DecoyApp } from './DecoyApp';
 
@@ -16,6 +17,11 @@ function PrivacyMask() {
 export function LockGate({ children }: { children: ReactNode }) {
   const security = useSecurity();
   useSecurityLifecycle();
+
+  // 锁定或进入诱饵库时停掉桌面本地 API，避免只读服务继续把真实快照暴露在本机端口上
+  useEffect(() => {
+    if (security.locked || security.decoy) void stopLocalApi();
+  }, [security.locked, security.decoy]);
 
   if (!security.ready) {
     return <div className="fixed inset-0 bg-surface" aria-hidden />;

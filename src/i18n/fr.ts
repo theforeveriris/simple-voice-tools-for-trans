@@ -1901,7 +1901,7 @@ export const fr = {
   "security.duressWipeConfirm": "Une fois activé, chaque saisie du second PIN supprime immédiatement tous les enregistrements, audio, réglages et clés locaux puis recharge l\\'application. Action irréversible. Ne l\\'activez que si vous acceptez ce résultat.",
   "security.duressWipeAction": "Activer l\\'effacement",
   "settings.localApi": "API locale en lecture seule",
-  "settings.localApiDesc": "Bureau uniquement : expose les données sur 127.0.0.1 pour R / Python / CLI. Lecture seule, token requis, désactivée par défaut ; s\\'arrête à la fermeture de l\\'application.",
+  "settings.localApiDesc": "Bureau uniquement : expose les données sur 127.0.0.1 pour R / Python / CLI. Lecture seule, token requis, désactivée par défaut ; s’arrête dès que l’application est verrouillée ou fermée.",
   "settings.localApiOn": "En cours",
   "settings.localApiOff": "Arrêtée",
   "settings.localApiStart": "Démarrer",

@@ -1901,7 +1901,7 @@ export const zhCN = {
   "security.duressWipeConfirm": "开启后，每次输入第二 PIN 都会立即删除本机全部记录、音频、设置与密钥并重载应用，无法撤销。只在你能接受这一后果时开启。",
   "security.duressWipeAction": "开启清除",
   "settings.localApi": "本地只读 API",
-  "settings.localApiDesc": "仅桌面版：在本机 127.0.0.1 上提供记录查询，方便 R / Python / CLI 读取。只读、需要 token、默认关闭；关闭应用即停止。",
+  "settings.localApiDesc": "仅桌面版：在本机 127.0.0.1 上提供记录查询，方便 R / Python / CLI 读取。只读、需要 token、默认关闭；锁定应用或关闭应用都会停止。",
   "settings.localApiOn": "运行中",
   "settings.localApiOff": "未启动",
   "settings.localApiStart": "启动",

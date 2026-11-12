@@ -1893,7 +1893,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   "security.duressWipeConfirm": "既啟，則每入第二 PIN，立刪本機記錄、音聲、設置與鑰，且重載應用，不可復也。唯能受此果者啟之。",
   "security.duressWipeAction": "啟清",
   "settings.localApi": "本機唯讀 API",
-  "settings.localApiDesc": "唯桌面版：於本機 127.0.0.1 供記錄，便 R / Python / CLI 取之。唯讀、須 token、本預設閉；閉應用則止。",
+  "settings.localApiDesc": "唯桌面版：於本機 127.0.0.1 供記錄，便 R / Python / CLI 取之。唯讀、須 token、本預設閉；鎖應用或閉應用皆止。",
   "settings.localApiOn": "行矣",
   "settings.localApiOff": "未啟",
   "settings.localApiStart": "啟",

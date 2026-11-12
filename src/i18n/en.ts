@@ -1892,7 +1892,7 @@ export const en = {
   "security.duressWipeConfirm": "Once enabled, every entry of the second PIN immediately deletes all local records, audio, settings and keys and reloads the app. This cannot be undone. Enable it only if you accept that outcome.",
   "security.duressWipeAction": "Enable erase",
   "settings.localApi": "Local read-only API",
-  "settings.localApiDesc": "Desktop only: serve recorded data on 127.0.0.1 for R / Python / CLI. Read-only, token required, off by default; stops when the app closes.",
+  "settings.localApiDesc": "Desktop only: serve recorded data on 127.0.0.1 for R / Python / CLI. Read-only, token required, off by default; stops when the app is locked or closed.",
   "settings.localApiOn": "Running",
   "settings.localApiOff": "Stopped",
   "settings.localApiStart": "Start",

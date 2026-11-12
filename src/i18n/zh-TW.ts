@@ -1892,7 +1892,7 @@ export const zhTW = {
   "security.duressWipeConfirm": "開啟後，每次輸入第二 PIN 都會立即刪除本機全部記錄、音訊、設定與金鑰並重新載入應用程式，無法復原。只在你能接受此後果時開啟。",
   "security.duressWipeAction": "開啟清除",
   "settings.localApi": "本機唯讀 API",
-  "settings.localApiDesc": "僅桌面版：在本機 127.0.0.1 提供記錄查詢，方便 R / Python / CLI 讀取。唯讀、需要 token、預設關閉；關閉應用即停止。",
+  "settings.localApiDesc": "僅桌面版：在本機 127.0.0.1 提供記錄查詢，方便 R / Python / CLI 讀取。唯讀、需要 token、預設關閉；鎖定應用或關閉應用都會停止。",
   "settings.localApiOn": "執行中",
   "settings.localApiOff": "未啟動",
   "settings.localApiStart": "啟動",
