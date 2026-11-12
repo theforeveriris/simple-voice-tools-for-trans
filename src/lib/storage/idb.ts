@@ -8,10 +8,11 @@
  */
 
 const DB_NAME = 'svt';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORE_RECORDS = 'records';
 export const STORE_AUDIO = 'audio';
+export const STORE_TRASH = 'trash';
 export const STORE_KV = 'kv';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -34,6 +35,9 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(STORE_AUDIO)) {
           db.createObjectStore(STORE_AUDIO, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(STORE_TRASH)) {
+          db.createObjectStore(STORE_TRASH, { keyPath: 'id' });
         }
         if (!db.objectStoreNames.contains(STORE_KV)) {
           db.createObjectStore(STORE_KV);
@@ -143,15 +147,43 @@ export async function idbGetAllAudio<T>(): Promise<T[]> {
   return withStore<T[]>(STORE_AUDIO, 'readonly', (s) => s.getAll());
 }
 
+/* ------------------------------- 回收站仓库 ------------------------------- */
+
+/** 回收站条目：记录本体 + 删除时间；音频仍留在 audio 仓库，恢复时无需重写 */
+export interface TrashedRecord<T> {
+  id: string;
+  deletedAt: number;
+  record: T;
+}
+
+export async function idbGetAllTrash<T>(): Promise<TrashedRecord<T>[]> {
+  return withStore<TrashedRecord<T>[]>(STORE_TRASH, 'readonly', (s) => s.getAll());
+}
+
+export function idbPutTrash<T>(item: TrashedRecord<T>): Promise<void> {
+  return withStore(STORE_TRASH, 'readwrite', (s) => {
+    s.put(item);
+  });
+}
+
+export function idbDeleteTrash(id: string): Promise<void> {
+  return withStore(STORE_TRASH, 'readwrite', (s) => s.delete(id));
+}
+
+export function idbClearTrash(): Promise<void> {
+  return withStore(STORE_TRASH, 'readwrite', (s) => s.clear());
+}
+
 /* ------------------------------- 键值仓库 ------------------------------- */
 
 /** 清空全部记录、音频与 kv（应用锁「清除所有数据」用） */
 export async function idbClearAll(): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction([STORE_RECORDS, STORE_AUDIO, STORE_KV], 'readwrite');
+    const tx = db.transaction([STORE_RECORDS, STORE_AUDIO, STORE_TRASH, STORE_KV], 'readwrite');
     tx.objectStore(STORE_RECORDS).clear();
     tx.objectStore(STORE_AUDIO).clear();
+    tx.objectStore(STORE_TRASH).clear();
     tx.objectStore(STORE_KV).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error ?? new Error('IndexedDB clear failed'));

@@ -13,7 +13,12 @@ import { t } from '@/i18n';
 import {
   idbGetAllRecords, idbPutRecord, idbPutRecords, idbDeleteRecord, idbClearRecords,
   idbGetAudio, idbPutAudio, idbDeleteAudio, idbClearAudio,
+  idbGetAllTrash, idbPutTrash, idbDeleteTrash, idbClearTrash,
+  type TrashedRecord,
 } from '@/lib/storage/idb';
+
+/** 回收站保留时长：30 天 */
+export const TRASH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** 旧版 localStorage 键（v0.2 存储，首次运行迁移后移除） */
 const LEGACY_KEY = 'svt:history:v1';
@@ -36,6 +41,8 @@ function persist(fn: () => Promise<void>) {
 
 interface HistoryState {
   records: AnalysisRecord[];
+  /** 回收站（删除后保留 30 天，音频也保留） */
+  trash: TrashedRecord<AnalysisRecord>[];
   /** 全量记录条数（含未进入内存视图的部分），用于列表截断提示 */
   totalCount: number;
   /** IDB 数据是否已加载完成 */
@@ -44,9 +51,15 @@ interface HistoryState {
   hydrate: () => Promise<void>;
   /** 新增一条记录（最新在数组头部），可附带音频 Blob */
   addRecord: (record: AnalysisRecord, audioBlob?: Blob) => void;
-  /** 删除一条记录（音频一并删除） */
+  /** 删除一条记录（移入回收站，30 天后自动清理） */
   removeRecord: (id: string) => void;
-  /** 清空全部（含音频） */
+  /** 从回收站恢复记录（音频仍在） */
+  restoreTrash: (ids: string[]) => void;
+  /** 永久删除回收站条目（连同音频） */
+  deleteTrashForever: (ids: string[]) => void;
+  /** 清空回收站 */
+  clearTrash: () => void;
+  /** 清空全部（含音频与回收站） */
   clearAll: () => void;
   /** 更新一条记录（备注编辑等） */
   updateRecord: (record: AnalysisRecord) => void;
@@ -70,6 +83,7 @@ function dedupeSorted(records: AnalysisRecord[]): AnalysisRecord[] {
 
 export const useHistoryStore = create<HistoryState>()((set, get) => ({
   records: [],
+  trash: [],
   totalCount: 0,
   ready: false,
 
@@ -101,46 +115,111 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       console.error('旧数据迁移失败:', err);
     }
 
+    // 回收站：读取后顺手清理超过 30 天的条目（连同音频）
+    let trash: TrashedRecord<AnalysisRecord>[] = [];
+    try {
+      trash = await idbGetAllTrash<AnalysisRecord>();
+    } catch (err) {
+      console.error('回收站读取失败:', err);
+    }
+    const now = Date.now();
+    const expired = trash.filter((item) => now - item.deletedAt > TRASH_TTL_MS);
+    if (expired.length > 0) {
+      trash = trash.filter((item) => now - item.deletedAt <= TRASH_TTL_MS);
+      for (const item of expired) {
+        void idbDeleteTrash(item.id).catch(() => undefined);
+        void idbDeleteAudio(item.id).catch(() => undefined);
+      }
+    }
+    trash.sort((a, b) => b.deletedAt - a.deletedAt);
+
     // 与内存中已有记录合并（水合前可能有新写入，如 ?demo=1 的示例数据）
     set((state) => {
       const all = [...new Map([...loaded, ...state.records].map((r) => [r.id, r])).values()]
         .sort((a, b) => b.createdAt - a.createdAt);
-      return { records: all.slice(0, MAX_HISTORY), totalCount: all.length, ready: true };
+      return {
+        records: all.slice(0, MAX_HISTORY),
+        totalCount: all.length,
+        trash,
+        ready: true,
+      };
     });
   },
 
   addRecord: (record, audioBlob) => {
     set((state) => ({
       records: dedupeSorted([record, ...state.records]),
+      // 撤销删除 / 重新导入时清掉同 id 的回收站条目
+      trash: state.trash.filter((item) => item.id !== record.id),
       totalCount: state.totalCount + 1,
     }));
     persist(async () => {
       await idbPutRecord(record);
       if (audioBlob) await idbPutAudio(record.id, audioBlob);
+      await idbDeleteTrash(record.id);
     });
   },
 
   removeRecord: (id) => {
-    set((state) => {
-      if (!state.records.some((r) => r.id === id)) return state;
-      return {
-        records: state.records.filter((r) => r.id !== id),
-        // 同步递减，否则列表清空后仍显示「已截断，共 N 条」
-        totalCount: Math.max(0, state.totalCount - 1),
-      };
-    });
+    const record = get().records.find((r) => r.id === id);
+    if (!record) return;
+    const deletedAt = Date.now();
+    set((state) => ({
+      records: state.records.filter((r) => r.id !== id),
+      // 同步递减，否则列表清空后仍显示「已截断，共 N 条」
+      totalCount: Math.max(0, state.totalCount - 1),
+      trash: [{ id, deletedAt, record }, ...state.trash.filter((item) => item.id !== id)],
+    }));
+    // 音频留在 audio 仓库：恢复时不需要重写，30 天后才随回收站一起删
     persist(async () => {
+      await idbPutTrash({ id, deletedAt, record });
       await idbDeleteRecord(id);
-      await idbDeleteAudio(id);
+    });
+  },
+
+  restoreTrash: (ids) => {
+    const wanted = new Set(ids);
+    const items = get().trash.filter((item) => wanted.has(item.id));
+    if (items.length === 0) return;
+    const restored = items.map((item) => item.record);
+    set((state) => ({
+      records: dedupeSorted([...restored, ...state.records]),
+      totalCount: state.totalCount + restored.length,
+      trash: state.trash.filter((item) => !wanted.has(item.id)),
+    }));
+    persist(async () => {
+      for (const record of restored) {
+        await idbPutRecord(record);
+        await idbDeleteTrash(record.id);
+      }
+    });
+  },
+
+  deleteTrashForever: (ids) => {
+    const unwanted = new Set(ids);
+    set((state) => ({ trash: state.trash.filter((item) => !unwanted.has(item.id)) }));
+    persist(async () => {
+      await Promise.all(ids.map((id) => idbDeleteTrash(id)));
+      await Promise.all(ids.map((id) => idbDeleteAudio(id)));
+    });
+  },
+
+  clearTrash: () => {
+    const ids = get().trash.map((item) => item.id);
+    set({ trash: [] });
+    persist(async () => {
+      await idbClearTrash();
+      await Promise.all(ids.map((id) => idbDeleteAudio(id)));
     });
   },
 
   clearAll: () => {
     // totalCount 同步归零，否则列表清空后仍显示「已截断，共 N 条」提示
-    set({ records: [], totalCount: 0 });
+    set({ records: [], trash: [], totalCount: 0 });
     persist(async () => {
       await idbClearRecords();
       await idbClearAudio();
+      await idbClearTrash();
     });
   },
 
@@ -165,8 +244,17 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
     }
     if (added.length > 0) {
       const merged = [...existing.values()].sort((a, b) => b.createdAt - a.createdAt);
-      set({ records: merged.slice(0, MAX_HISTORY), totalCount: merged.length });
-      persist(() => idbPutRecords(added));
+      const addedIds = new Set(added.map((record) => record.id));
+      set((state) => ({
+        records: merged.slice(0, MAX_HISTORY),
+        totalCount: merged.length,
+        // 同 id 已在回收站时，导入后以活记录为准
+        trash: state.trash.filter((item) => !addedIds.has(item.id)),
+      }));
+      persist(async () => {
+        await idbPutRecords(added);
+        for (const record of added) await idbDeleteTrash(record.id);
+      });
     }
     return added.length;
   },

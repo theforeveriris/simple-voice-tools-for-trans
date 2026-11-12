@@ -60,6 +60,13 @@ test('设置子页面可达：数据管理面板渲染', async ({ page }) => {
   await expect(page.getByText(/backup|備份|备份/i).first()).toBeVisible({ timeout: 10_000 });
 });
 
+test('回收站入口可打开并显示空状态', async ({ page }) => {
+  await waitApp(page);
+  await page.getByRole('button', { name: /history|歷史|历史/i }).first().click();
+  await page.getByRole('button', { name: /trash|回收站|垃圾箱/i }).click();
+  await expect(page.getByText(/Trash is empty|回收站是空的|回收站是空的|ゴミ箱は空です/i)).toBeVisible();
+});
+
 test('崩溃草稿：启动提示恢复，放弃后不再出现', async ({ page }) => {
   await waitApp(page);
   // 直接写入一份「未完成录音」草稿（启动扫描不依赖音频能否解码）
