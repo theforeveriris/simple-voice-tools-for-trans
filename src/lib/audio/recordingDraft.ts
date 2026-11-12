@@ -6,7 +6,7 @@
  * 通过 recordId 对账后静默清理；只有找不到对应记录的草稿才会提示恢复。
  */
 
-import { idbDeleteKV, idbGetAllRecords, idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import { idbDeleteKV, idbGetRecord, idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import type { AnalysisRecord, TestMode } from '@/types';
 
 const META_KEY = 'recording:draft:meta';
@@ -114,8 +114,8 @@ export async function hasRecordingDraft(): Promise<boolean> {
 /** 草稿对应的记录是否已经正常落库（用于成功保存后的静默清理） */
 export async function draftRecordExists(meta: RecordingDraftMeta): Promise<boolean> {
   if (!meta.recordId) return false;
-  const records = await idbGetAllRecords<AnalysisRecord>().catch(() => []);
-  return records.some((record) => record.id === meta.recordId);
+  const record = await idbGetRecord<AnalysisRecord>(meta.recordId).catch(() => undefined);
+  return record != null;
 }
 
 /** 正常保存成功后延迟对账清理；记录尚未落库时保留草稿，交给下次启动恢复 */

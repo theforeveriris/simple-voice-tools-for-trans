@@ -97,6 +97,10 @@ export async function idbGetAllRecords<T>(): Promise<T[]> {
   return withStore<T[]>(STORE_RECORDS, 'readonly', (s) => s.getAll());
 }
 
+export async function idbGetRecord<T>(id: string): Promise<T | undefined> {
+  return withStore<T | undefined>(STORE_RECORDS, 'readonly', (s) => s.get(id) as IDBRequest<T | undefined>);
+}
+
 export function idbPutRecord(record: unknown): Promise<void> {
   return withStore(STORE_RECORDS, 'readwrite', (s) => {
     s.put(record);
