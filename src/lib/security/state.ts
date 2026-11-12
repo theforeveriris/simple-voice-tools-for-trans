@@ -392,6 +392,11 @@ function validateNewRecovery(code: string): string {
   return normalized;
 }
 
+/** 新真实 PIN 不能撞上第二 PIN，否则诱饵入口会被真实 PIN 覆盖 */
+async function conflictsWithDuress(pin: string): Promise<boolean> {
+  return config?.duress?.pin ? verifySecret(pin, config.duress.pin) : false;
+}
+
 export async function changePin(
   currentPin: string | null,
   newPin: string,
@@ -399,7 +404,9 @@ export async function changePin(
   viaStrongBiometric: boolean,
 ): Promise<ChangeResult> {
   if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
-  if (!isSixDigitPin(newPin)) return { ok: false, failure: 'error' };
+  if (!isSixDigitPin(newPin) || await conflictsWithDuress(newPin)) {
+    return { ok: false, failure: 'error' };
+  }
   const normalizedRecovery = validateNewRecovery(newRecoveryCode);
 
   if (viaStrongBiometric) {
@@ -438,7 +445,9 @@ export async function resetPinWithRecovery(
   newRecoveryCode: string,
 ): Promise<ChangeResult> {
   if (!config?.enabled || !config.recovery) return { ok: false, failure: 'unavailable' };
-  if (!isSixDigitPin(newPin)) return { ok: false, failure: 'error' };
+  if (!isSixDigitPin(newPin) || await conflictsWithDuress(newPin)) {
+    return { ok: false, failure: 'error' };
+  }
   const normalizedOld = normalizeRecoveryCode(recoveryCode);
   if (!normalizedOld) return { ok: false, failure: 'invalid' };
   const retry = remainingLockMs(attempts, 'recovery');
@@ -494,7 +503,9 @@ export async function resetPinWithStrongBiometric(
   newRecoveryCode: string,
 ): Promise<ChangeResult> {
   if (!config?.enabled) return { ok: false, failure: 'unavailable' };
-  if (!isSixDigitPin(newPin)) return { ok: false, failure: 'error' };
+  if (!isSixDigitPin(newPin) || await conflictsWithDuress(newPin)) {
+    return { ok: false, failure: 'error' };
+  }
   const normalizedNew = validateNewRecovery(newRecoveryCode);
   const ok = await verifyStrongBiometricForReset();
   if (!ok) return { ok: false, failure: 'invalid' };
