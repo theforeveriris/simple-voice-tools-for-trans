@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Simple Voice Tool for Trans",
-  "version": "0.9.3",
+  "version": "0.11.0",
   "identifier": "com.theforeveriris.simplevoicetool",
   "build": {
     "frontendDist": "../docs",
