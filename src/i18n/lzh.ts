@@ -1929,5 +1929,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   "backup.passPlaceholder": "備之密語",
   "recover.discardConfirm": "確認棄之",
   "security.clearFailed": "清之不成：本機數據猶存，請再試",
+  "trash.failed": "事不成，請再試",
 };
 

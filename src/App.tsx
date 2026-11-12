@@ -241,7 +241,8 @@ function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (security.locked) return;
+      // 锁屏 / 诱饵库都不响应真实录音与页签快捷键
+      if (security.locked || security.decoy) return;
       const target = e.target as HTMLElement | null;
       if (
         target
@@ -283,7 +284,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shortcutsOpen, security.enabled, security.locked]);
+  }, [shortcutsOpen, security.enabled, security.locked, security.decoy]);
 
   const isDark = theme === 'dark'
     || (theme === 'system'

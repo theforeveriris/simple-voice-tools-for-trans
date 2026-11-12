@@ -37,14 +37,23 @@ export function TrashSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const restoreAll = () => {
     const ids = trash.map((item) => item.id);
     if (ids.length === 0) return;
-    restoreTrash(ids);
-    toast.success(t('trash.restored', { n: ids.length }));
-    onClose();
+    void (async () => {
+      const ok = await restoreTrash(ids);
+      if (!ok) {
+        toast.error(t('trash.failed'));
+        return;
+      }
+      toast.success(t('trash.restored', { n: ids.length }));
+      onClose();
+    })();
   };
 
   const restoreOne = (id: string) => {
-    restoreTrash([id]);
-    toast.success(t('trash.restored', { n: 1 }));
+    void (async () => {
+      const ok = await restoreTrash([id]);
+      if (ok) toast.success(t('trash.restored', { n: 1 }));
+      else toast.error(t('trash.failed'));
+    })();
   };
 
   return (
@@ -146,11 +155,14 @@ export function TrashSheet({ open, onClose }: { open: boolean; onClose: () => vo
             <AlertDialogAction
               className="bg-red-500 text-white hover:bg-red-500/90"
               onClick={() => {
-                if (pendingDelete) {
-                  deleteTrashForever([pendingDelete]);
-                  toast.success(t('trash.deleted'));
-                }
+                const id = pendingDelete;
                 setPendingDelete(null);
+                if (!id) return;
+                void (async () => {
+                  const ok = await deleteTrashForever([id]);
+                  if (ok) toast.success(t('trash.deleted'));
+                  else toast.error(t('trash.failed'));
+                })();
               }}
             >
               {t('trash.deleteForever')}
@@ -170,9 +182,12 @@ export function TrashSheet({ open, onClose }: { open: boolean; onClose: () => vo
             <AlertDialogAction
               className="bg-red-500 text-white hover:bg-red-500/90"
               onClick={() => {
-                clearTrash();
                 setConfirmClear(false);
-                toast.success(t('trash.cleared'));
+                void (async () => {
+                  const ok = await clearTrash();
+                  if (ok) toast.success(t('trash.cleared'));
+                  else toast.error(t('trash.failed'));
+                })();
               }}
             >
               {t('trash.clearAll')}

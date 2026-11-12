@@ -67,7 +67,9 @@ export function LanSyncSection() {
     },
     getRecords: () => useHistoryStore.getState().getAllRecords(),
     getAudio: (id) => useHistoryStore.getState().getAudio(id),
-    putRecord: (r) => Promise.resolve(useHistoryStore.getState().addRecord(r)),
+    putRecord: async (r) => {
+      await useHistoryStore.getState().addRecord(r);
+    },
     putAudio: (id, blob) => idbPutAudio(id, blob),
   });
 

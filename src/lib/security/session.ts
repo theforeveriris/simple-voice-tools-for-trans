@@ -25,11 +25,18 @@ function navigationType(): string {
 
 export function markUnlocked(now = Date.now(), decoy = false): void {
   try {
+    // 先写 decoy 标记再写解锁时间：如果标记写失败，宁可刷新后重新锁定，
+    // 也不能出现「会话恢复成解锁但 decoy 标记丢失」而露出真实资料库
+    sessionStorage.setItem(DECOY_KEY, decoy ? '1' : '0');
     sessionStorage.setItem(UNLOCK_KEY, String(now));
     sessionStorage.removeItem(HIDDEN_KEY);
-    sessionStorage.setItem(DECOY_KEY, decoy ? '1' : '0');
   } catch {
-    /* private mode / storage disabled */
+    try {
+      sessionStorage.removeItem(UNLOCK_KEY);
+      sessionStorage.removeItem(DECOY_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 }
 

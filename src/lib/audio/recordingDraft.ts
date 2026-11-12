@@ -7,7 +7,7 @@
  */
 
 import {
-  idbDeleteKV, idbDeleteKVByPrefix, idbGetRecord, idbGetKV, idbPutKV,
+  idbDeleteKV, idbDeleteKVByPrefix, idbGetAudio, idbGetRecord, idbGetKV, idbPutKV,
 } from '@/lib/storage/idb';
 import type { AnalysisRecord, TestMode } from '@/types';
 
@@ -113,19 +113,38 @@ export async function hasRecordingDraft(): Promise<boolean> {
   return Boolean(meta);
 }
 
-/** 草稿对应的记录是否已经正常落库（用于成功保存后的静默清理） */
-export async function draftRecordExists(meta: RecordingDraftMeta): Promise<boolean> {
-  if (!meta.recordId) return false;
-  const record = await idbGetRecord<AnalysisRecord>(meta.recordId).catch(() => undefined);
-  return record != null;
-}
-
-/** 正常保存成功后延迟对账清理；记录尚未落库时保留草稿，交给下次启动恢复 */
-export async function clearRecordingDraftIfSaved(): Promise<void> {
+/** 把恢复后的新记录 id 写回草稿，后续对账才能找到它 */
+export async function linkRecordingDraftRecord(recordId: string): Promise<void> {
   await queue;
   const meta = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);
   if (!meta) return;
-  if (await draftRecordExists(meta)) await clearRecordingDraft(meta.id);
+  await idbPutKV(META_KEY, { ...meta, recordId });
+}
+
+/**
+ * 草稿对应的记录是否已经正常落库。
+ * @param requireAudio 录音草稿只在保存音频时创建；恢复/正常保存都应确认音频也在
+ */
+export async function draftRecordExists(
+  meta: RecordingDraftMeta,
+  requireAudio = false,
+): Promise<boolean> {
+  if (!meta.recordId) return false;
+  const record = await idbGetRecord<AnalysisRecord>(meta.recordId).catch(() => undefined);
+  if (!record) return false;
+  if (requireAudio) {
+    const audio = await idbGetAudio(meta.recordId).catch(() => null);
+    if (!audio) return false;
+  }
+  return true;
+}
+
+/** 正常保存成功后延迟对账清理；记录/音频尚未落库时保留草稿，交给下次启动恢复 */
+export async function clearRecordingDraftIfSaved(requireAudio = false): Promise<void> {
+  await queue;
+  const meta = await idbGetKV<RecordingDraftMeta>(META_KEY).catch(() => undefined);
+  if (!meta) return;
+  if (await draftRecordExists(meta, requireAudio)) await clearRecordingDraft(meta.id);
 }
 
 /**

@@ -106,9 +106,15 @@ fn main() {
   match get(&url, &token, &path) {
     Ok(body) => {
       let mut stdout = std::io::stdout();
-      let _ = stdout.write_all(body.as_bytes());
-      if !body.ends_with('\n') {
-        let _ = stdout.write_all(b"\n");
+      if let Err(err) = stdout.write_all(body.as_bytes()) {
+        eprintln!("write failed: {err}");
+        std::process::exit(1);
+      }
+      if !body.ends_with('\n')
+        && let Err(err) = stdout.write_all(b"\n")
+      {
+        eprintln!("write failed: {err}");
+        std::process::exit(1);
       }
     }
     Err(err) => {
@@ -155,15 +161,14 @@ fn get(base_url: &str, token: &str, path: &str) -> Result<String, String> {
     .read_to_string(&mut response)
     .map_err(|err| format!("response read failed: {err}"))?;
   let status = response.lines().next().unwrap_or("HTTP/1.1 000");
+  // 只切一次：CSV 备注里可能包含空行，不能按 \r\n\r\n 再分
+  let body = response
+    .split_once("\r\n\r\n")
+    .map(|(_, body)| body)
+    .unwrap_or("");
   if !status.contains(" 200 ") {
-    let body = response.split("\r\n\r\n").nth(1).unwrap_or("").trim();
+    let body = body.trim();
     return Err(format!("API error: {status}{}{body}", if body.is_empty() { "" } else { " — " }));
   }
-  Ok(
-    response
-      .split("\r\n\r\n")
-      .nth(1)
-      .unwrap_or("")
-      .to_string(),
-  )
+  Ok(body.to_string())
 }

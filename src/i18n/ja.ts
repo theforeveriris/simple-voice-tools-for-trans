@@ -1929,4 +1929,5 @@ export const ja = {
   "backup.passPlaceholder": "バックアップのパスフレーズ",
   "recover.discardConfirm": "破棄を確定",
   "security.clearFailed": "消去に失敗しました。ローカルデータは保持されています。もう一度お試しください",
+  "trash.failed": "操作に失敗しました。もう一度お試しください",
 } as const;

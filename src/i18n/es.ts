@@ -1937,4 +1937,5 @@ export const es = {
   "backup.passPlaceholder": "Contraseña de la copia",
   "recover.discardConfirm": "Confirmar descarte",
   "security.clearFailed": "Error al borrar: los datos locales se conservaron; inténtalo de nuevo",
+  "trash.failed": "La operación falló; inténtalo de nuevo",
 } as const;

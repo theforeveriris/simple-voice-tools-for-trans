@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const h = vi.hoisted(() => ({
   kv: new Map<string, unknown>(),
   records: [] as { id: string }[],
+  audio: new Map<string, Blob>(),
 }));
 
 vi.mock('@/lib/storage/idb', () => ({
@@ -20,6 +21,7 @@ vi.mock('@/lib/storage/idb', () => ({
     }
   },
   idbGetRecord: async (id: string) => h.records.find((record) => record.id === id),
+  idbGetAudio: async (id: string) => h.audio.get(id) ?? null,
 }));
 
 import {
@@ -45,6 +47,7 @@ describe('recordingDraft', () => {
   beforeEach(async () => {
     h.kv.clear();
     h.records.length = 0;
+    h.audio.clear();
     await clearRecordingDraft();
     h.kv.clear();
   });
@@ -102,6 +105,20 @@ describe('recordingDraft', () => {
 
     h.records.push({ id: 'record-1' });
     await clearRecordingDraftIfSaved();
+    expect(await hasRecordingDraft()).toBe(false);
+  });
+
+  it('要求音频也落库后才清理草稿', async () => {
+    await startRecordingDraft(meta);
+    appendRecordingDraftChunk(0, new Blob(['abc']));
+    markRecordingDraftRecordId('record-1');
+    h.records.push({ id: 'record-1' });
+
+    await clearRecordingDraftIfSaved(true);
+    expect(await hasRecordingDraft()).toBe(true);
+
+    h.audio.set('record-1', new Blob(['audio']));
+    await clearRecordingDraftIfSaved(true);
     expect(await hasRecordingDraft()).toBe(false);
   });
 

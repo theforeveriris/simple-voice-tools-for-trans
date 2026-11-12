@@ -6,13 +6,12 @@
 //! Bearer token。生命周期与桌面进程一致。
 
 use std::collections::BTreeMap;
-use std::hash::{BuildHasher, Hasher};
 use std::io::{ErrorKind, Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -82,7 +81,7 @@ pub fn local_api_start(snapshot_json: String) -> Result<ApiStatus, String> {
   let addr = listener
     .local_addr()
     .map_err(|err| format!("cannot read listener address: {err}"))?;
-  let token = random_token();
+  let token = random_token()?;
   let stop = Arc::new(AtomicBool::new(false));
   *guard = Some(Server {
     addr,
@@ -118,18 +117,11 @@ pub fn local_api_status() -> ApiStatus {
   current_status()
 }
 
-fn random_token() -> String {
-  // RandomState 的键来自系统随机源；两组拼成 128 位 token，避免新增依赖。
-  let mut a = std::collections::hash_map::RandomState::new().build_hasher();
-  a.write_u128(
-    std::time::SystemTime::now()
-      .duration_since(std::time::UNIX_EPOCH)
-      .map(|d| d.as_nanos())
-      .unwrap_or(0),
-  );
-  let mut b = std::collections::hash_map::RandomState::new().build_hasher();
-  b.write_u64(std::process::id() as u64);
-  format!("{:016x}{:016x}", a.finish(), b.finish())
+fn random_token() -> Result<String, String> {
+  // 直接取操作系统随机源；不要用时间戳/进程号派生，避免可预测 token
+  let mut bytes = [0u8; 16];
+  getrandom::fill(&mut bytes).map_err(|err| format!("secure random unavailable: {err}"))?;
+  Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 fn serve(listener: TcpListener, token: String, stop: Arc<AtomicBool>) {
@@ -154,7 +146,12 @@ fn handle(stream: &mut TcpStream, token: &str, stop: &AtomicBool) {
   let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
   let mut buffer: Vec<u8> = Vec::with_capacity(8192);
   let mut chunk = [0u8; 4096];
+  let started = Instant::now();
   loop {
+    // 慢客户端不能靠每次 read 的超时无限续命：整个头部只给 3 秒
+    if started.elapsed() > Duration::from_secs(3) {
+      return;
+    }
     match stream.read(&mut chunk) {
       Ok(0) => break,
       Ok(read) => {

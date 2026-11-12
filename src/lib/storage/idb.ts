@@ -196,24 +196,49 @@ export function idbMoveRecordToTrash<T>(item: TrashedRecord<T>): Promise<void> {
   });
 }
 
-/** 回收站 → 记录（同一事务） */
-export function idbRestoreTrashRecord<T>(item: TrashedRecord<T>): Promise<void> {
+/** 回收站 → 记录（整批同一事务） */
+export function idbRestoreTrashBatch<T>(items: TrashedRecord<T>[]): Promise<void> {
   return trashTx([STORE_RECORDS, STORE_TRASH], (tx) => {
-    tx.objectStore(STORE_RECORDS).put(item.record);
-    tx.objectStore(STORE_TRASH).delete(item.id);
+    const records = tx.objectStore(STORE_RECORDS);
+    const trash = tx.objectStore(STORE_TRASH);
+    for (const item of items) {
+      records.put(item.record);
+      trash.delete(item.id);
+    }
   });
 }
 
-/** 永久删除回收站条目并释放音频（同一事务） */
+/**
+ * 永久删除回收站条目并释放音频（同一事务）。
+ * 先确认回收站条目仍存在、且没有同 id 的活记录：另一标签页可能已经恢复/清空，
+ * 不能拿过期的 id 误删刚恢复的音频。
+ */
 export function idbPurgeTrash(ids: string[]): Promise<void> {
-  return trashTx([STORE_TRASH, STORE_AUDIO], (tx) => {
+  return openDb().then((db) => new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([STORE_TRASH, STORE_RECORDS, STORE_AUDIO], 'readwrite');
     const trash = tx.objectStore(STORE_TRASH);
+    const records = tx.objectStore(STORE_RECORDS);
     const audio = tx.objectStore(STORE_AUDIO);
     for (const id of ids) {
-      trash.delete(id);
-      audio.delete(id);
+      const trashGet = trash.get(id);
+      trashGet.onsuccess = () => {
+        if (!trashGet.result) return;
+        const recordGet = records.get(id);
+        recordGet.onsuccess = () => {
+          // 记录仍存活：只清理过期的回收站条目，保留音频
+          if (recordGet.result) {
+            trash.delete(id);
+            return;
+          }
+          trash.delete(id);
+          audio.delete(id);
+        };
+      };
     }
-  });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB trash transaction failed'));
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB trash transaction aborted'));
+  }));
 }
 
 /* ------------------------------- 键值仓库 ------------------------------- */

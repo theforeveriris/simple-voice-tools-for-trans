@@ -71,13 +71,19 @@ export async function startLocalApi(): Promise<LocalApiStatus> {
   return status;
 }
 
-export async function stopLocalApi(): Promise<void> {
+export async function stopLocalApi(): Promise<boolean> {
   wantedRunning = false;
-  if (!isTauri) return;
+  if (!isTauri) {
+    running = false;
+    return true;
+  }
   try {
     await invoke('local_api_stop');
-  } finally {
     running = false;
+    return true;
+  } catch {
+    // 命令失败时服务可能仍在运行：不要谎报已停止，交给调用方重试/提示
+    return false;
   }
 }
 

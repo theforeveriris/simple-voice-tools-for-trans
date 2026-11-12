@@ -1937,6 +1937,7 @@ export const zhCN = {
   "backup.passPlaceholder": "备份口令",
   "recover.discardConfirm": "确认放弃",
   "security.clearFailed": "清除失败：本机数据仍保留，请重试",
+  "trash.failed": "操作失败，请重试",
 } as const;
 
 export type DictKey = keyof typeof zhCN;

@@ -35,7 +35,8 @@ export function LocalApiSection() {
     void (async () => {
       try {
         if (status.running) {
-          await stopLocalApi();
+          const stopped = await stopLocalApi();
+          if (!stopped) throw new Error(t('settings.localApiStartFail'));
           setStatus({ running: false });
         } else {
           setStatus(await startLocalApi());

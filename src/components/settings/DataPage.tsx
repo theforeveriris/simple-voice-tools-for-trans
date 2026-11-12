@@ -457,10 +457,10 @@ export function DataPage({
     }
     setZipBusy(true);
     try {
-      const res = await exportFullBackup({ encrypt });
+      const res = await exportFullBackup();
       if (res.records === 0) toast.info(t('toast.nothingToExport'));
       else {
-        toast.success(t(encrypt ? 'toast.zipDoneEncrypted' : 'toast.zipDone', {
+        toast.success(t(res.encrypted ? 'toast.zipDoneEncrypted' : 'toast.zipDone', {
           records: res.records,
           audio: res.audio,
         }));

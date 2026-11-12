@@ -1928,4 +1928,5 @@ export const en = {
   "backup.passPlaceholder": "Backup passphrase",
   "recover.discardConfirm": "Confirm discard",
   "security.clearFailed": "Clear failed: local data was kept; please try again",
+  "trash.failed": "Action failed; please try again",
 } as const;

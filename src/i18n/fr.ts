@@ -1937,4 +1937,5 @@ export const fr = {
   "backup.passPlaceholder": "Mot de passe de la sauvegarde",
   "recover.discardConfirm": "Confirmer l’abandon",
   "security.clearFailed": "Échec de l’effacement : les données locales sont conservées ; réessayez",
+  "trash.failed": "L’opération a échoué ; réessayez",
 } as const;

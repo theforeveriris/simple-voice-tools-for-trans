@@ -13,6 +13,7 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { audioMimeOf, downloadBlob } from '@/lib/file';
 import {
   decryptBackupEnvelope, decryptWithPassphrase, encryptForBackup, isEncryptedBackup,
+  isLocalBackupEncryptionEnabled,
 } from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { APP_ID } from '@/lib/appId';
@@ -187,10 +188,12 @@ export async function sha256Hex(data: Uint8Array): Promise<string> {
  */
 export async function exportFullBackup(
   options: { encrypt?: boolean } = {},
-): Promise<{ records: number; audio: number }> {
+): Promise<{ records: number; audio: number; encrypted: boolean }> {
   const built = await buildFullBackupZip();
-  if (!built) return { records: 0, audio: 0 };
-  if (options.encrypt) {
+  if (!built) return { records: 0, audio: 0, encrypted: false };
+  // 以打包完成时的设置为准：避免打包期间刚开启加密却把明文写出去
+  const encrypt = options.encrypt ?? await isLocalBackupEncryptionEnabled();
+  if (encrypt) {
     const plain = new Uint8Array(await built.blob.arrayBuffer());
     const encrypted = await encryptForBackup(plain);
     downloadBlob(
@@ -200,7 +203,7 @@ export async function exportFullBackup(
   } else {
     downloadBlob(built.filename, built.blob);
   }
-  return { records: built.records, audio: built.audio };
+  return { records: built.records, audio: built.audio, encrypted: encrypt };
 }
 
 /**

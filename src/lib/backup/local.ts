@@ -138,6 +138,13 @@ async function writeBackup(silentSkip: boolean): Promise<void> {
     : built.blob;
   const file = await handle.getFileHandle(filename, { create: true });
   const writable = await file.createWritable();
+  // 构建/获取句柄期间设置可能变化：加密开关变了就放弃这次写入，避免把明文落到磁盘
+  const finalEncrypted = await isLocalBackupEncryptionEnabled();
+  if (finalEncrypted !== encrypted) {
+    await writable.abort().catch(() => undefined);
+    if (!silentSkip) toast.error(t('toast.autoBackupNeedUnlock'));
+    return;
+  }
   await writable.write(blob);
   await writable.close();
   await idbPutKV(LAST_KEY, Date.now());

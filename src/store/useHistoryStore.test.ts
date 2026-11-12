@@ -22,9 +22,11 @@ vi.mock('@/lib/storage/idb', () => ({
     h.trash.set(item.id, item);
     h.records.delete(item.id);
   },
-  idbRestoreTrashRecord: async (item: { id: string; record: unknown }) => {
-    h.records.set(item.id, item.record);
-    h.trash.delete(item.id);
+  idbRestoreTrashBatch: async (items: { id: string; record: unknown }[]) => {
+    for (const item of items) {
+      h.records.set(item.id, item.record);
+      h.trash.delete(item.id);
+    }
   },
   idbPurgeTrash: async (ids: string[]) => {
     for (const id of ids) h.trash.delete(id);
@@ -72,29 +74,29 @@ describe('removeRecord', () => {
 });
 
 describe('回收站', () => {
-  it('删除移入回收站，恢复后回到列表且总数还原', () => {
+  it('删除移入回收站，恢复后回到列表且总数还原', async () => {
     useHistoryStore.setState({ records: [rec('a', 2), rec('b', 1)], trash: [], totalCount: 2 });
     useHistoryStore.getState().removeRecord('a');
     expect(useHistoryStore.getState().records.map((r) => r.id)).toEqual(['b']);
     expect(useHistoryStore.getState().trash.map((item) => item.id)).toEqual(['a']);
     expect(useHistoryStore.getState().totalCount).toBe(1);
 
-    useHistoryStore.getState().restoreTrash(['a']);
+    expect(await useHistoryStore.getState().restoreTrash(['a'])).toBe(true);
     expect(useHistoryStore.getState().records.map((r) => r.id)).toEqual(['a', 'b']);
     expect(useHistoryStore.getState().trash).toHaveLength(0);
     expect(useHistoryStore.getState().totalCount).toBe(2);
   });
 
-  it('永久删除与清空回收站', () => {
+  it('永久删除与清空回收站', async () => {
     useHistoryStore.setState({ records: [rec('a', 2), rec('b', 1)], trash: [], totalCount: 2 });
     useHistoryStore.getState().removeRecord('a');
     useHistoryStore.getState().removeRecord('b');
     expect(useHistoryStore.getState().trash).toHaveLength(2);
 
-    useHistoryStore.getState().deleteTrashForever(['a']);
+    expect(await useHistoryStore.getState().deleteTrashForever(['a'])).toBe(true);
     expect(useHistoryStore.getState().trash.map((item) => item.id)).toEqual(['b']);
 
-    useHistoryStore.getState().clearTrash();
+    expect(await useHistoryStore.getState().clearTrash()).toBe(true);
     expect(useHistoryStore.getState().trash).toHaveLength(0);
   });
 });

@@ -20,7 +20,10 @@ export function LockGate({ children }: { children: ReactNode }) {
 
   // 锁定或进入诱饵库时停掉桌面本地 API，避免只读服务继续把真实快照暴露在本机端口上
   useEffect(() => {
-    if (security.locked || security.decoy) void stopLocalApi();
+    if (!security.locked && !security.decoy) return;
+    void stopLocalApi().then((stopped) => {
+      if (!stopped) console.error('本地 API 未能在锁定 / 诱饵模式下停止');
+    });
   }, [security.locked, security.decoy]);
 
   if (!security.ready) {

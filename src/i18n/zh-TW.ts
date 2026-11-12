@@ -1928,4 +1928,5 @@ export const zhTW = {
   "backup.passPlaceholder": "備份密碼",
   "recover.discardConfirm": "確認放棄",
   "security.clearFailed": "清除失敗：本機資料仍保留，請重試",
+  "trash.failed": "操作失敗，請重試",
 } as const;

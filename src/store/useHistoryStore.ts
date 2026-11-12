@@ -13,7 +13,7 @@ import { t } from '@/i18n';
 import {
   idbGetAllRecords, idbPutRecord, idbPutRecords, idbClearRecords,
   idbGetAudio, idbPutAudio, idbClearAudio,
-  idbGetAllTrash, idbMoveRecordToTrash, idbRestoreTrashRecord, idbPurgeTrash,
+  idbGetAllTrash, idbMoveRecordToTrash, idbRestoreTrashBatch, idbPurgeTrash,
   idbDeleteTrash, idbClearTrash, type TrashedRecord,
 } from '@/lib/storage/idb';
 
@@ -31,12 +31,16 @@ function warnStorage() {
   toast.warning(t('toast.storageUnavailable'));
 }
 
-/** 将内存记录写库（尽力而为，失败不阻断 UI） */
-function persist(fn: () => Promise<void>) {
-  fn().catch((err) => {
-    console.error('历史记录写入失败:', err);
-    warnStorage();
-  });
+/** 将内存记录写库；返回是否成功，调用方可在失败时保留恢复草稿 */
+function persist(fn: () => Promise<void>): Promise<boolean> {
+  return fn().then(
+    () => true,
+    (err) => {
+      console.error('历史记录写入失败:', err);
+      warnStorage();
+      return false;
+    },
+  );
 }
 
 interface HistoryState {
@@ -49,16 +53,16 @@ interface HistoryState {
   ready: boolean;
   /** 应用启动时调用：加载数据 + 旧版迁移 */
   hydrate: () => Promise<void>;
-  /** 新增一条记录（最新在数组头部），可附带音频 Blob */
-  addRecord: (record: AnalysisRecord, audioBlob?: Blob) => void;
+  /** 新增一条记录（最新在数组头部），可附带音频 Blob；返回是否落库成功 */
+  addRecord: (record: AnalysisRecord, audioBlob?: Blob) => Promise<boolean>;
   /** 删除一条记录（移入回收站，30 天后自动清理） */
   removeRecord: (id: string) => void;
-  /** 从回收站恢复记录（音频仍在） */
-  restoreTrash: (ids: string[]) => void;
-  /** 永久删除回收站条目（连同音频） */
-  deleteTrashForever: (ids: string[]) => void;
-  /** 清空回收站 */
-  clearTrash: () => void;
+  /** 从回收站恢复记录（音频仍在）；返回是否持久化成功 */
+  restoreTrash: (ids: string[]) => Promise<boolean>;
+  /** 永久删除回收站条目（连同音频）；返回是否持久化成功 */
+  deleteTrashForever: (ids: string[]) => Promise<boolean>;
+  /** 清空回收站；返回是否持久化成功 */
+  clearTrash: () => Promise<boolean>;
   /** 清空全部（含音频与回收站） */
   clearAll: () => void;
   /** 更新一条记录（备注编辑等） */
@@ -75,6 +79,9 @@ interface HistoryState {
    */
   getAllRecords: () => Promise<AnalysisRecord[]>;
 }
+
+/** 全量清空进行中：阻止回收站恢复/清理把刚清掉的数据又写回来 */
+let historyClearing = false;
 
 function dedupeSorted(records: AnalysisRecord[]): AnalysisRecord[] {
   const map = new Map(records.map((r) => [r.id, r]));
@@ -150,7 +157,7 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       trash: state.trash.filter((item) => item.id !== record.id),
       totalCount: state.totalCount + 1,
     }));
-    persist(async () => {
+    return persist(async () => {
       await idbPutRecord(record);
       if (audioBlob) await idbPutAudio(record.id, audioBlob);
       await idbDeleteTrash(record.id);
@@ -171,40 +178,68 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
     persist(() => idbMoveRecordToTrash({ id, deletedAt, record }));
   },
 
-  restoreTrash: (ids) => {
+  restoreTrash: async (ids) => {
+    if (historyClearing) return false;
     const wanted = new Set(ids);
     const items = get().trash.filter((item) => wanted.has(item.id));
-    if (items.length === 0) return;
+    if (items.length === 0) return true;
+    try {
+      await idbRestoreTrashBatch(items);
+    } catch (err) {
+      console.error('恢复记录失败:', err);
+      warnStorage();
+      return false;
+    }
+    // 恢复事务期间用户可能点了「清空全部」：清空优先，不把记录写回内存
+    if (historyClearing) return false;
     const restored = items.map((item) => item.record);
     set((state) => ({
       records: dedupeSorted([...restored, ...state.records]),
       totalCount: state.totalCount + restored.length,
       trash: state.trash.filter((item) => !wanted.has(item.id)),
     }));
-    persist(async () => {
-      for (const item of items) await idbRestoreTrashRecord(item);
-    });
+    return true;
   },
 
-  deleteTrashForever: (ids) => {
+  deleteTrashForever: async (ids) => {
+    if (historyClearing) return false;
+    try {
+      await idbPurgeTrash(ids);
+    } catch (err) {
+      console.error('永久删除失败:', err);
+      warnStorage();
+      return false;
+    }
     const unwanted = new Set(ids);
     set((state) => ({ trash: state.trash.filter((item) => !unwanted.has(item.id)) }));
-    persist(() => idbPurgeTrash(ids));
+    return true;
   },
 
-  clearTrash: () => {
+  clearTrash: async () => {
+    if (historyClearing) return false;
     const ids = get().trash.map((item) => item.id);
+    if (ids.length === 0) return true;
+    try {
+      await idbPurgeTrash(ids);
+    } catch (err) {
+      console.error('清空回收站失败:', err);
+      warnStorage();
+      return false;
+    }
     set({ trash: [] });
-    persist(() => idbPurgeTrash(ids));
+    return true;
   },
 
   clearAll: () => {
     // totalCount 同步归零，否则列表清空后仍显示「已截断，共 N 条」提示
+    historyClearing = true;
     set({ records: [], trash: [], totalCount: 0 });
-    persist(async () => {
+    void persist(async () => {
       await idbClearRecords();
       await idbClearAudio();
       await idbClearTrash();
+    }).finally(() => {
+      historyClearing = false;
     });
   },
 
@@ -222,6 +257,8 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
     const added: AnalysisRecord[] = [];
     for (const rec of incoming) {
       if (!rec || typeof rec !== 'object' || !rec.id || !rec.series || !rec.stats) continue;
+      if (!Array.isArray(rec.series.t) || !Array.isArray(rec.series.f0) || !Array.isArray(rec.series.rmsDb)) continue;
+      if (typeof rec.createdAt !== 'number' || typeof rec.stats.durationSec !== 'number') continue;
       if (!existing.has(rec.id)) {
         existing.set(rec.id, rec);
         added.push(rec);

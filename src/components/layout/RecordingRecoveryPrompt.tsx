@@ -18,6 +18,7 @@ import {
   clearRecordingDraftIfSaved,
   draftRecordExists,
   hasRecordingDraft,
+  linkRecordingDraftRecord,
   loadRecordingDraft,
   type RecordingDraft,
 } from '@/lib/audio/recordingDraft';
@@ -110,10 +111,16 @@ export function RecordingRecoveryPrompt() {
       record.createdAt = meta.startedAt;
       if (MODES.includes(meta.mode)) record.mode = meta.mode;
 
-      useHistoryStore.getState().addRecord(record, savedAudio ?? undefined);
+      const saved = await useHistoryStore.getState().addRecord(record, savedAudio ?? undefined);
+      if (!saved) {
+        // 写库失败：保留草稿和弹窗，用户可以重试或下次启动再恢复
+        toast.error(t('recover.failed'));
+        return;
+      }
+      // 先把新记录 id 写回草稿，再等记录与音频都落库后清理
+      await linkRecordingDraftRecord(record.id);
       setDraft(null);
-      // 等记录真正落库后再删草稿；写库失败时保留，下次启动还能再试
-      window.setTimeout(() => void clearRecordingDraftIfSaved(), 1500);
+      window.setTimeout(() => void clearRecordingDraftIfSaved(true), 1500);
       // 应用锁切换会卸载/重挂本组件；清掉扫描缓存，避免恢复后再次弹出
       startupScan = Promise.resolve(null);
       useStore.getState().setCurrentAnalysis(record);

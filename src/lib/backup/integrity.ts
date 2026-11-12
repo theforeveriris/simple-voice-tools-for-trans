@@ -53,12 +53,15 @@ function hasRecordShape(record: AnalysisRecord): boolean {
     typeof record.createdAt === 'number' &&
     Number.isFinite(record.createdAt) &&
     typeof record.durationSec === 'number' &&
+    typeof record.sampleHz === 'number' &&
     record.series &&
     Array.isArray(record.series.t) &&
     Array.isArray(record.series.f0) &&
     Array.isArray(record.series.rmsDb) &&
     record.stats &&
-    typeof record.stats === 'object',
+    typeof record.stats === 'object' &&
+    typeof record.stats.durationSec === 'number' &&
+    typeof record.stats.sampleHz === 'number',
   );
 }
 

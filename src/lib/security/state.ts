@@ -585,7 +585,7 @@ export async function setDuressPin(currentPin: string, pin: string): Promise<Cha
   const check = await verifyCurrentPin(currentPin);
   if (!check.ok) return check;
   if (await verifySecret(pin, config.pin)) return { ok: false, failure: 'error' };
-  config = {
+  const next: SecurityConfig = {
     ...config,
     duress: {
       pin: await hashSecret(pin),
@@ -593,7 +593,8 @@ export async function setDuressPin(currentPin: string, pin: string): Promise<Cha
     },
     updatedAt: Date.now(),
   };
-  await persistConfig();
+  await saveSecurityConfig(next);
+  config = next;
   emit();
   return { ok: true };
 }
@@ -603,8 +604,9 @@ export async function removeDuressPin(currentPin: string): Promise<ChangeResult>
   if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
   const check = await verifyCurrentPin(currentPin);
   if (!check.ok) return check;
-  config = { ...config, duress: null, updatedAt: Date.now() };
-  await persistConfig();
+  const next: SecurityConfig = { ...config, duress: null, updatedAt: Date.now() };
+  await saveSecurityConfig(next);
+  config = next;
   emit();
   return { ok: true };
 }
