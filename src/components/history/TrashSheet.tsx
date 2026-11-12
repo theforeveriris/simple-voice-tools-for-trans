@@ -91,11 +91,11 @@ export function TrashSheet({ open, onClose }: { open: boolean; onClose: () => vo
                               month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
                             })}
                             {' · '}
-                            {t(MODE_KEY[record.mode ?? 'reading'])}
+                            {t(MODE_KEY[record.mode ?? 'reading'] ?? 'mode.reading')}
                           </p>
                           <p className="mt-0.5 text-[10px] text-ink-2">
-                            {record.stats.avgF0 != null ? `${Math.round(record.stats.avgF0)} Hz · ` : ''}
-                            {record.durationSec.toFixed(1)} s
+                            {record.stats?.avgF0 != null ? `${Math.round(record.stats.avgF0)} Hz · ` : ''}
+                            {(record.durationSec ?? 0).toFixed(1)} s
                           </p>
                           <p className="mt-0.5 text-[10px] text-ink-2/80">
                             {t('trash.deletedAt', {
