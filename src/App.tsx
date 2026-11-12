@@ -10,6 +10,7 @@ import { Capacitor } from '@capacitor/core';
 import { ArrowLeft } from 'lucide-react';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { RecordingMiniView } from '@/components/layout/RecordingMiniView';
+import { RecordingRecoveryPrompt } from '@/components/layout/RecordingRecoveryPrompt';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
 import { SplashScreen } from '@/components/layout/SplashScreen';
@@ -443,6 +444,9 @@ function App() {
 
       {/* 原生壳启动页：浏览器/PWA 的启动画面由系统按 manifest 生成，这里只补壳内 */}
       {isNative && <SplashScreen />}
+
+      {/* 崩溃恢复：录音中 App 被系统杀掉 / 浏览器崩溃后，提示恢复未保存的草稿 */}
+      <RecordingRecoveryPrompt />
 
       {/* 首次打开引导：未完成时（localStorage svt:onboarded 缺失）显示一次，
           训练方向 / 年龄段 / 语言 / 主题 全部完成后标记，可手动从「跳过」关闭。

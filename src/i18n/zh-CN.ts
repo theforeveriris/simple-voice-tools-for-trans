@@ -1826,6 +1826,19 @@ export const zhCN = {
   "security.toastRecoveryGenerated": "新恢复码已保存",
   "security.toastBiometricOn": "生物识别已开启",
   "security.toastBiometricOff": "生物识别已关闭",
+  "recover.title": "恢复上次录音",
+  "recover.desc": "App 在这次录音保存前退出了。要恢复 {date} 的录音吗？已写入的音频约 {size}。",
+  "recover.restore": "恢复",
+  "recover.discard": "放弃",
+  "recover.restoring": "正在恢复…",
+  "recover.restored": "录音已恢复",
+  "recover.failed": "恢复失败，草稿已保留",
+  "recover.discarded": "已放弃上次录音",
+  "settings.cleanupDraft": "未完成录音",
+  "settings.cleanupDraftDesc": "录音过程中 App 被系统结束时，音频会暂存在本机；下次启动会提示恢复。这里可以手动清理这些草稿",
+  "settings.cleanupDraftAction": "清理",
+  "settings.cleanupDraftNone": "没有未完成的录音",
+  "settings.cleanupDraftDone": "未完成录音已清理",
 } as const;
 
 export type DictKey = keyof typeof zhCN;

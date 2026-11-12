@@ -1818,5 +1818,18 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   "security.toastBiometricOn": "生物识别已开启",
   "security.toastBiometricOff": "生物识别已关闭",
 
+  "recover.title": "復前錄",
+  "recover.desc": "此錄未存而App已閉。欲復 {date} 之音乎？所存約 {size}。",
+  "recover.restore": "復",
+  "recover.discard": "棄",
+  "recover.restoring": "復之…",
+  "recover.restored": "錄已復",
+  "recover.failed": "復之不成，草稿猶存",
+  "recover.discarded": "已棄前錄",
+  "settings.cleanupDraft": "未竟之錄",
+  "settings.cleanupDraftDesc": "錄時App為系統所終，音暫存於本機；下次啟動當詢汝復之。此處可手清其稿",
+  "settings.cleanupDraftAction": "清",
+  "settings.cleanupDraftNone": "無未竟之錄",
+  "settings.cleanupDraftDone": "未竟之錄已清",
 };
 

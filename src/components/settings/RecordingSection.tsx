@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Mic } from 'lucide-react';
+import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
+import { hasRecordingDraft, clearRecordingDraft } from '@/lib/audio/recordingDraft';
+import { useStore } from '@/store/useStore';
 import type { AppSettings } from '@/types';
 import {
   Select,
@@ -26,6 +29,24 @@ export function RecordingSection({
 }) {
   useI18n();
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
+  const [draftBusy, setDraftBusy] = useState(false);
+  // 录音进行中时草稿正在写入，不能从设置页清掉
+  const recordingNow = useStore((s) => s.isRecording);
+
+  const cleanupDraft = async () => {
+    if (draftBusy || recordingNow) return;
+    setDraftBusy(true);
+    try {
+      if (!(await hasRecordingDraft())) {
+        toast.info(t('settings.cleanupDraftNone'));
+        return;
+      }
+      await clearRecordingDraft();
+      toast.success(t('settings.cleanupDraftDone'));
+    } finally {
+      setDraftBusy(false);
+    }
+  };
 
   // 枚举麦克风设备（授权过一次后才能拿到名称）。未授权时浏览器返回的
   // 默认设备 deviceId 为空字符串——Radix SelectItem 禁止空 value（会直接抛错，
@@ -133,6 +154,15 @@ export function RecordingSection({
           checked={settings.autoReplay}
           onCheckedChange={(v) => update({ autoReplay: v })}
         />
+      </SettingRow>
+      <SettingRow label={<InfoTip label={t('settings.cleanupDraft')} text={t('settings.cleanupDraftDesc')} />}>
+        <button
+          onClick={() => void cleanupDraft()}
+          disabled={draftBusy || recordingNow}
+          className="rounded-full bg-surface-hi px-3 py-1.5 text-xs font-medium text-ink transition-opacity hover:opacity-80 disabled:opacity-50"
+        >
+          {t('settings.cleanupDraftAction')}
+        </button>
       </SettingRow>
       <SettingRow label={t('settings.mic')}>
         <Select
