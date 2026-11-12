@@ -274,14 +274,16 @@ export function isEncryptedBackup(data: Uint8Array): boolean {
 }
 
 /**
- * 解密加密信封。
- * - 会话已解锁：用**会话口令** + 文件头中的 salt 派生密钥（因此换口令后，
- *   用旧口令加密的云端文件在重启后无法解密——需在换口令后重新推送一次）；
- * - 未解锁：抛 BackupLockedError（UI 弹口令框后重试）；
- * - 密文被篡改 / 口令错误：抛本地化的解密失败错误。
+ * 用显式口令解密信封（导入旧备份 / 本机加密配置已关闭时使用）。
+ * 文件头自带 salt / iterations / iv，不依赖 IndexedDB 里的配置。
  */
-export async function decryptBackupEnvelope(data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
+export async function decryptWithPassphrase(
+  data: Uint8Array,
+  passphrase: string,
+): Promise<Uint8Array<ArrayBuffer>> {
   if (!isEncryptedBackup(data)) throw new Error(t('crypto.errNotEncrypted'));
+  const trimmed = passphrase.trim();
+  if (!trimmed) throw new Error(t('crypto.errTooShort'));
   const salt = data.slice(MAGIC.length, MAGIC.length + SALT_LEN);
   const iterations = new DataView(data.buffer, data.byteOffset).getUint32(MAGIC.length + SALT_LEN, false);
   // 迭代次数来自文件头（可被伪造）：上限兜底，避免恶意文件让 PBKDF2 跑到天荒地老
@@ -290,12 +292,22 @@ export async function decryptBackupEnvelope(data: Uint8Array): Promise<Uint8Arra
   }
   const iv = data.slice(MAGIC.length + SALT_LEN + 4, MAGIC.length + SALT_LEN + 4 + IV_LEN);
   const ct = data.slice(MAGIC.length + SALT_LEN + 4 + IV_LEN);
-  if (!session) throw new BackupLockedError();
   try {
-    const key = await deriveKey(session.passphrase, salt, iterations);
+    const key = await deriveKey(trimmed, salt, iterations);
     return await aesGcmDecrypt(key, iv, ct);
-  } catch (err) {
-    if (err instanceof BackupLockedError) throw err;
+  } catch {
     throw new Error(t('crypto.errPassphrase'));
   }
+}
+
+/**
+ * 解密加密信封。
+ * - 会话已解锁：用**会话口令** + 文件头中的 salt 派生密钥（因此换口令后，
+ *   用旧口令加密的云端文件在重启后无法解密——需在换口令后重新推送一次）；
+ * - 未解锁：抛 BackupLockedError（UI 弹口令框后重试）；
+ * - 密文被篡改 / 口令错误：抛本地化的解密失败错误。
+ */
+export async function decryptBackupEnvelope(data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
+  if (!session) throw new BackupLockedError();
+  return decryptWithPassphrase(data, session.passphrase);
 }

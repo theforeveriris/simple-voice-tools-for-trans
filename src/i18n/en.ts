@@ -1923,4 +1923,7 @@ export const en = {
   "trash.confirmClearTitle": "Empty the trash?",
   "trash.confirmClearDesc": "All recordings and audio in the trash will be permanently deleted. This cannot be undone.",
   "trash.noWrite": "Trashed recordings do not appear in analysis, exports or backups.",
+  "backup.passTitle": "Enter backup passphrase",
+  "backup.passDesc": "This backup is encrypted. Enter the passphrase used when it was created; verification and restore happen on this device.",
+  "backup.passPlaceholder": "Backup passphrase",
 } as const;

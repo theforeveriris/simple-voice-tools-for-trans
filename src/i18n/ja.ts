@@ -1924,4 +1924,7 @@ export const ja = {
   "trash.confirmClearTitle": "ゴミ箱を空にしますか？",
   "trash.confirmClearDesc": "ゴミ箱内のすべての録音と音声が完全に削除され、元に戻せません。",
   "trash.noWrite": "ゴミ箱の録音は分析・書き出し・バックアップには表示されません。",
+  "backup.passTitle": "バックアップのパスフレーズを入力",
+  "backup.passDesc": "このバックアップは暗号化されています。作成時のパスフレーズを入力してください。検証と復元はこの端末内で行います。",
+  "backup.passPlaceholder": "バックアップのパスフレーズ",
 } as const;

@@ -1923,4 +1923,7 @@ export const zhTW = {
   "trash.confirmClearTitle": "清空回收站？",
   "trash.confirmClearDesc": "將永久刪除回收站中的全部記錄與音訊，無法復原。",
   "trash.noWrite": "回收站裡的記錄不會出現在分析、匯出或備份中。",
+  "backup.passTitle": "輸入備份密碼",
+  "backup.passDesc": "這份備份已加密。輸入建立時使用的密碼，驗證或還原都只在本機進行。",
+  "backup.passPlaceholder": "備份密碼",
 } as const;

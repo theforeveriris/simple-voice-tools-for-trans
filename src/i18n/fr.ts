@@ -1932,4 +1932,7 @@ export const fr = {
   "trash.confirmClearTitle": "Vider la corbeille ?",
   "trash.confirmClearDesc": "Tous les enregistrements et audios de la corbeille seront définitivement supprimés. Action irréversible.",
   "trash.noWrite": "Les enregistrements de la corbeille n\\'apparaissent ni dans l\\'analyse, ni dans les exports, ni dans les sauvegardes.",
+  "backup.passTitle": "Saisir le mot de passe de la sauvegarde",
+  "backup.passDesc": "Cette sauvegarde est chiffrée. Saisissez le mot de passe utilisé lors de sa création ; la vérification et la restauration restent sur cet appareil.",
+  "backup.passPlaceholder": "Mot de passe de la sauvegarde",
 } as const;

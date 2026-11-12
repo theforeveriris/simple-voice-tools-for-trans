@@ -1932,6 +1932,9 @@ export const zhCN = {
   "trash.confirmClearTitle": "清空回收站？",
   "trash.confirmClearDesc": "将永久删除回收站中的全部记录与音频，无法撤销。",
   "trash.noWrite": "回收站里的记录不会出现在分析、导出或备份中。",
+  "backup.passTitle": "输入备份口令",
+  "backup.passDesc": "这份备份已加密。输入创建它时使用的口令，验证或恢复都只在本机进行。",
+  "backup.passPlaceholder": "备份口令",
 } as const;
 
 export type DictKey = keyof typeof zhCN;

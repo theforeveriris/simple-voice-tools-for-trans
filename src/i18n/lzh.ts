@@ -1924,5 +1924,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   "trash.confirmClearTitle": "清棄物之庫乎？",
   "trash.confirmClearDesc": "庫中記錄與音將盡永棄，不可復也。",
   "trash.noWrite": "庫中記錄不出於分析、出囊或備份。",
+  "backup.passTitle": "入備之密語",
+  "backup.passDesc": "此備已密。入其初製之語；驗與復皆在本機。",
+  "backup.passPlaceholder": "備之密語",
 };
 

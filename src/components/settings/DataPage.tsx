@@ -24,6 +24,7 @@ import { downloadBlob } from '@/lib/file';
 import { RestorePreviewDialog } from './RestorePreviewDialog';
 import { buildRestorePreview, type RestorePreview } from './restorePreview';
 import { BackupVerifyDialog } from './BackupVerifyDialog';
+import { FilePassphraseDialog } from './FilePassphraseDialog';
 import {
   getLastBackupVerify, inspectBackupFile,
   type BackupInspection, type BackupVerifyResult,
@@ -115,6 +116,9 @@ export function DataPage({
   const pendingImportRef = useRef<(() => void) | null>(null);
   // 云备份加密：会话未解锁时先弹口令框，成功后继续被挂起的推/拉动作
   const [passOpen, setPassOpen] = useState(false);
+  // 导入加密文件：文件头自带 salt，允许输入任意口令直接解密（不依赖本机加密配置）
+  const [filePassOpen, setFilePassOpen] = useState(false);
+  const pendingFilePassRef = useRef<((passphrase: string) => void) | null>(null);
   const pendingActionRef = useRef<(() => void) | null>(null);
 
   // AI 请求日志子页：入口卡片显示条数，返回时重读
@@ -345,17 +349,17 @@ export function DataPage({
   };
 
   /** 从 ZIP 备份恢复——先解析预览，确认后走 importFullBackup（挂载音频 + 背景图） */
-  const importZip = (file: File) => {
+  const importZip = (file: File, passphrase?: string) => {
     void (async () => {
       try {
-        const { records: incoming } = await parseFullBackupZip(file);
+        const { records: incoming } = await parseFullBackupZip(file, passphrase);
         // 预览去重按全量（内存视图有 MAX_HISTORY 截断）
         const existingIds = new Set((await getAllRecords()).map((r) => r.id));
         setPreviewDrill(false);
         pendingImportRef.current = () => {
           void (async () => {
             try {
-              const res = await importFullBackup(file);
+              const res = await importFullBackup(file, passphrase);
               if (res.records > 0) toast.success(t('toast.zipRestored', { records: res.records, audio: res.audio }));
               else if (res.audio > 0) toast.info(t('toast.zipRestoredAudioOnly', { audio: res.audio }));
               else toast.info(t('toast.zipSame'));
@@ -367,10 +371,10 @@ export function DataPage({
         };
         setRestorePreview(buildRestorePreview(incoming, existingIds));
       } catch (err) {
-        // 加密备份：先解锁口令，再重试解析（预览仍不落库）
+        // 加密备份：先输入文件口令，再重试解析（预览仍不落库）
         if (err instanceof BackupLockedError) {
-          pendingActionRef.current = () => importZip(file);
-          setPassOpen(true);
+          pendingFilePassRef.current = (pass) => importZip(file, pass);
+          setFilePassOpen(true);
           return;
         }
         toast.error(err instanceof Error && err.message ? err.message : t('toast.zipFail'));
@@ -379,19 +383,19 @@ export function DataPage({
   };
 
   /** 完整性检查：只读文件，校验加密包、ZIP 结构、记录与音频；结果写入「上次验证」 */
-  const runVerify = (file: File) => {
+  const runVerify = (file: File, passphrase?: string) => {
     if (verifyBusy) return;
     setVerifyBusy(true);
     void (async () => {
       try {
-        const inspection = await inspectBackupFile(file);
+        const inspection = await inspectBackupFile(file, passphrase);
         setVerifyInspection(inspection);
         setLastVerify(inspection.result);
       } catch (err) {
-        // 加密备份：先解锁口令，再重试同一个文件
+        // 加密备份：先输入文件口令，再重试同一个文件
         if (err instanceof BackupLockedError) {
-          pendingActionRef.current = () => runVerify(file);
-          setPassOpen(true);
+          pendingFilePassRef.current = (pass) => runVerify(file, pass);
+          setFilePassOpen(true);
           return;
         }
         toast.error(err instanceof Error && err.message ? err.message : t('backup.verifyNotZip'));
@@ -887,6 +891,21 @@ export function DataPage({
             if (!v) pendingActionRef.current = null;
           }}
           onDone={onPassUnlocked}
+        />
+
+        {/* 导入加密备份：输入文件自身口令，不依赖云备份会话 */}
+        <FilePassphraseDialog
+          open={filePassOpen}
+          onClose={() => {
+            setFilePassOpen(false);
+            pendingFilePassRef.current = null;
+          }}
+          onSubmit={(passphrase) => {
+            const retry = pendingFilePassRef.current;
+            pendingFilePassRef.current = null;
+            setFilePassOpen(false);
+            retry?.(passphrase);
+          }}
         />
 
         {/* 完整性检查结果 + 恢复演练入口 */}

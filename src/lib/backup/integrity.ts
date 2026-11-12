@@ -12,7 +12,9 @@
  */
 
 import { unzipSync, strFromU8, type Unzipped } from 'fflate';
-import { decryptBackupEnvelope, isEncryptedBackup, BackupLockedError } from './crypto';
+import {
+  decryptBackupEnvelope, decryptWithPassphrase, isEncryptedBackup, BackupLockedError,
+} from './crypto';
 import { parseRecordsPayload } from '@/lib/export/backup';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import { t } from '@/i18n';
@@ -54,8 +56,14 @@ function hasRecordShape(record: AnalysisRecord): boolean {
   );
 }
 
-/** 检查字节内容；加密包未解锁时抛 BackupLockedError，交给 UI 弹口令框后重试 */
-export async function inspectBackupBytes(bytes: Uint8Array): Promise<BackupInspection> {
+/**
+ * 检查字节内容；加密包可用显式口令或已解锁的会话口令解密。
+ * 两者都没有时抛 BackupLockedError，交给 UI 弹口令框后重试。
+ */
+export async function inspectBackupBytes(
+  bytes: Uint8Array,
+  passphrase?: string,
+): Promise<BackupInspection> {
   const at = Date.now();
   const issues: string[] = [];
   let ok = true;
@@ -70,7 +78,9 @@ export async function inspectBackupBytes(bytes: Uint8Array): Promise<BackupInspe
   try {
     if (isEncryptedBackup(bytes)) {
       encrypted = true;
-      plain = await decryptBackupEnvelope(bytes);
+      plain = passphrase
+        ? await decryptWithPassphrase(bytes, passphrase)
+        : await decryptBackupEnvelope(bytes);
     }
     files = unzipSync(plain);
   } catch (err) {
@@ -145,8 +155,11 @@ export async function inspectBackupBytes(bytes: Uint8Array): Promise<BackupInspe
 }
 
 /** 从用户选择的文件做检查（含保存「上次验证」状态） */
-export async function inspectBackupFile(file: File): Promise<BackupInspection> {
-  return inspectBackupBytes(new Uint8Array(await file.arrayBuffer()));
+export async function inspectBackupFile(
+  file: File,
+  passphrase?: string,
+): Promise<BackupInspection> {
+  return inspectBackupBytes(new Uint8Array(await file.arrayBuffer()), passphrase);
 }
 
 export async function getLastBackupVerify(): Promise<BackupVerifyResult | null> {

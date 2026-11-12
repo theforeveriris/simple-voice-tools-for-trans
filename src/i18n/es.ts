@@ -1932,4 +1932,7 @@ export const es = {
   "trash.confirmClearTitle": "¿Vaciar la papelera?",
   "trash.confirmClearDesc": "Todas las grabaciones y el audio de la papelera se eliminarán de forma permanente. No se puede deshacer.",
   "trash.noWrite": "Las grabaciones en la papelera no aparecen en análisis, exportaciones ni copias de seguridad.",
+  "backup.passTitle": "Introduce la contraseña de la copia",
+  "backup.passDesc": "Esta copia está cifrada. Introduce la contraseña usada al crearla; la verificación y la restauración se hacen en este dispositivo.",
+  "backup.passPlaceholder": "Contraseña de la copia",
 } as const;

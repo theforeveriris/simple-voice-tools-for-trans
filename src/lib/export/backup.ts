@@ -11,7 +11,9 @@ import { idbGetKV, idbPutAudio } from '@/lib/storage/idb';
 import { BG_IMAGE_KV, saveBgImage } from '@/lib/theme/bgImage';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { audioMimeOf, downloadBlob } from '@/lib/file';
-import { decryptBackupEnvelope, encryptForBackup, isEncryptedBackup } from '@/lib/backup/crypto';
+import {
+  decryptBackupEnvelope, decryptWithPassphrase, encryptForBackup, isEncryptedBackup,
+} from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { APP_ID } from '@/lib/appId';
 import type { AnalysisRecord } from '@/types';
@@ -201,9 +203,16 @@ export async function exportFullBackup(
   return { records: built.records, audio: built.audio };
 }
 
-/** 解密（如需要）并解包 ZIP；未解锁时抛 BackupLockedError，由 UI 弹口令框后重试 */
-async function unzipBackup(bytes: Uint8Array) {
-  const plain = isEncryptedBackup(bytes) ? await decryptBackupEnvelope(bytes) : bytes;
+/**
+ * 解密（如需要）并解包 ZIP。
+ * - 显式口令优先（导入旧备份 / 本机加密已关闭）；
+ * - 否则使用会话口令；未解锁时抛 BackupLockedError，由 UI 弹口令框后重试。
+ */
+async function unzipBackup(bytes: Uint8Array, passphrase?: string) {
+  if (!isEncryptedBackup(bytes)) return unzipSync(bytes);
+  const plain = passphrase
+    ? await decryptWithPassphrase(bytes, passphrase)
+    : await decryptBackupEnvelope(bytes);
   return unzipSync(plain);
 }
 
@@ -218,9 +227,12 @@ export interface BackupImportResult {
  * 解析 ZIP 备份的结构（不落库）：恢复预览用。
  * @throws 与 importFullBackup 同口径（非 zip / 无 records.json / 版本过新）
  */
-export async function parseFullBackupZip(file: File): Promise<{ records: AnalysisRecord[]; hasBgImage: boolean }> {
+export async function parseFullBackupZip(
+  file: File,
+  passphrase?: string,
+): Promise<{ records: AnalysisRecord[]; hasBgImage: boolean }> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const files = await unzipBackup(bytes);
+  const files = await unzipBackup(bytes, passphrase);
   const jsonEntry = files[JSON_NAME] ?? files[`data/${JSON_NAME}`];
   if (!jsonEntry) throw new Error(t('backup.errNoJson'));
   const { records } = parseRecordsPayload(strFromU8(jsonEntry));
@@ -232,10 +244,13 @@ export async function parseFullBackupZip(file: File): Promise<{ records: Analysi
  * 从 ZIP 备份恢复（记录按 id 去重合并，音频挂载到已存在的记录上）
  * @throws ZIP 损坏或缺少 records.json 时抛错；加密的云端备份包给出「走云恢复」指引
  */
-export async function importFullBackup(file: File): Promise<BackupImportResult> {
+export async function importFullBackup(
+  file: File,
+  passphrase?: string,
+): Promise<BackupImportResult> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   // 加密包（SVTENC1 信封）先解密；未解锁时抛 BackupLockedError（UI 弹口令框后重试）
-  const files = await unzipBackup(bytes);
+  const files = await unzipBackup(bytes, passphrase);
   const jsonEntry = files[JSON_NAME] ?? files[`data/${JSON_NAME}`];
   if (!jsonEntry) throw new Error(t('backup.errNoJson'));
 
