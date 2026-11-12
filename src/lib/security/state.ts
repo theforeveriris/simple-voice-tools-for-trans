@@ -120,6 +120,12 @@ function installChannel(): void {
   if (typeof BroadcastChannel === 'undefined' || channel) return;
   channel = new BroadcastChannel(CHANNEL_NAME);
   channel.onmessage = (event: MessageEvent) => {
+    // 另一标签页执行了紧急清除：本标签页内存里可能还留着旧记录，直接重载
+    if (event.data?.type === 'wipe') {
+      clearUnlocked();
+      location.reload();
+      return;
+    }
     if (event.data?.type !== 'lock') return;
     if (!config?.enabled) return;
     locked = true;
@@ -128,6 +134,14 @@ function installChannel(): void {
     clearUnlocked();
     emit();
   };
+}
+
+function broadcastWipe(): void {
+  try {
+    channel?.postMessage({ type: 'wipe' });
+  } catch {
+    /* BroadcastChannel unavailable */
+  }
 }
 
 function broadcastLock(): void {
@@ -703,6 +717,8 @@ export async function clearAllSecurityData(): Promise<boolean> {
   } catch {
     /* ignore */
   }
+  // 其他已打开的标签页内存里还握着旧记录：通知它们重载
+  broadcastWipe();
   location.reload();
   return true;
 }

@@ -53,6 +53,37 @@ test('duress PIN opens the decoy library without real records', async ({ page })
   });
   await page.goto('/#/settings', { waitUntil: 'domcontentloaded' });
 
+  // 先放一条真实记录：诱饵库不能把它泄露出来，也不能在切换 PIN 时删掉
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('svt');
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('records')) db.createObjectStore('records', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      };
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('records', 'readwrite');
+        tx.objectStore('records').put({
+          id: 'e2e-real',
+          createdAt: Date.now(),
+          durationSec: 1,
+          sampleHz: 30,
+          series: { t: [0], f0: [120], rmsDb: [-30], f1: [500], f2: [1500] },
+          stats: {},
+        });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  });
+
   await page.getByRole('button', { name: 'Privacy & Security', exact: true }).click();
   await page.getByRole('switch').first().click();
   const pins = page.locator('input[type=password]');
@@ -85,4 +116,20 @@ test('duress PIN opens the decoy library without real records', async ({ page })
     await page.getByRole('button', { name: digit, exact: true }).click();
   }
   await expect(page.getByRole('button', { name: 'Privacy & Security', exact: true })).toBeVisible();
+
+  // 真实记录仍在 IndexedDB 中（诱饵模式没有删改它）
+  const kept = await page.evaluate(async () => new Promise<boolean>((resolve) => {
+    const req = indexedDB.open('svt');
+    req.onsuccess = () => {
+      const db = req.result;
+      const get = db.transaction('records', 'readonly').objectStore('records').get('e2e-real');
+      get.onsuccess = () => {
+        resolve(Boolean(get.result));
+        db.close();
+      };
+      get.onerror = () => resolve(false);
+    };
+    req.onerror = () => resolve(false);
+  }));
+  expect(kept).toBe(true);
 });
