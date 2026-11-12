@@ -72,7 +72,7 @@ test('崩溃草稿：启动提示恢复，放弃后不再出现', async ({ page 
   // 直接写入一份「未完成录音」草稿（启动扫描不依赖音频能否解码）
   await page.evaluate(async () => {
     await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('svt', 2);
+      const req = indexedDB.open('svt');
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains('records')) db.createObjectStore('records', { keyPath: 'id' });
