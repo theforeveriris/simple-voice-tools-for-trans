@@ -33,6 +33,7 @@ export interface RecordingDraft {
 
 let activeMeta: RecordingDraftMeta | null = null;
 let queue: Promise<void> = Promise.resolve();
+let writeWarned = false;
 
 function chunkKey(id: string, index: number): string {
   return `${CHUNK_PREFIX}${id}:${index}`;
@@ -41,7 +42,11 @@ function chunkKey(id: string, index: number): string {
 function enqueue(task: () => Promise<void>): Promise<void> {
   // 磁盘满 / 隐私模式等失败不能变成未处理的 rejection，也不能卡死后续写入
   queue = queue.then(task).catch((err) => {
-    console.warn('录音草稿写入失败:', err);
+    // 配额耗尽时每个块都会失败，只提示一次，避免刷屏
+    if (!writeWarned) {
+      writeWarned = true;
+      console.warn('录音草稿写入失败:', err);
+    }
   });
   return queue;
 }
@@ -49,6 +54,7 @@ function enqueue(task: () => Promise<void>): Promise<void> {
 /** 开始新录音：先清掉所有旧草稿块（包括 meta 丢失留下的孤儿），再写新元数据 */
 export async function startRecordingDraft(meta: Omit<RecordingDraftMeta, 'chunkCount' | 'totalBytes'>): Promise<void> {
   activeMeta = { ...meta, chunkCount: 0, totalBytes: 0 };
+  writeWarned = false;
   await enqueue(async () => {
     await idbDeleteKVByPrefix(CHUNK_PREFIX);
     await idbDeleteKV(META_KEY);
