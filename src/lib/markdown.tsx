@@ -140,20 +140,25 @@ function chunk(lines: string[]): Line[] {
 
 /** 标题字号（按尺度）：doc 用于全屏文档页，chat 用于聊天气泡 */
 const HEAD_SIZE: Record<MdScale, (level: number) => string> = {
-  chat: (level) => (level === 1 ? 'text-sm' : 'text-[13px]'),
+  chat: (level) => (level === 1 ? 'text-[15px]' : level === 2 ? 'text-[14px]' : 'text-[13px]'),
   doc: (level) => (level === 1 ? 'text-xl' : level === 2 ? 'text-base' : 'text-sm'),
 };
 
 /** 标题上边距（doc 段落更松散） */
 const HEAD_MARGIN: Record<MdScale, (level: number) => string> = {
-  chat: () => 'mt-1',
+  chat: () => 'mt-3.5 mb-1.5 first:mt-0',
   doc: (level) => (level === 1 ? 'mt-0' : level === 2 ? 'mt-6' : 'mt-4'),
 };
 
-/** 正文段落（doc 尺度显式给字号行高；chat 继承气泡样式） */
+/** 正文段落（chat 给足行高，避免长回答挤成一团） */
 const BODY: Record<MdScale, string> = {
-  chat: '',
+  chat: 'text-[13px] leading-[1.75]',
   doc: 'text-[13px] leading-relaxed',
+};
+
+const PARAGRAPH: Record<MdScale, string> = {
+  chat: 'my-2 first:mt-0 last:mb-0 leading-[1.75]',
+  doc: 'my-3 text-[13px] first:mt-0 last:mb-0 leading-relaxed',
 };
 
 /** Markdown → React 元素（块级结构 + 行内标记） */
@@ -173,25 +178,27 @@ export function renderMarkdown(text: string, scale: MdScale = 'chat'): ReactNode
         );
       }
       case 'hr':
-        return <div key={key} className="my-1.5 border-t border-black/10" />;
+        return <div key={key} className={scale === 'chat' ? 'my-3 border-t border-black/10' : 'my-4 border-t border-black/10'} />;
       case 'code':
         return (
           <pre
             key={key}
-            className="my-2 overflow-x-auto rounded-xl bg-surface-hi px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-ink"
+            className={`${scale === 'chat' ? 'my-2.5' : 'my-3'} overflow-x-auto rounded-xl bg-surface-hi px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-ink`}
           >
             <code>{b.text}</code>
           </pre>
         );
       case 'quote':
         return (
-          <blockquote key={key} className={`border-l-2 border-accent/50 pl-2.5 text-ink-2 ${BODY[scale]}`}>
-            {b.text.split('\n').map((l, li) => <p key={li}>{parseInline(l, `${key}-${li}`)}</p>)}
+          <blockquote key={key} className={`my-2.5 border-l-2 border-accent/50 pl-2.5 py-0.5 text-ink-2 ${BODY[scale]}`}>
+            {b.text.split('\n').map((l, li) => (
+              <p key={li} className="my-0">{parseInline(l, `${key}-${li}`)}</p>
+            ))}
           </blockquote>
         );
       case 'ul':
         return (
-          <ul key={key} className={`ml-1 list-disc space-y-0.5 pl-3.5 ${BODY[scale]}`}>
+          <ul key={key} className={`my-2 ml-1 list-disc space-y-1 pl-3.5 first:mt-0 last:mb-0 ${BODY[scale]}`}>
             {(b.items ?? []).map((it, li) => (
               <li key={li} className={it.level > 0 ? 'ml-4 list-[circle] text-ink-2' : undefined}>
                 {parseInline(it.text, `${key}-${li}`)}
@@ -201,7 +208,7 @@ export function renderMarkdown(text: string, scale: MdScale = 'chat'): ReactNode
         );
       case 'ol':
         return (
-          <ol key={key} className={`ml-1 list-decimal space-y-0.5 pl-4 ${BODY[scale]}`}>
+          <ol key={key} className={`my-2 ml-1 list-decimal space-y-1 pl-4 first:mt-0 last:mb-0 ${BODY[scale]}`}>
             {(b.items ?? []).map((it, li) => (
               <li key={li} className={it.level > 0 ? 'ml-4 text-ink-2' : undefined}>
                 {parseInline(it.text, `${key}-${li}`)}
@@ -213,12 +220,17 @@ export function renderMarkdown(text: string, scale: MdScale = 'chat'): ReactNode
         const rows = b.text.split('\n').map((r) => r.split('\t'));
         const [head, ...body] = rows;
         return (
-          <div key={key} className="-mx-0.5 overflow-x-auto">
+          <div key={key} className="-mx-0.5 my-2.5 overflow-x-auto first:mt-0 last:mb-0">
             <table className={`w-full border-collapse ${scale === 'doc' ? 'text-[12.5px]' : 'text-[12px]'}`}>
               <thead>
                 <tr>
                   {head.map((c, ci) => (
-                    <th key={ci} className="border-b border-black/15 px-2 py-1 text-left font-semibold">{parseInline(c, `${key}h${ci}`)}</th>
+                    <th
+                      key={ci}
+                      className="min-w-24 border-b border-black/15 px-2 py-1.5 text-left font-semibold whitespace-nowrap"
+                    >
+                      {parseInline(c, `${key}h${ci}`)}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -226,7 +238,12 @@ export function renderMarkdown(text: string, scale: MdScale = 'chat'): ReactNode
                 {body.map((r, ri) => (
                   <tr key={ri}>
                     {r.map((c, ci) => (
-                      <td key={ci} className="border-b border-black/[0.06] px-2 py-1">{parseInline(c, `${key}-${ri}-${ci}`)}</td>
+                      <td
+                        key={ci}
+                        className="min-w-24 border-b border-black/[0.06] px-2 py-1.5 align-top break-words"
+                      >
+                        {parseInline(c, `${key}-${ri}-${ci}`)}
+                      </td>
                     ))}
                   </tr>
                 ))}
@@ -236,7 +253,7 @@ export function renderMarkdown(text: string, scale: MdScale = 'chat'): ReactNode
         );
       }
       default:
-        return <p key={key} className={BODY[scale] || undefined}>{parseInline(b.text, key)}</p>;
+        return <p key={key} className={PARAGRAPH[scale]}>{parseInline(b.text, key)}</p>;
     }
   });
 }

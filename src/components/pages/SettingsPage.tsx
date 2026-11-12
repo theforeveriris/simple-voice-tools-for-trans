@@ -9,10 +9,12 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Cog, DatabaseBackup, Info, Languages, Mic, Palette, Settings2, Smartphone, Target, ChevronRight, Search, Sparkles, X } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { registerBackClose } from '@/lib/backNav';
+import { isNative } from '@/lib/platform';
 import type { AppSettings } from '@/types';
 import { AdvancedPage } from '@/components/settings/AdvancedPage';
 import { RecordingPage } from '@/components/settings/RecordingPage';
@@ -22,12 +24,13 @@ import { AppearancePage } from '@/components/settings/AppearancePage';
 import { LanguagePage } from '@/components/settings/LanguagePage';
 import { AppPage } from '@/components/settings/AppPage';
 import { LlmPage } from '@/components/settings/LlmPage';
+import { SecurityPage } from '@/components/settings/SecurityPage';
 import { AboutTab } from '@/components/settings/AboutTab';
 import { cn } from '@/lib/utils';
 import type { DictKey } from '@/i18n';
 
 /** 设置项搜索索引：点击结果直达对应子页面 */
-type SubPage = 'appearance' | 'language' | 'recording' | 'training' | 'app' | 'data' | 'advanced' | 'llm';
+type SubPage = 'appearance' | 'language' | 'recording' | 'training' | 'app' | 'data' | 'advanced' | 'llm' | 'security';
 const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] = [
   // 外观（主题 / 氛围彩蛋 / 图表与显示 / 花园 / 主题分享）
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.theme' },
@@ -42,6 +45,7 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'appearance', sectionKey: 'settings.bgImage', labelKey: 'settings.bgImageBlur' },
   { page: 'appearance', sectionKey: 'settings.navStyle', labelKey: 'settings.navStyleFloating' },
   { page: 'appearance', sectionKey: 'settings.navStyle', labelKey: 'settings.navStyleClassic' },
+  { page: 'appearance', sectionKey: 'settings.navStyle', labelKey: 'settings.navStyleAi' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.showGrid' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.syncRange' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.mobileSpark' },
@@ -84,11 +88,13 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmModelConfig' },
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmProfiles' },
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmPromptEntry' },
+  { page: 'llm', sectionKey: 'settings.memoryTitle', labelKey: 'settings.llmMemoryEntry' },
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'assistant.entry' },
   // 数据
   { page: 'data', sectionKey: 'settings.storageUsage', labelKey: 'settings.storageUsage' },
   { page: 'data', sectionKey: 'settings.importAudio', labelKey: 'settings.importAudio' },
   { page: 'data', sectionKey: 'lanSync.title', labelKey: 'lanSync.title' },
+  { page: 'data', sectionKey: 'privacy.title', labelKey: 'privacy.llmLogTitle' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.zipBackup' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.zipRestore' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.autoBackup' },
@@ -128,6 +134,14 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoCppsF0Max' },
   { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoCppsSmooth' },
   { page: 'advanced', sectionKey: 'labs.scripts', labelKey: 'labs.scripts' },
+  // 隐私与安全
+  { page: 'security', sectionKey: 'security.title', labelKey: 'security.appLock' },
+  { page: 'security', sectionKey: 'security.title', labelKey: 'security.changePin' },
+  { page: 'security', sectionKey: 'security.title', labelKey: 'security.biometric' },
+  { page: 'security', sectionKey: 'security.title', labelKey: 'security.recoveryCode' },
+  { page: 'security', sectionKey: 'security.title', labelKey: 'security.backgroundMask' },
+  { page: 'security', sectionKey: 'security.title', labelKey: 'security.secureScreen' },
+  { page: 'security', sectionKey: 'security.title', labelKey: 'security.discreetMode' },
 ];
 
 export function SettingsPage() {
@@ -145,13 +159,14 @@ export function SettingsPage() {
   const [llmOpen, setLlmOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
 
   const update = (patch: Partial<AppSettings>) => updateSettings(patch);
 
   // 子页面返回手势：任一子页打开时压入一条 history（系统返回 / 侧滑 → 关闭回主视图）；
   // 子页头的返回按钮调 history.back() 走同一链路。切页签卸载本组件时清理。
   const anySubOpen = appearanceOpen || languageOpen || recordingOpen || trainingOpen || appOpen
-    || llmOpen || advancedOpen || dataOpen;
+    || llmOpen || advancedOpen || dataOpen || securityOpen;
   useEffect(() => {
     if (!anySubOpen) return;
     return registerBackClose(() => {
@@ -163,6 +178,7 @@ export function SettingsPage() {
       setLlmOpen(false);
       setAdvancedOpen(false);
       setDataOpen(false);
+      setSecurityOpen(false);
     });
   }, [anySubOpen]);
 
@@ -194,12 +210,19 @@ export function SettingsPage() {
   if (advancedOpen) {
     return <AdvancedPage settings={settings} update={update} onBack={subBack()} />;
   }
+  if (securityOpen) {
+    return <SecurityPage onBack={subBack()} />;
+  }
 
   // 搜索结果（仅在设置标签且输入非空时展示；过滤开销极小，无需 memo——
   // 且不可用 hook：上方子页面分支会提前 return，hooks 必须无条件调用）
   const q = query.trim().toLowerCase();
   const results = q
     ? SEARCH_INDEX.filter((e) => {
+        // Android 专属项在 Web/Tauri 上不产生搜索结果
+        if (!isNative && (e.labelKey === 'security.secureScreen' || e.labelKey === 'security.discreetMode')) {
+          return false;
+        }
         const label = t(e.labelKey).toLowerCase();
         const section = t(e.sectionKey).toLowerCase();
         return label.includes(q) || section.includes(q);
@@ -295,6 +318,7 @@ export function SettingsPage() {
                       else if (e.page === 'app') setAppOpen(true);
                       else if (e.page === 'llm') setLlmOpen(true);
                       else if (e.page === 'data') setDataOpen(true);
+                      else if (e.page === 'security') setSecurityOpen(true);
                       else setAdvancedOpen(true);
                     }}
                     className="flex w-full items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-left first:border-t-0"
@@ -317,6 +341,7 @@ export function SettingsPage() {
               {entry(t('settings.llmPage'), Sparkles, () => setLlmOpen(true))}
               {entry(t('settings.data'), DatabaseBackup, () => setDataOpen(true))}
               {entry(t('settings.app'), Smartphone, () => setAppOpen(true))}
+              {entry(t('security.title'), Shield, () => setSecurityOpen(true))}
               {entry(t('settings.advanced'), Cog, () => setAdvancedOpen(true))}
             </>
           )}

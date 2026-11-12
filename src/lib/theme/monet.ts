@@ -174,6 +174,30 @@ export const THEME_PRESETS: Record<'monet', null> & Record<string, ThemePresetSp
       'on-accent-soft': { light: [0.40, 0.110], dark: [0.92, 0.045] },
     },
   },
+  /**
+   * 彩蛋「粉团子」：首次通关「喵喵练声」解锁
+   * - 浅色：暖奶油底 + 玫瑰粉强调 + 金色次强调；
+   * - 深色：靛梅夜色底 + 粉月/奶白爪印（CSS theme-cat 背景）；
+   * - 色相固定（滑条隐藏），跟随浅/深模式。
+   */
+  cat: {
+    hue: 15,
+    accentHue: 15,
+    darkHue: 310,
+    themeClass: 'theme-cat',
+    overrides: {
+      'surface': { light: [0.965, 0.008], dark: [0.17, 0.015] },
+      'card': { light: [0.985, 0.006], dark: [0.205, 0.020] },
+      'surface-hi': { light: [0.945, 0.014], dark: [0.250, 0.025] },
+      'ink': { light: [0.30, 0.030], dark: [0.93, 0.015] },
+      'ink-2': { light: [0.53, 0.025], dark: [0.72, 0.020] },
+      'accent': { light: [0.64, 0.120], dark: [0.78, 0.110] },
+      'on-accent': { light: [0.99, 0.008], dark: [0.18, 0.020] },
+      'accent-soft': { light: [0.92, 0.050], dark: [0.33, 0.060] },
+      'on-accent-soft': { light: [0.42, 0.100], dark: [0.92, 0.050] },
+      'line': { light: [0.91, 0.015], dark: [0.285, 0.025] },
+    },
+  },
 };
 
 /** 两色相之间最短弧的中点（预设配色的次强调色用，如蓝×粉 → 紫） */
@@ -322,7 +346,9 @@ export function applyTheme(
   // 骄傲旗类：启用渐变背景 + 毛玻璃，旗帜经 data-pride-flag 交给 CSS 选渐变
   document.documentElement.classList.toggle('dark', dark);
   const isPride = spec?.themeClass === 'theme-pride';
+  const isCat = spec?.themeClass === 'theme-cat';
   document.documentElement.classList.toggle('theme-pride', isPride);
+  document.documentElement.classList.toggle('theme-cat', isCat);
   if (isPride) {
     document.documentElement.setAttribute('data-pride-flag', prideFlag);
   } else {

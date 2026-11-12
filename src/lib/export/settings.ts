@@ -8,6 +8,7 @@
 import { t } from '@/i18n';
 import { DEFAULT_SETTINGS } from '@/constants';
 import { APP_ID } from '@/lib/appId';
+import { normalizeCustomTheme } from '@/lib/theme/customTheme';
 import type { AppSettings } from '@/types';
 
 /** 设置文件的当前格式版本（独立于记录备份的版本号演进） */
@@ -57,8 +58,8 @@ const OPTIONAL_NUMBER_KEYS: Partial<Record<keyof AppSettings, [number, number]>>
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   theme: ['light', 'dark', 'system'],
-  navStyle: ['floating', 'classic'],
-  huePreset: ['monet', 'pride', 'image'],
+  navStyle: ['floating', 'classic', 'ai'],
+  huePreset: ['monet', 'pride', 'image', 'cat', 'custom'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'es', 'fr', 'ai'],
   specColormap: ['magma', 'gray', 'accent'],
@@ -151,6 +152,11 @@ export function parseSettingsPayload(json: string): Partial<AppSettings> {
       const cards = normalizeAnalysisCards(v);
       if (!cards) continue;
       out[key] = cards;
+      continue;
+    }
+    if (key === 'customTheme') {
+      const custom = normalizeCustomTheme(v);
+      if (custom) out[key] = custom;
       continue;
     }
     if (typeof v === 'number') {

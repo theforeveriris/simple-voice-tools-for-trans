@@ -38,7 +38,8 @@ interface DisplayBody {
   messages?: { role: string; content: string }[];
 }
 
-function truncate(s: string): string {
+function truncate(value: unknown): string {
+  const s = typeof value === 'string' ? value : JSON.stringify(value ?? '');
   return s.length <= MAX_CONTENT ? s : `${s.slice(0, MAX_CONTENT)}…(${s.length - MAX_CONTENT} more chars)`;
 }
 

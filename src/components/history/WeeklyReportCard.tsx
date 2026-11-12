@@ -14,6 +14,7 @@ import {
 } from '@/lib/llm';
 import { readLlmUsage, usageSince, type LlmUsageCount } from '@/lib/llmUsage';
 import { useActiveLlmConfig } from '@/lib/llmProfiles';
+import { planSummaryForPrompt, usePracticePlan } from '@/lib/practicePlan';
 import { useLlmStream } from '@/hooks/useLlmStream';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -68,7 +69,15 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   const promptOverride = useStore((s) => s.settings.llmPromptOverride);
   const userGoal = useStore((s) => s.settings.userGoal);
   const ageGroup = useStore((s) => s.settings.ageGroup);
-  const prompt: LlmPromptOptions = { extraRules, promptOverride, goal: userGoal, ageGroup };
+  const planState = usePracticePlan();
+  const planSummary = planSummaryForPrompt(planState.plan, planState.logs);
+  const prompt: LlmPromptOptions = {
+    extraRules,
+    promptOverride,
+    goal: userGoal,
+    ageGroup,
+    ...(planSummary ? { planSummary } : {}),
+  };
 
   const key = cfg ? weeklyReportKey(cfg, records, prompt) : null;
   // effect 按缓存键（值稳定）触发，输入经 ref 传递

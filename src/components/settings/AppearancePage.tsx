@@ -8,25 +8,23 @@
  * - 图表辅助选项：网格辅助线、时间轴联动、移动端迷你基频（各带 Info 说明浮窗）
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Download, Image as ImageIcon, Palette, PanelBottom, Settings2, Share2, SlidersHorizontal, Sparkles, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
+import { applyCustomTheme } from '@/lib/theme/customTheme';
 import { buildThemeExport, parseThemeFile, themeFileName } from '@/lib/theme/themeShare';
 import { downloadBlob } from '@/lib/file';
 import {
   getBgImageUrl,
   loadBgImage,
-  processImageFile,
-  removeBgImage,
-  saveBgImage,
 } from '@/lib/theme/bgImage';
 import { PRIDE_FLAGS } from '@/constants';
 import { t } from '@/i18n';
 import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import type { AppSettings, BgImageFocus, HuePreset, NavStyle, PrideFlag, SpecColormap, ThemeMode } from '@/types';
+import type { AppSettings, HuePreset, NavStyle, PrideFlag, SpecColormap, ThemeMode } from '@/types';
 import {
   Select,
   SelectContent,
@@ -39,9 +37,10 @@ import { cn } from '@/lib/utils';
 import { useStore } from '@/store/useStore';
 import { SettingsSection, SettingRow, NUMBER_INPUT_CLASS, SELECT_TRIGGER_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
-import { FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
+import { CatSwatch, FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
+import { CustomThemePage } from './CustomThemePage';
+import { BgImageControls } from './BgImageControls';
 
-/** 九宫焦点：展示顺序（左上 → 右下）与各方向词条 */
 /** 导航栏样式预览：悬浮胶囊 / 全宽经典底栏 */
 function NavStylePreview({ style }: { style: NavStyle }) {
   if (style === 'classic') {
@@ -80,27 +79,22 @@ function AiWorkspacePreview() {
   );
 }
 
+/** 自定义组件外观预览：当前主题令牌组成的斜向渐变 */
+function CustomSwatch() {
+  return (
+    <span
+      className="block h-full w-full"
+      style={{
+        background: 'linear-gradient(135deg, var(--c-accent), var(--c-surface-hi) 55%, var(--c-ink))',
+      }}
+    />
+  );
+}
+
 const NAV_STYLE_LABEL: Record<NavStyle, DictKey> = {
   floating: 'settings.navStyleFloating',
   classic: 'settings.navStyleClassic',
   ai: 'settings.navStyleAi',
-};
-
-const BG_FOCUS_KEYS: BgImageFocus[] = [
-  'top-left', 'top', 'top-right',
-  'left', 'center', 'right',
-  'bottom-left', 'bottom', 'bottom-right',
-];
-const BG_FOCUS_LABEL: Record<BgImageFocus, DictKey> = {
-  'top-left': 'settings.bgPosTopLeft',
-  'top': 'settings.bgPosTop',
-  'top-right': 'settings.bgPosTopRight',
-  'left': 'settings.bgPosLeft',
-  'center': 'settings.bgPosCenter',
-  'right': 'settings.bgPosRight',
-  'bottom-left': 'settings.bgPosBottomLeft',
-  'bottom': 'settings.bgPosBottom',
-  'bottom-right': 'settings.bgPosBottomRight',
 };
 
 export function AppearancePage({
@@ -127,6 +121,8 @@ export function AppearancePage({
     applyTheme(p.hue, dark, p.accentHue, p.spec, merged.prideFlag);
     // 骄傲旗参数可能随合并变化，同步一遍（非骄傲旗预设下写入也无副作用）
     applyPrideParams(merged.prideGlow, merged.prideSaturation, merged.prideGlassBlur, merged.prideDrift);
+    // 自定义组件外观：非 custom 预设时移除覆盖层
+    applyCustomTheme(merged.huePreset === 'custom' ? merged.customTheme ?? null : null);
   };
 
   const setPreset = (p: HuePreset) => applyPreset({ huePreset: p });
@@ -142,7 +138,8 @@ export function AppearancePage({
 
   /* ---- 自定义背景图：当前图片 objectURL 与选择/移除 ---- */
   const [bgUrl, setBgUrl] = useState<string | null>(getBgImageUrl());
-  const bgFileRef = useRef<HTMLInputElement>(null);
+  /** 自定义组件外观子页 */
+  const [customOpen, setCustomOpen] = useState(false);
   // 启动预加载（main.tsx 已发起）完成后刷新缩略图；loadBgImage 幂等，不重复加载
   useEffect(() => {
     let alive = true;
@@ -153,14 +150,10 @@ export function AppearancePage({
       alive = false;
     };
   }, []);
-  const pickBgImage = async (file: File) => {
-    try {
-      await saveBgImage(await processImageFile(file));
-      setBgUrl(getBgImageUrl());
-    } catch {
-      toast.error(t('toast.bgImageFail'));
-    }
-  };
+
+  if (customOpen) {
+    return <CustomThemePage settings={settings} update={update} onBack={() => setCustomOpen(false)} />;
+  }
 
   return (
     <div className="flex flex-col gap-3.5 pb-4">
@@ -171,7 +164,7 @@ export function AppearancePage({
         className="flex flex-col gap-3.5"
       >
         {/* 子页面头：返回 + 标题 */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" data-theme-part="topbar">
           <button
             onClick={onBack}
             aria-label={t('common.back')}
@@ -202,7 +195,7 @@ export function AppearancePage({
           {/* 预设配色卡片：色板实时预览（莫奈跟随当前色相，骄傲旗跟随当前旗帜，
               自定义图片显示当前背景图，未选图时为占位图标） */}
           <SettingRow label={t('settings.huePreset')} stacked>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className={cn('grid gap-2.5', settings.catThemeUnlocked ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4')}>
               <ThemeCard
                 active={preset === 'monet'}
                 onClick={() => setPreset('monet')}
@@ -230,8 +223,29 @@ export function AppearancePage({
                   </span>
                 )}
               </ThemeCard>
+              <ThemeCard
+                active={preset === 'custom'}
+                onClick={() => {
+                  applyPreset({ huePreset: 'custom' });
+                  setCustomOpen(true);
+                }}
+                label={t('settings.presetCustom')}
+              >
+                <CustomSwatch />
+              </ThemeCard>
+              {settings.catThemeUnlocked && (
+                <ThemeCard
+                  active={preset === 'cat'}
+                  onClick={() => setPreset('cat')}
+                  label={t('settings.presetCat')}
+                >
+                  <CatSwatch />
+                </ThemeCard>
+              )}
             </div>
           </SettingRow>
+          {/* 自定义预设由组件外观接管颜色，不再展示基础色相滑条；
+              需要调基础色板时先切回莫奈/图片预设 */}
           {(preset === 'monet' || preset === 'image') && (
             <>
               {/* 主题色相：莫奈取色种子色相（骄傲旗预设的色板由旗帜决定） */}
@@ -285,130 +299,15 @@ export function AppearancePage({
               </SettingRow>
             </>
           )}
-          {/* 自定义图片预设：背景层由图片接管（替换 pride 渐变 / 极光 / 纯色），
+          {/* 背景图片参数：image 预设常驻；custom 预设的页面背景选择「图片」时复用同一组参数。
               色板沿用莫奈逻辑的三个色相滑条；图片压缩后仅存本机 IndexedDB */}
-          {preset === 'image' && (
-            <>
-              {/* 选图 / 缩略图 / 移除 */}
-              <SettingRow label={t('settings.bgImagePick')} stacked>
-                <div className="flex items-center gap-2.5">
-                  {bgUrl && (
-                    <img
-                      src={bgUrl}
-                      alt=""
-                      className="h-10 w-16 rounded-lg border border-line/60 object-cover"
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => bgFileRef.current?.click()}
-                    className="rounded-full bg-accent-soft px-3.5 py-1.5 text-xs font-semibold text-on-accent-soft transition-transform active:scale-95"
-                  >
-                    {t('settings.bgImagePick')}
-                  </button>
-                  {bgUrl && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void removeBgImage().then(() => setBgUrl(getBgImageUrl()));
-                      }}
-                      className="rounded-full bg-surface-hi px-3.5 py-1.5 text-xs font-semibold text-ink-2 transition-transform active:scale-95"
-                    >
-                      {t('settings.bgImageRemove')}
-                    </button>
-                  )}
-                  <input
-                    ref={bgFileRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.target.value = ''; // 允许重复选择同一文件
-                      if (f) void pickBgImage(f);
-                    }}
-                  />
-                </div>
-              </SettingRow>
-              {/* 九宫焦点：cover 裁切的锚点 */}
-              <SettingRow label={t('settings.bgImageFocus')} stacked>
-                <div className="grid w-24 grid-cols-3 gap-1" role="group" aria-label={t('settings.bgImageFocus')}>
-                  {BG_FOCUS_KEYS.map((k) => {
-                    const active = settings.bgImageFocus === k;
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => update({ bgImageFocus: k })}
-                        aria-pressed={active}
-                        aria-label={t(BG_FOCUS_LABEL[k])}
-                        className={cn(
-                          'grid h-7 place-items-center rounded-lg bg-surface-hi transition-all active:scale-90',
-                          active && 'ring-1 ring-accent',
-                        )}
-                      >
-                        <span className={cn('size-1.5 rounded-full', active ? 'bg-accent' : 'bg-ink-2/40')} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </SettingRow>
-              <PrideSlider
-                label={t('settings.bgImageBlur')}
-                min={0}
-                max={60}
-                step={2}
-                value={settings.bgImageBlur}
-                onChange={(v) => update({ bgImageBlur: v })}
-                format={(v) => `${v}px`}
-              />
-              {/* 压暗：深色模式在 CSS 内自动加深 1.5 倍 */}
-              <SettingRow
-                label={<InfoTip label={t('settings.bgImageDim')} text={t('settings.bgImageDimDesc')} />}
-              >
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="range"
-                    min={0}
-                    max={0.6}
-                    step={0.05}
-                    value={settings.bgImageDim}
-                    onChange={(e) => update({ bgImageDim: Number(e.target.value) })}
-                    className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
-                    aria-label={t('settings.bgImageDim')}
-                  />
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">
-                    {Math.round(settings.bgImageDim * 100)}%
-                  </span>
-                </div>
-              </SettingRow>
-              <PrideSlider
-                label={t('settings.bgImageSat')}
-                min={0.3}
-                max={2}
-                step={0.05}
-                value={settings.bgImageSaturation}
-                onChange={(v) => update({ bgImageSaturation: v })}
-                format={(v) => `${Math.round(v * 100)}%`}
-              />
-              <PrideSlider
-                label={t('settings.bgImageAlpha')}
-                min={0}
-                max={1}
-                step={0.05}
-                value={settings.bgImageOpacity}
-                onChange={(v) => update({ bgImageOpacity: v })}
-                format={(v) => `${Math.round(v * 100)}%`}
-              />
-              <SettingRow label={t('settings.bgImageDrift')}>
-                <Switch
-                  checked={settings.bgImageDrift}
-                  onCheckedChange={(v) => update({ bgImageDrift: v })}
-                />
-              </SettingRow>
-              {/* 毛玻璃强度：卡片透过图片的磨砂程度 */}
-              <GlassRow value={settings.prideGlassBlur} onChange={(v) => applyPreset({ prideGlassBlur: v })} />
-            </>
+          {(preset === 'image' || (preset === 'custom' && (dark ? settings.customTheme?.dark?.page?.image : settings.customTheme?.light?.page?.image))) && (
+            <BgImageControls
+              settings={settings}
+              update={update}
+              onGlassBlur={(v) => applyPreset({ prideGlassBlur: v })}
+              onImageChange={setBgUrl}
+            />
           )}
           {preset === 'pride' && (
             <>

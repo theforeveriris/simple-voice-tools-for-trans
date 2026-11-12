@@ -101,7 +101,12 @@ describe('parseLlmModels', () => {
       data: [{ id: 'claude-sonnet-4-20250514', display_name: 'Claude Sonnet 4', type: 'model' }],
     });
     expect(models).toEqual([
-      { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', contextTokens: 200_000 },
+      {
+        id: 'claude-sonnet-4-20250514',
+        label: 'Claude Sonnet 4',
+        contextTokens: 200_000,
+        pricing: { input: 3, output: 15 },
+      },
     ]);
   });
 

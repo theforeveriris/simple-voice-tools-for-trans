@@ -79,6 +79,13 @@ describe('Slash 命令解析', () => {
     expect(parseAssistantCommand('/设置')).toMatchObject({ id: 'open', args: ['settings'] });
   });
 
+  it('解析本地统计与上下文命令', () => {
+    expect(parseAssistantCommand('/stats week')).toMatchObject({ id: 'stats', args: ['week'] });
+    expect(parseAssistantCommand('/统计')).toMatchObject({ id: 'stats', args: [] });
+    expect(parseAssistantCommand('/context')).toMatchObject({ id: 'context', args: [] });
+    expect(parseAssistantCommand('/上下文')).toMatchObject({ id: 'context', args: [] });
+  });
+
   it('双斜杠按普通文本处理', () => {
     expect(parseAssistantCommand('//hello')).toBeNull();
     expect(parseAssistantCommand('hello')).toBeNull();

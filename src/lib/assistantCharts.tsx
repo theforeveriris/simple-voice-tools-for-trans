@@ -9,14 +9,16 @@
  * 引用语法的字符串路由见 assistantChartRoute.ts。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ImageOff, ZoomIn } from 'lucide-react';
 import { t } from '@/i18n';
 import { useHistoryStore } from '@/store/useHistoryStore';
+import { useStore } from '@/store/useStore';
 import { SeriesChart, type ChartKind } from '@/components/charts/SeriesChart';
+import { TrendChart } from '@/components/charts/TrendChart';
 import type { AnalysisRecord } from '@/types';
 import { cn } from '@/lib/utils';
-import type { ImgKind } from './assistantChartRoute';
+import type { ImgKind, TrendChartMetric } from './assistantChartRoute';
 
 /** record:// kind → SeriesChart kind */
 function toChartKind(k: ImgKind): ChartKind {
@@ -145,3 +147,99 @@ function RecordImage({ recordId, kind, alt }: { recordId: string; kind: ImgKind;
 }
 
 export { RecordImage };
+
+/** 趋势图：复用历史页 TrendChart，限制为最近 lastN 条 */
+export function TrendImage({
+  metric,
+  lastN,
+  alt,
+}: {
+  metric: TrendChartMetric;
+  lastN: number;
+  alt: string;
+}) {
+  const records = useHistoryStore((s) => s.records);
+  const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
+  const setTab = useStore((s) => s.setTab);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const store = useHistoryStore.getState();
+      if (!store.ready) await store.hydrate();
+      if (alive) setReady(true);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const shown = useMemo(
+    () => [...records].sort((a, b) => a.createdAt - b.createdAt).slice(-lastN),
+    [records, lastN],
+  );
+
+  if (!ready && shown.length === 0) {
+    return <span className="my-3 block h-20 animate-pulse rounded-2xl bg-card" aria-label={alt} />;
+  }
+  if (shown.length === 0) {
+    return (
+      <span className="my-3 flex items-center gap-1.5 rounded-2xl bg-card px-3 py-2 text-[10px] text-ink-2">
+        <ImageOff size={11} />
+        {t('assistant.chartMissing')}
+      </span>
+    );
+  }
+
+  return (
+    <figure
+      className="my-3 block rounded-2xl bg-card p-3 text-left shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <TrendChart
+        records={shown}
+        metric={metric}
+        connectLine={false}
+        onOpen={(record) => {
+          setCurrentAnalysis(record);
+          setTab('analysis');
+        }}
+      />
+      <figcaption className="mt-1 px-0.5 text-[10px] text-ink-2">
+        {alt || t('assistant.chartTrend')} · {shown.length} 条
+      </figcaption>
+    </figure>
+  );
+}
+
+/** 两条记录并排对比：复用 RecordImage，避免再写一套画笔 */
+export function CompareImage({
+  a,
+  b,
+  kind,
+  alt,
+}: {
+  a: string;
+  b: string;
+  kind: ImgKind;
+  alt: string;
+}) {
+  return (
+    <figure
+      className="my-3 block rounded-2xl bg-card p-3 text-left shadow-[0_2px_10px_rgba(28,25,45,0.05)]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="min-w-0">
+          <span className="mb-1 inline-flex rounded bg-surface-hi px-1.5 py-0.5 text-[9px] text-ink-2">A</span>
+          <RecordImage recordId={a} kind={kind} alt={`A · ${alt}`} />
+        </div>
+        <div className="min-w-0">
+          <span className="mb-1 inline-flex rounded bg-surface-hi px-1.5 py-0.5 text-[9px] text-ink-2">B</span>
+          <RecordImage recordId={b} kind={kind} alt={`B · ${alt}`} />
+        </div>
+      </div>
+      <figcaption className="mt-1 px-0.5 text-[10px] text-ink-2">{alt || t('assistant.chartCompare')}</figcaption>
+    </figure>
+  );
+}
+

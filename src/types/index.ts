@@ -29,7 +29,48 @@ export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'es' | 'fr' | 'ai
  * pride：骄傲旗主题（旗帜由 prideFlag 选择，氤氲渐变 + 毛玻璃，参数可调）；
  * image：自定义图片（背景层由图片接管，色板同莫奈逻辑）
  */
-export type HuePreset = 'monet' | 'pride' | 'image';
+export type HuePreset = 'monet' | 'pride' | 'image' | 'cat' | 'custom';
+
+/* ------------------------------ 自定义组件外观 ------------------------------ */
+
+/** 可覆盖的内置组件部位 */
+export type CustomThemePart =
+  | 'page'
+  | 'card'
+  | 'topbar'
+  | 'bottombar'
+  | 'primaryButton'
+  | 'input'
+  | 'dialog';
+
+export interface CustomGradient {
+  /** 渐变方向（deg，0 = 向上，90 = 向右） */
+  angle: number;
+  from: string;
+  to: string;
+}
+
+/** 单个组件部位的覆盖样式；未设置的字段继续继承当前主题 */
+export interface CustomPartStyle {
+  /** 纯色背景（gradient 存在时忽略） */
+  bg?: string;
+  gradient?: CustomGradient | null;
+  /** 背景使用自定义图片（当前仅 page 支持；参数复用 bgImage*，图片存 IndexedDB） */
+  image?: boolean;
+  text?: string;
+  border?: string;
+  borderWidth?: number;
+  radius?: number;
+  blur?: number;
+  opacity?: number;
+}
+
+/** 自定义外观：浅色 / 深色各一套；版本化，便于以后迁移 */
+export interface CustomTheme {
+  version: 1;
+  light: Partial<Record<CustomThemePart, CustomPartStyle>>;
+  dark: Partial<Record<CustomThemePart, CustomPartStyle>>;
+}
 
 /**
  * 骄傲旗主题的旗帜
@@ -305,8 +346,12 @@ export interface AppSettings {
   theme: ThemeMode;
   /** 界面语言 */
   language: Locale;
-  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），pride 骄傲旗（旗帜见 prideFlag） */
+  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），pride 骄傲旗（旗帜见 prideFlag），cat 彩蛋「粉团子」，custom 组件外观 */
   huePreset: HuePreset;
+  /** 自定义组件外观（huePreset = custom 时生效；未覆盖字段继承当前主题） */
+  customTheme: CustomTheme | null;
+  /** 彩蛋「喵喵练声」首次通关后解锁「粉团子」主题（解锁后预设配色出现第四张卡） */
+  catThemeUnlocked: boolean;
   /* ---------- 骄傲旗主题（huePreset = pride 时生效） ---------- */
   /** 骄傲旗旗帜 */
   prideFlag: PrideFlag;
@@ -469,6 +514,8 @@ export interface AppSettings {
   llmPromptOverride?: string;
   /** 大模型配置：当前应用的配置档案 id（档案与 Key 存 IDB kv，见 lib/llmProfiles.ts） */
   llmActiveProfileId?: string;
+  /** 辅助任务（规划 / 记忆 / 摘要 / 数字修正）使用的档案；空 = 跟随活动档案 */
+  llmAuxProfileId?: string;
   /** 大模型配置：用量费用估算——每百万 tokens 输入单价（0/未填 = 不折算；货币单位自定） */
   llmPriceIn?: number;
   /** 大模型配置：用量费用估算——每百万 tokens 输出单价 */
@@ -477,6 +524,12 @@ export interface AppSettings {
   practiceReminderEnabled: boolean;
   /** 练习提醒：提醒时间（HH:mm，24 小时制） */
   practiceReminderTime: string;
+  /** 长期记忆：自动保存开关（关闭后仍可用消息下方的手动「记住」） */
+  memoryAutoSave: 'auto' | 'off';
+  /** AI 写操作权限：关闭 / 每次确认 */
+  assistantWrites: 'off' | 'confirm';
+  /** 联网搜索：允许助手调用 Tavily 搜索公开网页（Key 存 IDB，默认关闭） */
+  webSearchEnabled: boolean;
   /* ---------- AI 翻译语言（语言子页面） ---------- */
   /** 允许 AI 翻译：用实验性功能的大模型把界面翻译成其他语言 */
   aiTranslateEnabled: boolean;

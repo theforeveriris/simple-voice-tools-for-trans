@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Download, Upload, Trash2, Eraser, Archive, FileSpreadsheet,
   DatabaseBackup, HardDrive, FolderOpen, ShieldCheck, CloudUpload,
-  Cloud, CloudDownload, PlugZap, RefreshCw,
+  Cloud, CloudDownload, PlugZap, RefreshCw, ChevronRight, ScrollText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
@@ -19,6 +19,7 @@ import { createDemoRecord } from '@/lib/audio/demo';
 import { downloadText, recordsToSummaryCsv } from '@/lib/export/csv';
 import { exportFullBackup, importFullBackup, buildRecordsPayload, parseRecordsPayload, parseFullBackupZip } from '@/lib/export/backup';
 import { buildSettingsPayload, parseSettingsPayload } from '@/lib/export/settings';
+import { readLlmRequestLog } from '@/lib/llmRequestLog';
 import { downloadBlob } from '@/lib/file';
 import { RestorePreviewDialog } from './RestorePreviewDialog';
 import { buildRestorePreview, type RestorePreview } from './restorePreview';
@@ -55,6 +56,7 @@ import { StorageUsage } from './StorageUsage';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 import { PrivacyPanel } from './PrivacyPanel';
+import { LlmRequestLogPage } from './LlmRequestLogPage';
 import { LanSyncSection } from './LanSyncSection';
 import { ImportAudioSection } from './ImportAudioSection';
 import { GithubBackupSection } from './GithubBackupSection';
@@ -100,6 +102,26 @@ export function DataPage({
   // 云备份加密：会话未解锁时先弹口令框，成功后继续被挂起的推/拉动作
   const [passOpen, setPassOpen] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
+
+  // AI 请求日志子页：入口卡片显示条数，返回时重读
+  const [logOpen, setLogOpen] = useState(false);
+  const [logCount, setLogCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    // 子页打开时不需要入口计数；返回后重新读取
+    if (logOpen) return;
+    let alive = true;
+    void readLlmRequestLog()
+      .then((entries) => {
+        if (alive) setLogCount(entries.length);
+      })
+      .catch(() => {
+        if (alive) setLogCount(0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [logOpen]);
 
   /** 云备份操作前置：加密开启且未解锁 → 弹口令框；解锁成功后执行挂起动作 */
   const ensureUnlockedThen = (action: () => void) => {
@@ -374,6 +396,10 @@ export function DataPage({
     }
   };
 
+  if (logOpen) {
+    return <LlmRequestLogPage onBack={() => setLogOpen(false)} />;
+  }
+
   return (
     <div className="flex flex-col gap-3.5 pb-4">
       <motion.div
@@ -394,11 +420,31 @@ export function DataPage({
           <p className="text-base font-semibold text-ink">{t('settings.data')}</p>
         </div>
 
-        {/* 数据去向（隐私边界 + AI 请求日志） */}
+        {/* 数据去向（隐私边界） */}
         <PrivacyPanel />
 
+        {/* AI 请求日志：入口卡片 → 子页 */}
+        <button
+          onClick={() => setLogOpen(true)}
+          className="card-surface flex items-center gap-3 p-4 text-left transition-transform active:scale-[0.99]"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+            <ScrollText size={19} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink">{t('privacy.llmLogTitle')}</span>
+            <span className="block truncate text-[11px] text-ink-2">
+              {logCount == null ? '' : logCount > 0 ? t('privacy.llmLogCount', { n: logCount }) : t('privacy.llmNone')}
+            </span>
+          </span>
+          <ChevronRight size={16} className="shrink-0 text-ink-2" />
+        </button>
+
         {/* 存储用量 */}
-        <SettingsSection icon={HardDrive} title={t('settings.storageUsage')}>
+        <SettingsSection
+          icon={HardDrive}
+          title={<InfoTip label={t('settings.storageUsage')} text={t('settings.storageUsageDesc')} />}
+        >
           <StorageUsage />
         </SettingsSection>
 

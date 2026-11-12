@@ -534,6 +534,7 @@ export function buildAssistantContext(
   settings: AssistantContextSettings,
   budgetTokens: number,
   pinnedIds: string[] = [],
+  options: { includeDetails?: boolean } = {},
 ): AssistantContext {
   const profile = buildAssistantProfile(settings);
   const meta: AssistantContextMeta = { detailIds: [], pinnedIds: [], totalRecords: records.length };
@@ -576,7 +577,7 @@ export function buildAssistantContext(
     remaining -= estimateTokens(baseline);
   }
 
-  if (remaining > 60) {
+  if (options.includeDetails !== false && remaining > 60) {
     const raw = buildRawSectionDetailed(records, sustained, remaining);
     if (raw.text) {
       parts.push(raw.text);

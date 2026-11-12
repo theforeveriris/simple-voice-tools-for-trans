@@ -4,12 +4,14 @@ import './index.css'
 import App from './App.tsx'
 import { NAV as TABS } from '@/components/settings/navItems'
 import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
+import { applyCustomTheme, normalizeCustomTheme } from '@/lib/theme/customTheme'
 import { loadBgImage } from '@/lib/theme/bgImage'
 import { initPwaInstall } from '@/lib/pwa'
 import { AppShortcuts, isNative, isTauri, syncNativeSystemBars } from '@/lib/platform'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { runStartupSideEffects } from '@/store/startup'
+import { initSecurity } from '@/lib/security/state'
 import { setLocale, DEFAULT_LOCALE, LOCALES } from '@/i18n'
 import { hydrateAiLocale } from '@/i18n/aiLocale'
 import { getWallpaperHues } from '@/lib/theme/dynamic'
@@ -19,7 +21,7 @@ import type { Locale, ThemeMode, ViewType } from '@/types'
 const saved = (() => {
   try {
     const raw = localStorage.getItem('svt:settings:v1');
-    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; accentHue?: number; darkHue?: number; theme?: ThemeMode; language?: string; huePreset?: string; prideFlag?: string; aiLanguage?: string } } }) : null;
+    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; accentHue?: number; darkHue?: number; theme?: ThemeMode; language?: string; huePreset?: string; prideFlag?: string; aiLanguage?: string; customTheme?: unknown } } }) : null;
     return parsed?.state?.settings ?? {};
   } catch {
     return {};
@@ -40,6 +42,7 @@ const savedPreset = presetSpec(
   saved.darkHue ?? saved.hue ?? 15,
 );
 applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, savedPrideFlagOf(saved, isLegacyFlag))
+applyCustomTheme(saved.huePreset === 'custom' ? normalizeCustomTheme(saved.customTheme) : null)
 // 原生壳：状态栏/手势条底色对齐首帧主题（后续变化由 App 的主题 effect 接管）
 if (isNative) syncNativeSystemBars()
 
@@ -130,6 +133,9 @@ void useHistoryStore.getState().hydrate();
 // v0.9.0 LLM 档案迁移。原在 useStore 模块顶层随 import 执行，现集中此处，
 // 早于首帧渲染（保证画笔 / DSP 单例与设置一致），store 模块得以保持纯定义
 runStartupSideEffects()
+
+// 应用锁：异步读取 IDB 配置；LockGate 会在 ready 前显示纯色启动底
+void initSecurity()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -46,9 +46,9 @@
 - **测试**：三个实时图表（F1/F2 共振峰、音频能量、音高曲线）随录音推进滚动更新，
   音高图按区间分段着色（淡紫=偏低/偏高、淡蓝=男声区、黑=过渡区、淡粉=女声区），
   右上角实时显示 Hz 与对应钢琴音高；经典底栏下录音键是音高卡片右下角的扇形按钮，
-  悬浮胶囊下保留原来的录音圆球
+  悬浮胶囊（默认）下保留原来的录音圆球
 - **测试模式**：在测试页顶部模式胶囊选择 朗读 / 长音 / 滑音（记住上次选择），
-  再点扇形录音键（经典底栏）或录音圆球（悬浮胶囊）：
+  再点录音圆球（悬浮胶囊，默认）或扇形录音键（经典底栏）：
   - **随意朗读**：任意朗读一段文字，屏幕仅显示简短提示不做跟读
   - **长音测试**：持续发「a」，发声后检测到静音 1 秒自动停止，配合 Jitter 评估音高稳定度
   - **音域滑音**：由低到高滑唱 20 秒，勾勒音域包络
@@ -93,14 +93,22 @@
   流式输出边生成边预览、可随时取消，生成结果本机持久化（重启后不重新付费调用）；
   接口配置以**档案**管理（多套一键切换，存本机 IndexedDB），档案编辑里可从
   `/models` 一键拉取模型 ID，并按接口元数据 / 内置目录自动识别上下文长度
-  （可手动改）；Token 用量按功能统计、
-  可填单价折算费用（设置 → **大模型**）；仅上传统计指标（不含音频与原始曲线），
+  （可手动改）；Token 用量按功能统计，费用自动估算——优先用服务商
+  `/models` 返回的真实单价，失败时回退内置单价目录（设置 → **大模型**）；
+  训练建议与周报仅上传统计指标与备注（不含音频与原始曲线），
   API Key 仅保存在本机 IndexedDB；每次 AI 请求实际发出的内容可在
-  设置 → 数据 → **数据去向** 中查看（请求日志，可复制、可清空）；
+  设置 → 数据 → **AI 请求日志** 中查看（按日期分组，最多 10 条，超长消息截断；
+  写入失败不影响请求；可复制、可清空）；
   另有本地规则引擎的离线建议（无需联网）
-- **AI 助手**：底部导航的独立 **AI** 页（设置 → 大模型 也可进入）——流式多轮对话，点按消息浮出
+- **AI 助手**：可从 设置 → 大模型 进入，或用经典底栏的独立 **AI** 页签，
+  也可把导航栏切成 **AI 工作台**（第三种样式，隐藏底栏、助手独占全屏）——流式多轮对话，点按消息浮出
   复制 / 重做 / 分支，右侧抽屉管理历史对话与新建对话；输入栏随内容自动增高；
-  会自动带上你的记录统计摘要与备注（不含音频），并检索应用内置文档回答参数问题；
+  会自动带上对话文本、你的记录统计摘要与备注（不含音频），并检索应用内置文档回答参数问题；
+  **长期记忆**（设置 → 大模型 → 记忆）保存你陈述过的事实 / 偏好 / 要求 / 注意，
+  可从最近对话离线提取候选；置顶项每轮注入，其余按当前问题相关度注入，
+  只存本机，使用时随助手请求发送；
+  空对话、已配置接口且有记录时，会在后台自动发一次快捷提问请求（最近统计摘要 + 训练目标，
+  可能产生少量 API 费用；失败则退回本地问题）；
   助手回答不再使用气泡，直接在空白处渲染 Markdown，记录图表独立成卡片，
   并支持沙箱内的 `genui` 交互 HTML 组件（样式跟随主题）
 - **历史**：记录存于 IndexedDB（完整保存全部记录，列表仅显示最近 200 条），按时间倒序；顶部「列表 / 趋势 / 花园」切换，
@@ -115,7 +123,7 @@
   氤氲流体渐变背景 + 毛玻璃组件，渐变浓度 / 饱和度 / 毛玻璃强度 / 背景流动均可调；
   自定义图片：背景层由图片接管，焦点 / 模糊 / 压暗 / 饱和度 / 存在感 / 漂移可调，
   压缩后仅存本机并随 ZIP 备份打包；氛围彩蛋——声音染色：界面色相随实时音高在蓝粉间流动，
-  音量呼吸：渐变浓度随麦克风响度起伏）、导航栏样式（悬浮胶囊 / 经典底栏）、
+  音量呼吸：渐变浓度随麦克风响度起伏）、导航栏样式（悬浮胶囊（默认）/ 经典底栏 / AI 工作台）、
   数据导入/导出（JSON / 设置 / 汇总 CSV）、
   `.svt-theme` 主题分享、录音时长限制、麦克风设备选择、录音音频保存开关、
   原生壳启动页（默认开启，设置 → 应用 里可关）
@@ -123,8 +131,9 @@
   （配额占用 / 音频体积 / 持久化存储申请）；云备份三选一——GitHub 私有库
   （Device Flow 授权，写入你自己的仓库，未变化文件自动跳过）、WebDAV 网盘 / NAS、
   File System Access 本地自动备份（按天写入所选文件夹，实验性）；
-  **局域网同步**：两台设备在同一 Wi-Fi 下直连互传记录与音频（WebRTC，不经服务器，
-  按提示交换两段连接文本即可）；
+  **局域网同步**：两台设备在同一 Wi-Fi 下直连互传记录与音频（WebRTC，不经服务器）——
+  默认用**二维码**搬运连接信令：一端显示二维码，另一端用相机扫描；
+  没有相机或页面不是 HTTPS 时可复制粘贴连接文本；最近同步过的设备会被记住；
   云备份可选**口令加密**（AES-GCM，上传前加密、口令不落盘，跨设备凭口令即可恢复，
   加密不影响「未变化文件跳过」）；设置 → 数据 顶部有**数据去向**面板，
   如实说明各类数据的边界与云备份加密状态
@@ -139,10 +148,14 @@
 - **应用快捷方式**：长按桌面图标直达测试录音 / 历史记录 / 设置——浏览器安装的
   PWA 走 manifest shortcuts，安卓 APK 走原生 shortcuts（文案按系统语言显示）
 - **高级**：设置内的子页面，只收录仍未定型或可编程的能力——分析页语谱图开关、
-  测试页实时频谱图（窄带幅度谱）、实时音高算法切换与对比卡、
+  测试页实时频谱图（窄带幅度谱）、音高算法对比卡（对保存过音频的记录用 pYIN / MPM
+  重算并与录音时的 YIN 曲线对比；实时检测器固定为 YIN）、
   算法参数（YIN 判定阈值 / 音高搜索范围 / 发声与活跃帧能量门限 / LPC 预加重与阶数 /
   F1·F2 搜索窗 / 嗓音质量置信度与最少周期 / CPPS 峰值搜索与时间平滑，
   实时与离线分析同步生效）、脚本中心（Lua 建议规则 / 分享卡模板 / 花朵生成 / 导出桥）。
+  脚本按方向分组为胶囊：点按启用、长按看详情与试跑；建议脚本可多开合并，
+  分享卡 / 花朵 / 导出同一方向只生效一个（启用新脚本会自动切换），
+  导入单个 `.lua` 文件会自动识别方向。
   已转正的能力各有去处：外部音频导入 → 数据管理，实时练习视图 / 音区边界 / 训练建议 → 训练，
   GitHub 云备份 → 数据管理
 - **应用内文档**：设置 → 关于 中可离线阅读全部文档（使用说明 / 参数说明书 / 参考文献 /
@@ -165,12 +178,18 @@
 | [documentation/ARCHITECTURE-THEME.md](documentation/ARCHITECTURE-THEME.md) | 架构：主题系统、骄傲旗预设与渐变参数 |
 | [documentation/ARCHITECTURE-STATE.md](documentation/ARCHITECTURE-STATE.md) | 架构：状态与持久化、存储键清单、迁移 |
 | [documentation/ARCHITECTURE-SETTINGS.md](documentation/ARCHITECTURE-SETTINGS.md) | 架构：设置子页模式与新增步骤 |
+| [documentation/ARCHITECTURE-AI-ASSISTANT.md](documentation/ARCHITECTURE-AI-ASSISTANT.md) | 架构：AI 助手的请求链路、工具循环、记忆、隐私与安全边界 |
+| [documentation/PARAMETERS-AI-ASSISTANT.md](documentation/PARAMETERS-AI-ASSISTANT.md) | 参数：AI 助手的模型档案、上下文预算、工具与记忆阈值 |
 | [documentation/GUIDE-PWA.md](documentation/GUIDE-PWA.md) | 指南：PWA 更新流、Share Target、修复工具 |
 | [documentation/GUIDE-CAPACITOR.md](documentation/GUIDE-CAPACITOR.md) | 指南：Capacitor 安卓壳（构建/签名/原生分享/已知限制） |
 | [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | 指南：Tauri Windows 桌面版（构建/CI/平台差异） |
 | [documentation/PARAMETERS-GUIDE.md](documentation/PARAMETERS-GUIDE.md) | 指标与参数指南：每个数字的含义、默认值与实验性算法参数 |
+| [documentation/RECORDS-FORMAT.md](documentation/RECORDS-FORMAT.md) | 记录导出开放格式（records v2）与 JSON Schema |
+| [documentation/REFERENCES.md](documentation/REFERENCES.md) | 参考文献：各参考区间与算法取舍的文献出处 |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | 音高检测原理：YIN 差分函数、CMND、抛物线插值 |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | 共振峰提取原理：预加重、抽取、LPC、多项式求根 |
+| [documentation/ALGORITHM-VOICE-EXPRESSION.md](documentation/ALGORITHM-VOICE-EXPRESSION.md) | 声音性别表达参考分：音高 + 共鸣、55/45、分档与置信度 |
+| [documentation/ALGORITHM-VOWEL.md](documentation/ALGORITHM-VOWEL.md) | 元音与共鸣原理：稳定段检测、普通话元音自动判定、VFP 归一 |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | 能量分析原理：RMS、分贝换算、VAD 门限体系 |
 | [documentation/ALGORITHM-CPPS.md](documentation/ALGORITHM-CPPS.md) | 倒谱峰突出度原理：实倒谱、回归线基线、时间平滑 |
 
@@ -190,7 +209,7 @@
   - **CPPS 倒谱峰突出度**（自写基-2 FFT → 实倒谱 → 回归线基线 → 时间平滑分布统计）
   - **FFT 语谱图**（对数频带量化存储 + magma 伪彩色渲染）
 - fflate（ZIP 完整备份打包）；GitHub 云备份走 Device Flow + REST API，零后端
-- 原生壳：Capacitor 7（安卓 APK）+ Tauri 2（Windows 安装包）；uqr 用于分享图二维码
+- 原生壳：Capacitor 7（安卓 APK）+ Tauri 2（Windows 安装包）；uqr 用于二维码渲染，jsQR 作为相机扫码的兜底解码器；wasmoon 让 Lua 脚本中心离线运行
 
 ## 开发说明
 
@@ -215,8 +234,15 @@ npm run build
 ### 测试
 
 ```bash
-npm test        # vitest 单测（DSP 黄金样本 / 导出 / 备份 / LLM / i18n 完整性 / 源码编码守卫，CI 同步执行）
+npm test        # vitest 单测（DSP 黄金样本 / 参数验证 / 导出 / 备份 / LLM / i18n 完整性 / 源码编码守卫，CI 同步执行）
+npx playwright install chromium   # 每台机器第一次跑 e2e 前安装一次
+npm run test:e2e  # Playwright 端到端（e2e/ 冒烟 + 视觉快照）
 ```
+
+> 视觉快照基线只跟踪 Windows（`*-win32.png`）。Linux / macOS 上第一次跑
+> 用 `npx playwright test e2e/snapshots.spec.mts --update-snapshots` 生成本地
+> 基线供人工查看，不要把非 Windows 图提交入库。全新 checkout 下 16 个
+> 参数验证用例会跳过，按 `scripts/validation/README.md` 生成夹具后可跑全量。
 
 > 构建产物输出到 `docs/` 目录（已 gitignore，不入库）：push 到 main 后由
 > GitHub Actions 自动构建并部署 Pages（见 `.github/workflows/deploy.yml`）。
@@ -236,7 +262,7 @@ npm run preview
 ## 使用方法
 
 1. 启动应用后默认进入测试页：在顶部模式胶囊选择 朗读 / 长音 / 滑音，
-   再点 **扇形录音键**（经典底栏）或 **录音圆球**（悬浮胶囊）开始
+   再点 **录音圆球**（悬浮胶囊，默认）或 **扇形录音键**（经典底栏）开始
 2. 允许浏览器访问麦克风权限，按屏幕上的模式引导说话或朗读
 3. 再次点击同一个控件（此时为结束图标）结束录音，自动进入分析页
 4. 在历史页可回看所有测试记录：顶部切换「趋势」查看走势，长按卡片多选后可

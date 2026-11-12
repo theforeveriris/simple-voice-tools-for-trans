@@ -31,7 +31,7 @@
  * 数值见 VOWEL_REFS_H95。
  *
  * 评分口径：
- *   - 音高 55%：中位基频经 logistic 映射，中心 165 Hz。
+ *   - 音高 55%：中位基频经 logistic 映射，中心 155 Hz。
  *     感知分界约 155–165 Hz（Wolfe et al. 1990；Gelfer & Schofield 2000），
  *     与 ASHA 的「>180 Hz 偏女声 / <130 Hz 偏男声 / 145–175 Hz 中性带」一致。
  *   - 共鸣 45%：元音归一后的声道尺度因子。
@@ -159,7 +159,7 @@ function logistic(value: number, center: number, scale: number): number {
   return 100 / (1 + Math.exp(-(value - center) / scale));
 }
 
-/** 音高子分：165 Hz = 50 分；130 Hz ≈ 15，180 Hz ≈ 68，220 Hz ≈ 94 */
+/** 音高子分：155 Hz = 50 分；130 Hz ≈ 33，180 Hz ≈ 67，220 Hz ≈ 88 */
 export function pitchReferenceScore(medianF0: number): number {
   return clampScore(logistic(medianF0, VOICE_EXPRESSION_ANCHORS.pitchCenterHz, VOICE_EXPRESSION_ANCHORS.pitchScaleHz));
 }

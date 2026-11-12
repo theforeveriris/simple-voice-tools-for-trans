@@ -10,6 +10,11 @@ localStorage 键清单、迁移与降级策略。实现：`src/store/`、`src/li
 
 - 内存态：`currentTab` / `isRecording` / `currentAnalysis` / `pendingAutoReplay`；
 - **持久化仅 `settings`**（`partialize`），且**排除 `llmApiKey`**（见下）；
+- persist 信封的 **`version` 当前为 2**；`migrate` 承担一次版本迁移：
+  `version < 2` 时把 `navStyle` 统一铺为 `'floating'`（底栏默认样式改为
+  悬浮胶囊；用户之后在外观里手动选 classic 会连 `version` 一起写回，
+  迁移不会再跑）。用 zustand 的 `version`/`migrate` 而不是「写标记」的旧写法，
+  是因为迁移与版本号同生共死——中断了下次还会再跑，不会「标记写了、值没落库」。
 - `merge` 承担四代迁移：
   1. 旧版布尔 `adviceEnabled` → 三态 `adviceMode`；
   2. 旧版旗帜直接作为预设（`huePreset: 'transPride'` 等）→ 收敛为
@@ -22,8 +27,8 @@ localStorage 键清单、迁移与降级策略。实现：`src/store/`、`src/li
 - `updateSettings(patch)`：patch 含 `llmApiKey` 时同步写入 IDB kv（敏感态不进
   localStorage）；内存态仅为配置解析用。
 - **`syncModuleSettings`**：settings 变化时把若干值推入模块级单例
-  （音区边界 / 音高轴 / 实时窗口 / 语谱配色 / 音高算法 / 共振峰目标区 /
-  骄傲旗参数 / 自定义背景图 `applyBgImage` / 实验性算法参数 `setAlgoParams`）——
+  （音区边界 / 音高轴 / 实时窗口 / 音高平滑 / 语谱配色 / 音高算法 / 共振峰目标区 /
+  SI 改名 / 骄傲旗参数 / 自定义背景图 `applyBgImage` / 实验性算法参数 `setAlgoParams`）——
   Canvas 画笔等非 React 代码经 getter 读取，避免 60fps 订阅。
 
 ### useHistoryStore（记录，IndexedDB 持久化）
@@ -57,6 +62,7 @@ kv 仓库键清单：
 | `gh:lastPush` | backup/github | 上次云备份时间 |
 | `webdav:config` | backup/webdav | WebDAV 凭据 |
 | `webdav:lastPush` | backup/webdav | 上次 WebDAV 云备份时间 |
+| `webdav:lastFingerprint` | backup/webdav | 上次 WebDAV 备份指纹（sha256 + 是否加密），用于跳过无变化的重复上传 |
 | `backup:crypto` | backup/crypto | 云备份口令加密配置（salt / 迭代次数 / 校验块；**口令本身绝不落盘**，仅存会话内存） |
 | `llm-api-key` | store/useStore | 大模型 API Key（旧字段，v0.9.0 后由档案管理，仅存不读） |
 | `autoBackup:handle` | backup/local | 本地自动备份目录句柄（FileSystemDirectoryHandle） |
@@ -66,7 +72,12 @@ kv 仓库键清单：
 | `llm:results` | lib/llmResultStore | 大模型成功结果按缓存键持久化（最新在前，封顶 50 条） |
 | `llm:profiles` | lib/llmProfiles | 大模型接口配置档案（多套一键切换，含 protocol: openai/anthropic、stream、contextTokens 与各档案 API Key；活动档案由 `settings.llmActiveProfileId` 指针指定） |
 | `llm:chats` | lib/llmChats | AI 助手对话历史（最新在前，封顶 30 条） |
-| `llm:requestLog` | lib/llmRequestLog | AI 请求日志（数据去向面板用，封顶 10 条，不含 API Key） |
+| `llm:requestLog` | lib/llmRequestLog | AI 请求日志（数据页 → AI 请求日志子页用，封顶 10 条，不含 API Key） |
+| `memory:items` | lib/memory | AI 助手长期记忆（事实 / 偏好 / 要求 / 注意，上限 200 条、单条 300 字符；只存本机，不进设置导出） |
+| `llm:suggestCache` | lib/assistantSuggestAi | AI 快速提示（quick prompts）缓存（指纹 + 时间 + 词条） |
+| `bg-image` | lib/theme/bgImage | 自定义背景图 Blob（ZIP 备份会打包） |
+| `luaScripts` | lib/lua/scripts | 用户 Lua 脚本列表（脚本中心） |
+| `luaScriptsEnabled` | lib/lua/scripts | 每个用户脚本的启用状态映射 |
 
 约定：**凭据与句柄一律进 kv，不进 localStorage**（localStorage 会被设置导出、
 容易被顺手清掉，且句柄无法结构化克隆进 localStorage）。
@@ -85,7 +96,7 @@ kv 仓库键清单：
 
 | 键 | 写入方 | 内容 |
 | --- | --- | --- |
-| `svt:settings:v1` | useStore persist | 设置（zustand persist 结构，排除 llmApiKey） |
+| `svt:settings:v1` | useStore persist | 设置（zustand persist 结构，排除 llmApiKey；信封带 `version: 2`） |
 | `svt:history:v1` | （遗留，只读迁移源） | 旧版记录 |
 | `svt:idb-migrated` | useHistoryStore | 旧记录已迁移守卫 |
 | `svt:i18n-ai:<slug>` | i18n/aiLocale | AI 语言词典缓存 |
@@ -93,9 +104,20 @@ kv 仓库键清单：
 | `svt:update-seen` | App | 上次见过的应用版本 |
 | `svt:update-notes-open` | App | 「本次更新内容」卡未读标记 |
 | `svt:reminder:fired:<date>` | lib/reminder | 每日提醒当日已触发标记 |
+| `svt:onboarded` | settings/OnboardingSheet | 首次引导完成标记（`"1"`） |
+| `svt:lan-peers` | lib/sync/lanPeers | 局域网同步最近对端设备记忆（JSON，上限 5 条） |
+| `svt.exportTemplates` | lib/export/templateStore | 导出模板列表（JSON；**不随设置导出**，换设备需用 `.svt-template` 文件单独导入） |
 
 新增键时：能进 IDB kv 的不进 localStorage；有结构的走 JSON；命名保持
-`svt:<域>[:<子域>]`。
+`svt:<域>[:<子域>]`（例外：`svt.exportTemplates` 用点号，与 `svt:` 域前缀区分；
+它和 IDB kv 中的 `memory:items` / Lua 脚本一样，**不在设置导出的 AppSettings 范围内**）。
+迁移设备时：模板用 `.svt-template` 文件单独导入，Lua 脚本在脚本中心导出/导入 JSON，
+长期记忆与 AI 对话目前不随备份迁移（只存本机，可在对应页面手动复制或清除）。
+注意脚本 JSON **不保存启用态**，导入的脚本会获得新 id 并默认启用——导入后请检查
+脚本中心，避免原本停用的建议脚本重新生效。
+
+另有一条 **Cache Storage** 键（不是 localStorage）：`svt-share-target`
+（`lib/audio/importAudio.ts`）——PWA「分享到」接收到的音频暂存处。
 
 ## 录音数据流（状态与持久化的交汇）
 

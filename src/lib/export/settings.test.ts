@@ -139,4 +139,39 @@ describe('parseSettingsPayload', () => {
     }));
     expect(ok.bandBounds).toEqual([80, 160, 175, 250]);
   });
+
+  it('navStyle：三种取值都能随导出往返（AI 工作台曾因漏在枚举白名单外被丢弃）', () => {
+    for (const style of ['floating', 'classic', 'ai'] as const) {
+      const parsed = parseSettingsPayload(JSON.stringify({
+        kind: 'settings', version: SETTINGS_FORMAT_VERSION, settings: { navStyle: style },
+      }));
+      expect(parsed.navStyle).toBe(style);
+    }
+    // 非法值仍被忽略
+    const bad = parseSettingsPayload(JSON.stringify({
+      kind: 'settings', version: SETTINGS_FORMAT_VERSION, settings: { navStyle: 'tablet' },
+    }));
+    expect(bad.navStyle).toBeUndefined();
+  });
+
+  it('customTheme：随导出往返，导入经 normalize 清洗', () => {
+    const payload = buildSettingsPayload({
+      ...SAMPLE,
+      huePreset: 'custom',
+      customTheme: {
+        version: 1,
+        light: { page: { image: true }, card: { bg: '#ffffff', radius: 99, text: 'red' } },
+        dark: {},
+      },
+    });
+    const parsed = parseSettingsPayload(JSON.stringify(payload));
+    expect(parsed.huePreset).toBe('custom');
+    expect(parsed.customTheme?.light.page?.image).toBe(true);
+    expect(parsed.customTheme?.light.card).toEqual({ bg: '#ffffff', radius: 40 });
+
+    const bad = parseSettingsPayload(JSON.stringify({
+      kind: 'settings', version: 1, settings: { customTheme: { version: 2, light: {}, dark: {} } },
+    }));
+    expect(bad.customTheme).toBeUndefined();
+  });
 });

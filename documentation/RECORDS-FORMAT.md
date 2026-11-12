@@ -7,7 +7,9 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 ## 设计原则
 
 - **零闭锁**：格式是纯 JSON，无专有序列化；删除本应用后数据依旧可读
-- **向后兼容**：读取方必须接受 v1/v2 并忽略未知字段（`additionalProperties: true`）
+- **向后兼容**：应用读取器接受 `version` 缺失 / `1` / `2`，并忽略未知字段（记录对象上
+  `additionalProperties: true`）。公开的 v2 JSON Schema 把 `version` 写成 `const: 2`，
+  只用于校验 v2 文件；校验 v1 时应把该约束放宽为 `1` 或缺失
 - **缺失即 null**：帧级未检出用 `null`（JSON 文件内）；JS 内存中的 NaN 在导出前会转为 null
 
 ## 顶层结构
@@ -21,6 +23,9 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 }
 ```
 
+`app` 标识有两个合法取值：`simple-voice-tools-for-trans`（当前）与
+`simple-voice-tools`（旧版本 id，读取方应一并接受——见 `src/lib/appId.ts`）。
+
 ## 字段速览
 
 | 字段 | 类型 | 说明 |
@@ -29,21 +34,30 @@ GitHub 云备份）共用同一开放格式。外部工具可以按本文档与
 | `createdAt` | integer | epoch 毫秒 |
 | `durationSec` / `sampleHz` | number | 时长（秒）/ 序列采样率（≈30 fps） |
 | `mode` | string? | `reading` / `sustained` / `glide`；v1 缺失 |
-| `series` | object | 帧级序列：`t` / `f0` / `rmsDb` / `f1` / `f2`（等长，未检出 = null） |
+| `series` | object | 帧级序列：`t` / `f0` / `rmsDb` 必备，`f1` / `f2` 可选（等长，未检出 = null；导入时缺失或长度不符会按 `t` 补成 null 数组） |
 | `stats` | object | 聚合统计（必备 16 个标量 + 可空指标） |
 | `spec` | object? | 语谱量化：64 频带 × 行 Uint8 base64 |
 | `env` | object? | 环境元数据：`noiseFloorDb` / `micLabel` / `hourOfDay`（v2 新增） |
+| `reanalyzedAt` | integer? | 用当前算法参数重算的时间（epoch ms） |
+| `paramsFp` | string? | 重算时的算法参数指纹 |
 | `note` | string? | 用户备注 |
 
 完整定义见 [records-v2.schema.json](schema/records-v2.schema.json)。
 
 ## 校验工具
 
-应用内置了轻量校验器（`src/lib/export/recordsSchema.ts`），
-外部工具也可以用任意 JSON Schema 校验器对着 Schema 文件验证：
+应用内置了轻量校验器（`src/lib/export/recordsSchema.ts`），用于对导入文件做**部分**
+结构检查；它并不强制完整公开 Schema（例如 `series.f0` 缺失目前不会报错），
+通过校验不等于符合 Schema。完整校验请用下面的 JSON Schema 校验器。
+实际导入链路（`parseRecordsPayload`）保持**宽容读入**——只解析结构、补齐可选的
+`f1` / `f2` 数组并检查版本上限（过新版本拒绝），不在导入时逐条报告 Schema 错误。外部工具也可以用任意
+JSON Schema 校验器对着 Schema 文件验证：
 
 ```bash
-npx ajv-cli validate -s schema/records-v2.schema.json -d your-export.json
+# ajv-cli 需配 draft 2020-12 与 ajv-formats（schema 里用了 format: date-time）
+npx --package ajv-cli --package ajv-formats ajv validate \
+  --spec=draft2020 -c ajv-formats \
+  -s documentation/schema/records-v2.schema.json -d your-export.json
 ```
 
 ## 与 Praat 互操作

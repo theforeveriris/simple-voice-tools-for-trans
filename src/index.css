@@ -557,3 +557,160 @@ body {
   }
 }
 
+/* ---------------- 彩蛋「喵喵练声」 ----------------
+ * 版本行连点反馈与通关的跨性别旗 emoji 撒花。
+ * 撒花用 emoji 文本 + 自定义属性驱动，无图片资源；减弱动效时直接隐藏。 */
+@keyframes egg-jiggle {
+  0% { transform: rotate(0deg) scale(1); }
+  30% { transform: rotate(4deg) scale(1.08); }
+  60% { transform: rotate(-3deg) scale(1.04); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.egg-jiggle {
+  animation: egg-jiggle 320ms ease-out;
+}
+
+@keyframes meow-tail-wag {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(6deg); }
+}
+
+.meow-tail {
+  animation: meow-tail-wag 2.2s ease-in-out infinite;
+}
+
+.meow-tail-fast {
+  animation-duration: 0.7s;
+}
+
+@keyframes meow-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.08); }
+  98% { transform: scaleY(1); }
+}
+
+.meow-eyes {
+  animation: meow-blink 5.2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .egg-jiggle { animation: none; }
+  .meow-tail, .meow-tail-fast, .meow-eyes { animation: none; }
+}
+
+/* ---------------- 彩蛋主题「粉团子」 ----------------
+ * 浅色：暖奶油 + 极淡的粉爪印；深色：靛梅夜色 + 粉月 + 奶白爪印。
+ * 只让页面底（.app-root）透出背景，卡片保持实色，避免整页毛玻璃影响可读性。 */
+html.theme-cat .app-root {
+  background-color: transparent;
+}
+
+html.theme-cat body::before {
+  content: '';
+  position: fixed;
+  inset: -4%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 44% at 86% 0%, rgb(255 205 210 / 0.20), transparent 70%),
+    radial-gradient(48% 38% at 2% 100%, rgb(255 236 224 / 0.55), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'%3E%3Cg fill='rgb(217,122,140)' opacity='.06'%3E%3Cellipse cx='17' cy='21' rx='5' ry='4'/%3E%3Ccircle cx='9.5' cy='14.5' r='2.3'/%3E%3Ccircle cx='14' cy='10.5' r='2.3'/%3E%3Ccircle cx='20' cy='10.5' r='2.3'/%3E%3Ccircle cx='24.5' cy='14.5' r='2.3'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: auto, auto, 34px 34px;
+}
+
+html.theme-cat.dark body::before {
+  background:
+    radial-gradient(circle 80px at 86% 4%, rgb(255 185 198 / 0.18) 0 78px, transparent 80px),
+    radial-gradient(52% 42% at 82% 0%, rgb(255 157 174 / 0.14), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'%3E%3Cg fill='rgb(246,231,233)' opacity='.05'%3E%3Cellipse cx='17' cy='21' rx='5' ry='4'/%3E%3Ccircle cx='9.5' cy='14.5' r='2.3'/%3E%3Ccircle cx='14' cy='10.5' r='2.3'/%3E%3Ccircle cx='20' cy='10.5' r='2.3'/%3E%3Ccircle cx='24.5' cy='14.5' r='2.3'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: auto, auto, 34px 34px;
+}
+
+/* ---------------- Toast（sonner）主题化 ----------------
+ * sonner 的 richColors 默认是固定的绿 / 红 / 蓝 / 黄，与各主题（山桃红、奶油月夜、
+ * 粉团子、骄傲旗…）的色板无关。这里把 toast 表面、文字、边框和圆角统一映射到
+ * 主题令牌，只保留语义图标色：成功 = 主题强调色，提醒 = 次强调色，错误 = 破坏色。
+ * 选择器额外带 [data-sonner-theme] 提高优先级，压过 sonner 注入的浅/深色默认值。 */
+html [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--c-card);
+  --normal-bg-hover: var(--c-surface-hi);
+  --normal-border: var(--c-line);
+  --normal-border-hover: var(--c-line);
+  --normal-text: var(--c-ink);
+
+  --success-bg: var(--c-accent-soft);
+  --success-border: rgb(var(--c-accent-rgb) / 0.28);
+  --success-text: var(--c-on-accent-soft);
+
+  --info-bg: var(--c-surface-hi);
+  --info-border: var(--c-line);
+  --info-text: var(--c-ink);
+
+  --warning-bg: var(--c-accent2-soft);
+  --warning-border: rgb(var(--c-accent2-rgb) / 0.32);
+  --warning-text: var(--c-on-accent2-soft);
+
+  --error-bg: var(--c-surface-hi);
+  --error-border: hsl(var(--destructive) / 0.32);
+  --error-text: var(--c-ink);
+
+  --border-radius: 16px;
+  font-family: inherit;
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='success'] [data-icon] {
+  color: var(--c-accent);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='info'] [data-icon] {
+  color: var(--c-ink-2);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='warning'] [data-icon] {
+  color: var(--c-accent2);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type='error'] [data-icon] {
+  color: hsl(var(--destructive));
+}
+
+/* 操作按钮（撤销等）跟应用主按钮一致：主题强调色 + on-accent 文字 */
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-styled='true'] [data-button] {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-styled='true'] [data-button]:hover {
+  opacity: 0.88;
+}
+
+/* ---------------- 主题切换过渡（View Transitions） ----------------
+ * 由 lib/theme/smooth.ts 在结构性切换（深浅模式 / 预设 / 旗帜 / 系统深浅翻转）
+ * 时触发 document.startViewTransition：旧页面快照保持不动，新页面快照以按压点
+ * （键盘操作为焦点控件中心、系统切换为视口中心）为圆心扩散覆盖——渐变背景 /
+ * Canvas / 原生控件一并覆盖，避免整套令牌在同一帧硬切。
+ * --vt-x / --vt-y / --vt-r 由脚本按视口与圆心算出；未设置时兜底为居中扩散。*/
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    mix-blend-mode: normal;
+  }
+
+  /* 旧快照不做淡出，等新快照盖满后随过渡一起移除 */
+  ::view-transition-old(root) {
+    animation: none;
+    z-index: 1;
+  }
+
+  /* 显式层级保证新快照在旧快照之上，clip-path 圆形揭示 */
+  ::view-transition-new(root) {
+    z-index: 2;
+    animation: svt-theme-reveal 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes svt-theme-reveal {
+    from { clip-path: circle(0px at var(--vt-x, 50%) var(--vt-y, 50%)); }
+    to { clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 50%) var(--vt-y, 50%)); }
+  }
+}

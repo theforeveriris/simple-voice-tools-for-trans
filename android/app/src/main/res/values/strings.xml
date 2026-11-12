@@ -12,4 +12,9 @@
     <string name="shortcut_history_long">View history and trends</string>
     <string name="shortcut_settings_short">Settings</string>
     <string name="shortcut_settings_long">Open settings</string>
+
+    <!-- 应用锁低调模式的 launcher 名称（保持英文中性词，跨语言一致） -->
+    <string name="discreet_name_voice_notes">Voice Notes</string>
+    <string name="discreet_name_vocal_log">Vocal Log</string>
+    <string name="discreet_name_audio_journal">Audio Journal</string>
 </resources>

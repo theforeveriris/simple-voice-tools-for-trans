@@ -7,7 +7,7 @@
  * - 运行状态：运行方式 / Service Worker / 持久化存储 / 网络，附诊断信息一键复制
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Download, RefreshCw, Smartphone, Loader2, Activity, Share2, Wrench, ClipboardCopy,
@@ -19,11 +19,12 @@ import {
   type SwStatus,
 } from '@/lib/pwa';
 import { checkNativeAppUpdate, openApkDownload, type NativeUpdateInfo } from '@/lib/appUpdate';
-import { t, localeTag } from '@/i18n';
+import { t, getLocale, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isNative } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 import type { AppSettings, ViewType } from '@/types';
+import { MeowGame } from '@/components/egg/MeowGame';
 import { NAV, navLabelKey } from './navItems';
 import {
   SettingsSection, SettingRow, SELECT_TRIGGER_CLASS,
@@ -62,6 +63,11 @@ export function AppPage({
   onBack: () => void;
 }) {
   useI18n();
+  /** 当前语言的本版本更新内容；构建时由 release-notes/<version>.json 注入 */
+  const releaseNotes = __APP_VERSION_NOTES__[getLocale()]
+    ?? __APP_VERSION_NOTES__.en
+    ?? __APP_VERSION_NOTES__['zh-CN']
+    ?? '';
   const install = usePwaInstall();
   const [checking, setChecking] = useState(false);
   // 原生壳：检查更新发现的新版本（PWA 端发现即自动刷新，无需状态）
@@ -75,6 +81,33 @@ export function AppPage({
   const [updateUnseen, setUpdateUnseen] = useState(
     () => localStorage.getItem('svt:update-notes-open') === '1',
   );
+  // 彩蛋：版本行连点六下 → 全屏「喵喵练声」。间隔超过 900ms 重新计数。
+  const [eggOpen, setEggOpen] = useState(false);
+  const [eggTaps, setEggTaps] = useState(0);
+  const eggTapRef = useRef({ n: 0, at: 0 });
+
+  const onVersionTap = () => {
+    const now = performance.now();
+    const s = eggTapRef.current;
+    s.n = now - s.at <= 900 ? s.n + 1 : 1;
+    s.at = now;
+    if (settings.haptics) navigator.vibrate?.(6);
+    if (s.n >= 6) {
+      s.n = 0;
+      setEggTaps(0);
+      if (settings.haptics) navigator.vibrate?.([8, 30, 8]);
+      setEggOpen(true);
+      return;
+    }
+    setEggTaps(s.n);
+  };
+
+  /** 彩蛋首次通关：解锁「粉团子」主题（只提示一次，之后静默） */
+  const onEggWin = () => {
+    if (settings.catThemeUnlocked) return;
+    update({ catThemeUnlocked: true });
+    toast.success(t('toast.catThemeUnlocked'));
+  };
 
   useEffect(() => {
     void getServiceWorkerStatus().then(setSw);
@@ -257,11 +290,11 @@ export function AppPage({
 
         {/* 版本与更新 */}
         <SettingsSection icon={RefreshCw} title={t('settings.updateSection')}>
-          {updateUnseen && (
+          {updateUnseen && releaseNotes && (
             <div className="mb-1 rounded-2xl bg-accent-soft/60 px-4 py-3">
               <p className="text-xs font-semibold text-on-accent-soft">{t('settings.updateNotesTitle')}</p>
               <p className="mt-1 whitespace-pre-line text-[11px] leading-relaxed text-on-accent-soft/90">
-                {t('settings.updateNotes')}
+                {releaseNotes}
               </p>
               <button
                 onClick={() => {
@@ -274,9 +307,19 @@ export function AppPage({
               </button>
             </div>
           )}
-          <SettingRow label={t('settings.versionLabel')} desc={__BUILD_DATE__}>
-            <span className="text-xs font-semibold tabular-nums text-ink">v{__APP_VERSION__}</span>
-          </SettingRow>
+          <div onClick={onVersionTap} className="select-none">
+            <SettingRow label={t('settings.versionLabel')} desc={__BUILD_DATE__}>
+              <span
+                key={eggTaps}
+                className={cn(
+                  'inline-block text-xs font-semibold tabular-nums text-ink',
+                  eggTaps > 0 && 'egg-jiggle',
+                )}
+              >
+                v{__APP_VERSION__}
+              </span>
+            </SettingRow>
+          </div>
           {/* 检查更新：Web 走 Service Worker；原生壳比对 GitHub Releases 的最新 APK */}
           <SettingRow
             label={
@@ -379,6 +422,16 @@ export function AppPage({
           </SettingRow>
         </SettingsSection>
       </motion.div>
+
+      {eggOpen && (
+        <MeowGame
+          minF0={settings.targetF0Min}
+          maxF0={settings.targetF0Max}
+          haptics={settings.haptics}
+          onWin={onEggWin}
+          onClose={() => setEggOpen(false)}
+        />
+      )}
     </div>
   );
 }

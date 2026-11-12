@@ -13,6 +13,7 @@ import { RecordingMiniView } from '@/components/layout/RecordingMiniView';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
 import { SplashScreen } from '@/components/layout/SplashScreen';
+import { LockGate } from '@/components/security/LockGate';
 import { OnboardingSheet } from '@/components/settings/OnboardingSheet';
 import { TestPage } from '@/components/pages/TestPage';
 import { AnalysisPage } from '@/components/pages/AnalysisPage';
@@ -21,7 +22,12 @@ import { SettingsPage } from '@/components/pages/SettingsPage';
 import { AssistantPage } from '@/components/ai/AssistantPage';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
+import { useSecurity } from '@/lib/security/hook';
+import { lockNowSafely } from '@/lib/security/manualLock';
 import { applyTheme, presetSpec } from '@/lib/theme/monet';
+import { applyCustomTheme } from '@/lib/theme/customTheme';
+import { applyBgImage } from '@/lib/theme/bgImage';
+import { smoothThemeChange } from '@/lib/theme/smooth';
 import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
@@ -115,6 +121,7 @@ function App() {
   const accentHue = useStore((s) => s.settings.accentHue);
   const darkHue = useStore((s) => s.settings.darkHue);
   const huePreset = useStore((s) => s.settings.huePreset);
+  const customTheme = useStore((s) => s.settings.customTheme);
   const prideFlag = useStore((s) => s.settings.prideFlag);
   const theme = useStore((s) => s.settings.theme);
   const navStyle = useStore((s) => s.settings.navStyle);
@@ -122,6 +129,7 @@ function App() {
   const addRecord = useHistoryStore((s) => s.addRecord);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
+  const security = useSecurity();
 
   // 语言切换（同步 <html lang> 与词典）
   useI18n();
@@ -224,7 +232,14 @@ function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // 手动锁定：Ctrl/⌘ + Shift + L（锁屏时不响应其他快捷键）
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        if (security.enabled) void lockNowSafely();
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (security.locked) return;
       const target = e.target as HTMLElement | null;
       if (
         target
@@ -266,7 +281,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shortcutsOpen]);
+  }, [shortcutsOpen, security.enabled, security.locked]);
 
   const isDark = theme === 'dark'
     || (theme === 'system'
@@ -275,20 +290,36 @@ function App() {
 
   // 应用莫奈主题色（含深浅模式；system 下监听系统切换；预设配色改写色相来源；
   // 莫奈预设下 accentHue / darkHue 与 hue 不同时走合成 spec 生成双色调 / 独立深色铺底）
+  // 结构性切换（深浅模式 / 预设 / 旗帜 / 系统深浅翻转）走整页圆形揭示；
+  // 色相滑条拖动等纯色板微调保持即时，避免拖动时逐帧重拍快照。
+  const appliedThemeKeyRef = useRef<string | null>(null);
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => {
+    const applyNow = () => {
       const preset = presetSpec(huePreset, hue, prideFlag, accentHue, darkHue);
       applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec, prideFlag);
+      // 自定义组件外观：非 custom 预设时移除覆盖层
+      applyCustomTheme(huePreset === 'custom' ? customTheme : null);
+      // 深浅切换后重新判定背景图开关（custom 页面背景图按当前模式生效）
+      applyBgImage(useStore.getState().settings);
       // 原生壳：系统栏（状态栏/手势条）底色跟随主题（含深浅切换与自定义色相）
       syncNativeSystemBars();
     };
-    apply();
+    const applyIfNeeded = () => {
+      const dark = theme === 'dark' || (theme === 'system' && mq.matches);
+      const key = `${theme}|${huePreset}|${prideFlag}|${dark}`;
+      const prev = appliedThemeKeyRef.current;
+      appliedThemeKeyRef.current = key;
+      // 首次挂载无旧状态可过渡；key 不变（仅色相微调）直接应用
+      if (prev !== null && prev !== key) smoothThemeChange(applyNow);
+      else applyNow();
+    };
+    applyIfNeeded();
     if (theme === 'system') {
-      mq.addEventListener('change', apply);
-      return () => mq.removeEventListener('change', apply);
+      mq.addEventListener('change', applyIfNeeded);
+      return () => mq.removeEventListener('change', applyIfNeeded);
     }
-  }, [hue, accentHue, darkHue, huePreset, prideFlag, theme]);
+  }, [hue, accentHue, darkHue, huePreset, prideFlag, theme, customTheme]);
 
   // 每日练习提醒：每分钟 + 回到前台时检查（到点且当天无录音 → 本地通知）
   const reminderEnabled = useStore((s) => s.settings.practiceReminderEnabled);
@@ -402,12 +433,12 @@ function App() {
   }, [importSharedFile]);
 
   return (
+    <LockGate>
       <div className="app-root min-h-dvh bg-surface text-ink">
       <Toaster
         position="top-center"
         richColors
         theme={isDark ? 'dark' : 'light'}
-        toastOptions={{ style: { borderRadius: '8px' } }}
       />
 
       {/* 原生壳启动页：浏览器/PWA 的启动画面由系统按 manifest 生成，这里只补壳内 */}
@@ -464,7 +495,8 @@ function App() {
       {/* 快捷键帮助（? 呼出）。面板自身渲染到 body portal，因此不用 AnimatePresence 包裹：
           关闭时直接卸载（入场动画保留），不依赖 portal 内退出动画的上报 */}
       {shortcutsOpen && <ShortcutsHelpSheet onClose={() => setShortcutsOpen(false)} />}
-    </div>
+      </div>
+    </LockGate>
   );
 }
 

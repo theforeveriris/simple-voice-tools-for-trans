@@ -40,7 +40,8 @@ export function ThemeCard({ active, onClick, label, children }: {
       aria-pressed={active}
       className={cn(
         'flex flex-col gap-1.5 rounded-2xl bg-card p-2 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.97]',
-        active && 'ring-2 ring-accent',
+        // ring-inset：选中描边画在盒内，避免最外侧卡片贴住滚动容器边缘时被裁掉左右两段
+        active && 'ring-2 ring-inset ring-accent',
       )}
     >
       <span className="relative block h-10 w-full overflow-hidden rounded-xl border border-line/60">
@@ -72,6 +73,38 @@ export function MonetSwatch({ hue }: { hue: number }) {
       }}
       aria-hidden
     />
+  );
+}
+
+/** 彩蛋主题「粉团子」色板：奶油/粉渐变 + 像素猫脸 + 一点金色 */
+export function CatSwatch() {
+  return (
+    <span className="relative block h-full w-full overflow-hidden" aria-hidden>
+      <span
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(135deg,#fbf3ec 0%,#f7dfe2 58%,#e3a6b2 100%)' }}
+      />
+      <svg
+        className="absolute left-1/2 top-1/2 h-[34px] w-auto -translate-x-1/2 -translate-y-1/2"
+        viewBox="0 0 26 24"
+        shapeRendering="crispEdges"
+      >
+        <path d="M4 9 L2.5 1 L9 6 Z" fill="#ff9dae" />
+        <path d="M22 9 L23.5 1 L17 6 Z" fill="#ff9dae" />
+        <path d="M5.5 7 L5 3 L7.5 6 Z" fill="#c9768a" />
+        <path d="M20.5 7 L21 3 L18.5 6 Z" fill="#c9768a" />
+        <rect x="2.5" y="5" width="21" height="16" rx="6" fill="#ff9dae" />
+        <rect x="7" y="10" width="3" height="4" fill="#2a171b" />
+        <rect x="16" y="10" width="3" height="4" fill="#2a171b" />
+        <rect x="7" y="10" width="1" height="1" fill="#f6e7e9" />
+        <rect x="18" y="10" width="1" height="1" fill="#f6e7e9" />
+        <rect x="4.5" y="14" width="2" height="1.6" fill="#ff7d93" opacity=".55" />
+        <rect x="19.5" y="14" width="2" height="1.6" fill="#ff7d93" opacity=".55" />
+        <path d="M11.5 14 h3 l-1.5 2 z" fill="#8f3f52" />
+        <rect x="11.5" y="16.5" width="3" height="1" fill="#8f3f52" opacity=".7" />
+      </svg>
+      <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[#c9a24d]" />
+    </span>
   );
 }
 
@@ -240,7 +273,7 @@ export function ThemePickerBody({
 
       {/* 预设配色卡片：色板实时预览 */}
       <SettingRow label={t('settings.huePreset')} stacked>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className={cn('grid gap-2.5', settings.catThemeUnlocked ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
           <ThemeCard active={preset === 'monet'} onClick={() => setPreset('monet')} label={t('settings.presetMonet')}>
             <MonetSwatch hue={settings.hue} />
           </ThemeCard>
@@ -256,6 +289,15 @@ export function ThemePickerBody({
               </span>
             )}
           </ThemeCard>
+          {settings.catThemeUnlocked && (
+            <ThemeCard
+              active={preset === 'cat'}
+              onClick={() => setPreset('cat')}
+              label={t('settings.presetCat')}
+            >
+              <CatSwatch />
+            </ThemeCard>
+          )}
         </div>
       </SettingRow>
 

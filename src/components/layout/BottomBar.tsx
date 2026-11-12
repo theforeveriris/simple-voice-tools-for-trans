@@ -441,6 +441,7 @@ const Dock = memo(function Dock({
         data-i18n-version={i18nVersion}
         transition={SPRING}
         className="app-chrome flex items-center gap-0.5 rounded-[24px] bg-card p-1.5 shadow-[0_12px_40px_-8px_rgba(28,25,45,0.18),0_3px_12px_rgba(28,25,45,0.06)]"
+        data-theme-part="bottombar"
       >
         {/* 左组：测试 / 分析 */}
         <div className="flex items-center gap-0.5">{TABS.slice(0, 2).map(renderTab)}</div>
@@ -478,7 +479,7 @@ function ClassicNav() {
   const currentTab = useStore((s) => s.currentTab);
   const setTab = useStore((s) => s.setTab);
   return (
-    <div className="app-chrome fixed inset-x-0 bottom-0 z-50 border-t border-black/[0.06] bg-card pb-[max(env(safe-area-inset-bottom),0.375rem)] shadow-[0_-8px_30px_-12px_rgba(28,25,45,0.18)]">
+    <div className="app-chrome fixed inset-x-0 bottom-0 z-50 border-t border-black/[0.06] bg-card pb-[max(env(safe-area-inset-bottom),0.375rem)] shadow-[0_-8px_30px_-12px_rgba(28,25,45,0.18)]" data-theme-part="bottombar">
       <nav className="mx-auto grid h-16 w-full max-w-[560px] grid-cols-5 px-2">
         {NAV.map((id) => {
           const active = currentTab === id;

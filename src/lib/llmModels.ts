@@ -19,6 +19,84 @@ export interface LlmModelInfo {
   label?: string;
   /** 接口元数据或内置目录识别的上下文长度；未知为 null */
   contextTokens: number | null;
+  /** 单价（USD / 每百万 tokens）；未知为 null */
+  pricing?: ModelPrice | null;
+}
+
+/** 单价（USD / 每百万 tokens） */
+export interface ModelPrice {
+  input: number;
+  output: number;
+}
+
+/**
+ * 内置单价目录（USD / 每百万 tokens，估算用，随厂商调价可能过期）。
+ * 接口能返回真实价格时（OpenRouter 等）优先用接口结果。
+ */
+const PRICE_RULES: { re: RegExp; input: number; output: number }[] = [
+  { re: /^gpt-5/, input: 1.25, output: 10 },
+  { re: /^gpt-4\.1/, input: 2, output: 8 },
+  { re: /^gpt-4o-mini/, input: 0.15, output: 0.6 },
+  { re: /^gpt-4o/, input: 2.5, output: 10 },
+  { re: /^gpt-4-turbo/, input: 10, output: 30 },
+  { re: /^gpt-4/, input: 30, output: 60 },
+  { re: /^gpt-3\.5/, input: 0.5, output: 1.5 },
+  { re: /^o4-mini/, input: 1.1, output: 4.4 },
+  { re: /^o3/, input: 2, output: 8 },
+  { re: /^o[1-4]/, input: 15, output: 60 },
+  { re: /^claude.*opus/, input: 15, output: 75 },
+  { re: /^claude.*haiku/, input: 0.8, output: 4 },
+  { re: /^claude/, input: 3, output: 15 },
+  { re: /^deepseek.*reasoner/, input: 0.55, output: 2.19 },
+  { re: /^deepseek/, input: 0.27, output: 1.1 },
+  { re: /^gemini-2\.5-pro/, input: 1.25, output: 10 },
+  { re: /^gemini-2/, input: 0.1, output: 0.4 },
+  { re: /^gemini-1\.5-pro/, input: 1.25, output: 5 },
+  { re: /^gemini/, input: 0.075, output: 0.3 },
+  { re: /^qwen-max/, input: 1.6, output: 6.4 },
+  { re: /^qwen-plus/, input: 0.4, output: 1.2 },
+  { re: /^qwen-turbo/, input: 0.05, output: 0.2 },
+  { re: /^qwen/, input: 0.4, output: 1.2 },
+  { re: /^moonshot-v1/, input: 1.68, output: 1.68 },
+  { re: /^kimi/, input: 0.6, output: 2.5 },
+  { re: /^glm-4/, input: 0.6, output: 0.6 },
+  { re: /^llama-?3\.3/, input: 0.59, output: 0.79 },
+  { re: /^llama-?3\.1/, input: 0.2, output: 0.2 },
+  { re: /^mistral-large/, input: 2, output: 6 },
+  { re: /^mistral-small/, input: 0.2, output: 0.6 },
+];
+
+/** 按模型 ID 查内置单价（未知返回 null） */
+export function priceForModel(modelId: string): ModelPrice | null {
+  const id = normalizeModelId(modelId);
+  if (!id) return null;
+  for (const rule of PRICE_RULES) {
+    if (rule.re.test(id)) return { input: rule.input, output: rule.output };
+  }
+  return null;
+}
+
+/**
+ * 从一条模型记录里提取单价（USD / 每百万 tokens）。
+ * 覆盖 OpenRouter（pricing.prompt / pricing.completion，单位 USD/token）
+ * 与常见的 input_price / output_price 写法。
+ */
+function extractPricing(item: Record<string, unknown>): ModelPrice | null {
+  const p = isRecord(item.pricing) ? item.pricing : null;
+  const num = (v: unknown): number | null => {
+    const n = typeof v === 'string' ? Number(v) : v;
+    return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  // OpenRouter：USD / token → 换算成每百万
+  const prompt = p ? num(p.prompt) : null;
+  const completion = p ? num(p.completion) : null;
+  if (prompt != null && completion != null) {
+    return { input: prompt * 1e6, output: completion * 1e6 };
+  }
+  const input = num(item.input_price) ?? num(item.price_input);
+  const output = num(item.output_price) ?? num(item.price_output);
+  if (input != null && output != null) return { input, output };
+  return null;
 }
 
 /**
@@ -180,10 +258,12 @@ export function parseLlmModels(raw: unknown): LlmModelInfo[] {
     seen.add(id);
     const label = rec ? firstString(rec.display_name, rec.name) : undefined;
     const contextTokens = (rec ? extractContextTokens(rec) : null) ?? contextTokensForModel(id);
+    const pricing = (rec ? extractPricing(rec) : null) ?? priceForModel(id);
     out.push({
       id,
       ...(label && label !== id ? { label } : {}),
       contextTokens,
+      pricing,
     });
   }
   out.sort((a, b) => a.id.localeCompare(b.id));

@@ -4,7 +4,7 @@
  *   - PARAMETERS-GUIDE.md（参数说明书：每个指标的含义/参考区间/训练意义——回答
  *     「我的 CPPS 3.2dB 正常吗」这类问题的主力语料）
  *   - REFERENCES.md（参考文献：参考区间的出处）
- *   - ALGORITHM-YIN / FORMANT-LPC / ENERGY / CPPS（算法原理）
+ *   - ALGORITHM-YIN / FORMANT-LPC / VOICE-EXPRESSION / VOWEL / ENERGY / CPPS（算法原理）
  * 文档经 docs.loadDoc（import.meta.glob 懒加载）读取：每份文档单独成 chunk，
  * 只在首次检索时才下载，不占首屏体积（此前用静态 ?raw 导入，把 6 份文档
  * 强塞进首屏包，与 docs.ts 的懒加载意图相悖）。
@@ -30,6 +30,8 @@ const SOURCES: { doc: string; file: string }[] = [
   { doc: '参考文献', file: 'REFERENCES.md' },
   { doc: 'YIN 算法', file: 'ALGORITHM-YIN.md' },
   { doc: 'LPC 共振峰算法', file: 'ALGORITHM-FORMANT-LPC.md' },
+  { doc: '声音性别表达评分', file: 'ALGORITHM-VOICE-EXPRESSION.md' },
+  { doc: '元音与共鸣', file: 'ALGORITHM-VOWEL.md' },
   { doc: '能量分析', file: 'ALGORITHM-ENERGY.md' },
   { doc: 'CPPS 算法', file: 'ALGORITHM-CPPS.md' },
 ];

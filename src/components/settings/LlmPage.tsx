@@ -4,13 +4,14 @@
  * - 模型配置：当前使用中档案概览 + 连接测试
  * - 配置档案：档案即数据源（llm:profiles），点按切换 / 编辑 / 复制 / 删除
  * - 提示词调节：进入 PromptPage（补充规则 + 覆写，仍为独立二级页）
+ * - 记忆：进入 MemoryPage（跨对话保留的事实 / 偏好 / 要求，按需注入助手提示词）
  * - 用量与费用：LlmUsageSection 原样移入
  * 「训练建议」三态开关留在实验性功能页——它是建议卡的行为开关，不是服务配置。
  */
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Layers, Loader2, Sparkles, SquarePen } from 'lucide-react';
+import { ArrowLeft, Brain, ChevronRight, Layers, Loader2, ShieldCheck, Sparkles, SquarePen } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -18,9 +19,13 @@ import type { AppSettings } from '@/types';
 import { SettingsSection, SettingRow } from './rows';
 import { LlmProfilesSection } from './LlmProfilesSection';
 import { LlmUsageSection } from './LlmUsageSection';
+import { WebSearchSection } from './WebSearchSection';
 import { PromptPage } from './PromptPage';
+import { MemoryPage } from './MemoryPage';
 import { useStore } from '@/store/useStore';
 import { useActiveLlmConfig, useLlmProfiles } from '@/lib/llmProfiles';
+import { useMemories } from '@/lib/memory';
+import { Switch } from '@/components/ui';
 import { testLlmConnection } from '@/lib/llm';
 
 export function LlmPage({
@@ -36,9 +41,11 @@ export function LlmPage({
   useI18n();
   const setTab = useStore((s) => s.setTab);
   const [promptOpen, setPromptOpen] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const activeProfileId = settings.llmActiveProfileId;
   const profiles = useLlmProfiles();
+  const memories = useMemories();
   const cfg = useActiveLlmConfig(activeProfileId);
   const activeProfile = profiles?.find((p) => p.id === activeProfileId) ?? null;
 
@@ -54,6 +61,10 @@ export function LlmPage({
 
   if (promptOpen) {
     return <PromptPage settings={settings} update={update} onBack={() => setPromptOpen(false)} />;
+  }
+
+  if (memoryOpen) {
+    return <MemoryPage onBack={() => setMemoryOpen(false)} />;
   }
 
   const rulesCount = settings.llmExtraRules?.length ?? 0;
@@ -151,8 +162,36 @@ export function LlmPage({
           </button>
         </SettingsSection>
 
-        {/* ④ 用量与费用 */}
-        <LlmUsageSection settings={settings} update={update} />
+        {/* ④ 记忆 */}
+        <SettingsSection icon={Brain} title={t('settings.memoryTitle')}>
+          <button
+            onClick={() => setMemoryOpen(true)}
+            className="flex w-full items-center justify-between gap-3 py-2 text-left"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-ink">{t('settings.llmMemoryEntry')}</span>
+              <span className="block text-[11px] text-ink-2">{t('settings.memoryCount', { n: memories.length })}</span>
+            </span>
+            <ChevronRight size={15} className="shrink-0 text-ink-2" />
+          </button>
+        </SettingsSection>
+
+        {/* ⑤ AI 写操作权限 */}
+        <SettingsSection icon={ShieldCheck} title={t('settings.assistantWrites')}>
+          <SettingRow label={t('settings.assistantWritesDesc')}>
+            <Switch
+              checked={settings.assistantWrites !== 'off'}
+              onCheckedChange={(v) => update({ assistantWrites: v ? 'confirm' : 'off' })}
+              aria-label={t('settings.assistantWrites')}
+            />
+          </SettingRow>
+        </SettingsSection>
+
+        {/* ⑥ 联网搜索（Tavily BYOK） */}
+        <WebSearchSection settings={settings} update={update} />
+
+        {/* ⑦ 用量与费用 */}
+        <LlmUsageSection settings={settings} />
       </motion.div>
 
 

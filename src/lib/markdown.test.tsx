@@ -102,16 +102,20 @@ describe('renderAssistantContent', () => {
     const parts = renderAssistantContent('看这张 ![第一次测试](record://abc-123/pitch) 说明趋势。');
     expect(parts).toHaveLength(3);
     expect(parts[1].type).toBe('img');
-    expect(parts[1].recordId).toBe('abc-123');
-    expect(parts[1].kind).toBe('pitch');
-    expect(parts[1].alt).toBe('第一次测试');
+    if (parts[1].type === 'img') {
+      expect(parts[1].recordId).toBe('abc-123');
+      expect(parts[1].kind).toBe('pitch');
+      expect(parts[1].alt).toBe('第一次测试');
+    }
   });
 
   it('未知 kind 仍切分（kind undefined，渲染端显示占位）', () => {
     const parts = renderAssistantContent('前缀 ![](record://abc/unknown)');
     expect(parts[1].type).toBe('img');
-    expect(parts[1].recordId).toBe('abc');
-    expect(parts[1].kind).toBeUndefined();
+    if (parts[1].type === 'img') {
+      expect(parts[1].recordId).toBe('abc');
+      expect(parts[1].kind).toBeUndefined();
+    }
   });
 
   it('无引用时整体为 markdown', () => {

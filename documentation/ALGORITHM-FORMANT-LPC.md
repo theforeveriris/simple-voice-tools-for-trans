@@ -114,7 +114,7 @@ $$z_i \leftarrow z_i - \frac{P(z_i)}{\prod_{j \neq i} (z_i - z_j)}$$
 | 带宽上限 | 700 Hz | 过滤宽带噪声根 |
 | F1 频段 | `f1MinHz`(默认 200) – 1100 Hz | 下限可调 100–400 |
 | F2 频段 | max(F1+150, 700) – `f2MaxHz`(默认 3400) Hz | 上限可调 2000–5000 |
-| 静音门限 | 帧电平 > -52 dB（固定） | 能量太低 LPC 不稳定（未参数化） |
+| 静音门限 | 帧电平 ≥ `activeGateDb`（默认 -50 dB） | 能量太低 LPC 不稳定（与活跃门限同源，可调 -70…-30） |
 | 平滑系数 | 0.45 / 0.55 | 历史/新值 |
 
 以上可调参数均在 设置 → 高级 → 算法参数，改动对实时与离线分析同时生效
@@ -136,6 +136,17 @@ $$z_i \leftarrow z_i - \frac{P(z_i)}{\prod_{j \neq i} (z_i - z_j)}$$
 
 录音引擎（`src/lib/audio/recorder.ts`）每 2 帧调用一次 `extractFormants`，
 并对结果做指数平滑后写入缓冲；离线管线（`analysisPipeline.ts`）同参复算。
+
+## 下游用法
+
+同一个 `{ f1, f2 }` 会被三条分析链路消费，参考集各不相同：
+
+- **元音空间散点**：i / a / u 三个视觉参考点（`constants/index.ts` 的 `VOWEL_REFS`）；
+- **声音性别表达参考分**：H95 的 12 个美式英语元音 × 男女 24 点归一（`lib/voiceExpression.ts`）；
+- **长音元音检查**：普通话 6 个主元音 × 男女参考（`lib/mandarinVowels.ts` + `lib/vowelCheck.ts`）。
+
+三套参考不要混用；逐帧落点、时长加权、稳定段与置信度的细节见
+`documentation/ALGORITHM-VOWEL.md`。
 
 ## 复杂度与实时性
 
