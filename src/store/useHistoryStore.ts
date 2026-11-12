@@ -160,7 +160,8 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
     return persist(async () => {
       await idbPutRecord(record);
       if (audioBlob) await idbPutAudio(record.id, audioBlob);
-      await idbDeleteTrash(record.id);
+      // 回收站清理失败不影响记录/音频已保存的事实
+      await idbDeleteTrash(record.id).catch(() => undefined);
     });
   },
 
