@@ -1,8 +1,8 @@
 /**
  * 云备份加密（AES-256-GCM + PBKDF2，全部走 WebCrypto）
  *
- * 覆盖范围：GitHub 私有库与 WebDAV 的云端上传内容（records JSON + 录音音频）。
- * 手动 ZIP 导出与本地自动备份保持明文（存放在用户自己选择的位置）。
+ * 覆盖范围：GitHub 私有库与 WebDAV 的云端上传内容（records JSON + 录音音频），
+ * 以及可选的本地手动 ZIP / 自动备份（localEnabled 开关，同一口令）。
  *
  * 关键设计——确定性 IV（SIV 式构造）：
  *   GitHub 备份按文件推送，靠对比 git blob SHA 跳过未变化的文件。
@@ -52,6 +52,8 @@ export interface BackupCryptoConfig {
   /** 校验块密文，base64 */
   checkCtB64: string;
   createdAt: number;
+  /** 同一口令也用于手动 ZIP 导出与本地自动备份（默认关闭，保持旧行为） */
+  localEnabled?: boolean;
 }
 
 /** 云端操作被加密锁住时抛出：UI 捕获后弹口令对话框再重试 */
@@ -160,6 +162,22 @@ export async function isBackupEncryptionEnabled(): Promise<boolean> {
   return cfg?.enabled === true;
 }
 
+/** 本地 ZIP / 自动备份是否也使用同一口令加密 */
+export async function isLocalBackupEncryptionEnabled(): Promise<boolean> {
+  const cfg = await getBackupCryptoConfig();
+  return cfg?.enabled === true && cfg.localEnabled === true;
+}
+
+/** 切换本地备份加密（仅在云备份加密已开启时有意义） */
+export async function setLocalBackupEncryptionEnabled(enabled: boolean): Promise<void> {
+  const cfg = await getBackupCryptoConfig();
+  if (!cfg?.enabled) return;
+  const next = { ...cfg, localEnabled: enabled };
+  await idbPutKV(KV_CONFIG, next);
+  if (session) session = { ...session, config: next };
+  notifyBackupChanged();
+}
+
 /** 当前会话是否已解锁（开启且口令在内存中） */
 export function isBackupEncryptionUnlocked(): boolean {
   return session != null;
@@ -177,6 +195,8 @@ export async function enableBackupEncryption(passphrase: string): Promise<void> 
   // 校验块：随机 IV 加密已知明文，供会话解锁时验证口令
   const checkIv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const checkCt = await aesGcmEncrypt(key, checkIv, new TextEncoder().encode(CHECK_PLAINTEXT));
+  // 更换口令时保留「本地备份也加密」的选择，不强迫用户重新打开
+  const prev = await getBackupCryptoConfig();
   const config: BackupCryptoConfig = {
     enabled: true,
     saltB64: u8ToB64(salt),
@@ -184,6 +204,7 @@ export async function enableBackupEncryption(passphrase: string): Promise<void> 
     checkIvB64: u8ToB64(checkIv),
     checkCtB64: u8ToB64(checkCt),
     createdAt: Date.now(),
+    ...(prev?.localEnabled ? { localEnabled: true } : {}),
   };
   await idbPutKV(KV_CONFIG, config);
   session = { passphrase: trimmed, config };
@@ -253,14 +274,16 @@ export function isEncryptedBackup(data: Uint8Array): boolean {
 }
 
 /**
- * 解密加密信封。
- * - 会话已解锁：用**会话口令** + 文件头中的 salt 派生密钥（因此换口令后，
- *   用旧口令加密的云端文件在重启后无法解密——需在换口令后重新推送一次）；
- * - 未解锁：抛 BackupLockedError（UI 弹口令框后重试）；
- * - 密文被篡改 / 口令错误：抛本地化的解密失败错误。
+ * 用显式口令解密信封（导入旧备份 / 本机加密配置已关闭时使用）。
+ * 文件头自带 salt / iterations / iv，不依赖 IndexedDB 里的配置。
  */
-export async function decryptBackupEnvelope(data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
+export async function decryptWithPassphrase(
+  data: Uint8Array,
+  passphrase: string,
+): Promise<Uint8Array<ArrayBuffer>> {
   if (!isEncryptedBackup(data)) throw new Error(t('crypto.errNotEncrypted'));
+  const trimmed = passphrase.trim();
+  if (!trimmed) throw new Error(t('crypto.errTooShort'));
   const salt = data.slice(MAGIC.length, MAGIC.length + SALT_LEN);
   const iterations = new DataView(data.buffer, data.byteOffset).getUint32(MAGIC.length + SALT_LEN, false);
   // 迭代次数来自文件头（可被伪造）：上限兜底，避免恶意文件让 PBKDF2 跑到天荒地老
@@ -269,12 +292,22 @@ export async function decryptBackupEnvelope(data: Uint8Array): Promise<Uint8Arra
   }
   const iv = data.slice(MAGIC.length + SALT_LEN + 4, MAGIC.length + SALT_LEN + 4 + IV_LEN);
   const ct = data.slice(MAGIC.length + SALT_LEN + 4 + IV_LEN);
-  if (!session) throw new BackupLockedError();
   try {
-    const key = await deriveKey(session.passphrase, salt, iterations);
+    const key = await deriveKey(trimmed, salt, iterations);
     return await aesGcmDecrypt(key, iv, ct);
-  } catch (err) {
-    if (err instanceof BackupLockedError) throw err;
+  } catch {
     throw new Error(t('crypto.errPassphrase'));
   }
+}
+
+/**
+ * 解密加密信封。
+ * - 会话已解锁：用**会话口令** + 文件头中的 salt 派生密钥（因此换口令后，
+ *   用旧口令加密的云端文件在重启后无法解密——需在换口令后重新推送一次）；
+ * - 未解锁：抛 BackupLockedError（UI 弹口令框后重试）；
+ * - 密文被篡改 / 口令错误：抛本地化的解密失败错误。
+ */
+export async function decryptBackupEnvelope(data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
+  if (!session) throw new BackupLockedError();
+  return decryptWithPassphrase(data, session.passphrase);
 }

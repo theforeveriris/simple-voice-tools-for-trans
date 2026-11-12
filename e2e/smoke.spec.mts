@@ -59,3 +59,90 @@ test('设置子页面可达：数据管理面板渲染', async ({ page }) => {
   await page.getByText(/data|資料|数据/i).first().click();
   await expect(page.getByText(/backup|備份|备份/i).first()).toBeVisible({ timeout: 10_000 });
 });
+
+test('回收站入口可打开并显示空状态', async ({ page }) => {
+  await waitApp(page);
+  await page.getByRole('button', { name: /history|歷史|历史/i }).first().click();
+  await page.getByRole('button', { name: /trash|回收站|垃圾箱/i }).click();
+  await expect(page.getByText(/Trash is empty|回收站是空的|回收站是空的|ゴミ箱は空です/i)).toBeVisible();
+});
+
+test('崩溃草稿：启动提示恢复，放弃后不再出现', async ({ page }) => {
+  await waitApp(page);
+  // 直接写入一份「未完成录音」草稿（启动扫描不依赖音频能否解码）
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('svt');
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('records')) db.createObjectStore('records', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      };
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction(['kv', 'records'], 'readwrite');
+        tx.objectStore('kv').put(
+          {
+            id: 'e2e-draft',
+            startedAt: Date.now(),
+            mode: 'reading',
+            mimeType: 'audio/webm',
+            chunkCount: 1,
+            totalBytes: 4,
+            targetRange: null,
+          },
+          'recording:draft:meta',
+        );
+        tx.objectStore('kv').put(
+          new Blob(['test'], { type: 'audio/webm' }),
+          'recording:draft:chunk:e2e-draft:0',
+        );
+        // 同时放一条真实记录：放弃草稿不能把它一起清掉
+        tx.objectStore('records').put({
+          id: 'e2e-real',
+          createdAt: Date.now(),
+          durationSec: 1,
+          sampleHz: 30,
+          series: { t: [0], f0: [120], rmsDb: [-30], f1: [500], f2: [1500] },
+          stats: {},
+        });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  });
+
+  await page.reload();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
+  // 放弃需要二次确认：同一个按钮点两次
+  const discardButton = dialog.getByRole('button').first();
+  await discardButton.click();
+  await discardButton.click();
+  await expect(dialog).toBeHidden();
+
+  // 草稿已清理：再次启动不应再弹
+  await page.reload();
+  await expect(page.getByRole('dialog')).toBeHidden({ timeout: 10_000 });
+
+  // 真实记录没有被草稿清理误删
+  const kept = await page.evaluate(async () => new Promise<boolean>((resolve) => {
+    const req = indexedDB.open('svt');
+    req.onsuccess = () => {
+      const db = req.result;
+      const get = db.transaction('records', 'readonly').objectStore('records').get('e2e-real');
+      get.onsuccess = () => {
+        resolve(Boolean(get.result));
+        db.close();
+      };
+      get.onerror = () => resolve(false);
+    };
+    req.onerror = () => resolve(false);
+  }));
+  expect(kept).toBe(true);
+});

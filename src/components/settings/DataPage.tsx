@@ -23,6 +23,12 @@ import { readLlmRequestLog } from '@/lib/llmRequestLog';
 import { downloadBlob } from '@/lib/file';
 import { RestorePreviewDialog } from './RestorePreviewDialog';
 import { buildRestorePreview, type RestorePreview } from './restorePreview';
+import { BackupVerifyDialog } from './BackupVerifyDialog';
+import { FilePassphraseDialog } from './FilePassphraseDialog';
+import {
+  getLastBackupVerify, inspectBackupFile,
+  type BackupInspection, type BackupVerifyResult,
+} from '@/lib/backup/integrity';
 import { batchRecomputeRecords, algoParamsFingerprint, type BatchRecomputeItem } from '@/lib/audio/reanalyze';
 import {
   pickAutoBackupFolder, getAutoBackupState,
@@ -34,7 +40,8 @@ import {
   testWebdav, pushWebdavBackup, pullWebdavBackup, type WebdavConfig,
 } from '@/lib/backup/webdav';
 import {
-  isBackupEncryptionEnabled, isBackupEncryptionUnlocked, BackupLockedError,
+  isBackupEncryptionEnabled, isBackupEncryptionUnlocked, isLocalBackupEncryptionEnabled,
+  BackupLockedError,
 } from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -53,13 +60,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui';
 import { StorageUsage } from './StorageUsage';
-import { SettingsSection, SettingRow } from './rows';
+import { SettingsSection, SettingRow, fmtBytes } from './rows';
 import { InfoTip } from './InfoTip';
 import { PrivacyPanel } from './PrivacyPanel';
 import { LlmRequestLogPage } from './LlmRequestLogPage';
 import { LanSyncSection } from './LanSyncSection';
 import { ImportAudioSection } from './ImportAudioSection';
 import { GithubBackupSection } from './GithubBackupSection';
+import { LocalApiSection } from './LocalApiSection';
 import { BackupEncryptionSection } from './BackupEncryptionSection';
 import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
@@ -81,6 +89,7 @@ export function DataPage({
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const recordsInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
+  const verifyInputRef = useRef<HTMLInputElement>(null);
   const settingsInputRef = useRef<HTMLInputElement>(null);
   const [zipBusy, setZipBusy] = useState(false);
   // 批量重算：算法版本变更后旧记录的 VQ 指标需重算
@@ -97,10 +106,19 @@ export function DataPage({
   const [webdavLast, setWebdavLast] = useState<number | null>(null);
   // 恢复预览：导入（JSON / ZIP）先解析展示，确认后才真正合并落库
   const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
+  // 恢复演练：同一个预览弹窗，但只读不导入
+  const [previewDrill, setPreviewDrill] = useState(false);
+  // 完整性检查：最近一次结果 + 当前打开的结果弹窗
+  const [lastVerify, setLastVerify] = useState<BackupVerifyResult | null>(null);
+  const [verifyInspection, setVerifyInspection] = useState<BackupInspection | null>(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
   // 确认后要执行的导入动作（JSON 直接合并 / ZIP 走 importFullBackup 挂音频）
   const pendingImportRef = useRef<(() => void) | null>(null);
   // 云备份加密：会话未解锁时先弹口令框，成功后继续被挂起的推/拉动作
   const [passOpen, setPassOpen] = useState(false);
+  // 导入加密文件：文件头自带 salt，允许输入任意口令直接解密（不依赖本机加密配置）
+  const [filePassOpen, setFilePassOpen] = useState(false);
+  const pendingFilePassRef = useRef<((passphrase: string) => void) | null>(null);
   const pendingActionRef = useRef<(() => void) | null>(null);
 
   // AI 请求日志子页：入口卡片显示条数，返回时重读
@@ -207,6 +225,10 @@ export function DataPage({
   useEffect(() => {
     refreshAutoBackup();
   }, [refreshAutoBackup]);
+
+  useEffect(() => {
+    void getLastBackupVerify().then(setLastVerify).catch(() => setLastVerify(null));
+  }, []);
 
   // 页面加载时检查有多少旧口径记录
   useEffect(() => {
@@ -327,16 +349,17 @@ export function DataPage({
   };
 
   /** 从 ZIP 备份恢复——先解析预览，确认后走 importFullBackup（挂载音频 + 背景图） */
-  const importZip = (file: File) => {
+  const importZip = (file: File, passphrase?: string) => {
     void (async () => {
       try {
-        const { records: incoming } = await parseFullBackupZip(file);
+        const { records: incoming } = await parseFullBackupZip(file, passphrase);
         // 预览去重按全量（内存视图有 MAX_HISTORY 截断）
         const existingIds = new Set((await getAllRecords()).map((r) => r.id));
+        setPreviewDrill(false);
         pendingImportRef.current = () => {
           void (async () => {
             try {
-              const res = await importFullBackup(file);
+              const res = await importFullBackup(file, passphrase);
               if (res.records > 0) toast.success(t('toast.zipRestored', { records: res.records, audio: res.audio }));
               else if (res.audio > 0) toast.info(t('toast.zipRestoredAudioOnly', { audio: res.audio }));
               else toast.info(t('toast.zipSame'));
@@ -348,8 +371,50 @@ export function DataPage({
         };
         setRestorePreview(buildRestorePreview(incoming, existingIds));
       } catch (err) {
+        // 加密备份：先输入文件口令，再重试解析（预览仍不落库）。
+        // 会话已解锁但文件是旧口令加密时，也走这里让用户输入文件自身口令。
+        const needsFilePass = err instanceof BackupLockedError
+          || (!passphrase && err instanceof Error && err.message === t('crypto.errPassphrase'));
+        if (needsFilePass) {
+          pendingFilePassRef.current = (pass) => importZip(file, pass);
+          setFilePassOpen(true);
+          return;
+        }
         toast.error(err instanceof Error && err.message ? err.message : t('toast.zipFail'));
       }
+    })();
+  };
+
+  /** 完整性检查：只读文件，校验加密包、ZIP 结构、记录与音频；结果写入「上次验证」 */
+  const runVerify = (file: File, passphrase?: string) => {
+    if (verifyBusy) return;
+    setVerifyBusy(true);
+    void (async () => {
+      try {
+        const inspection = await inspectBackupFile(file, passphrase);
+        setVerifyInspection(inspection);
+        setLastVerify(inspection.result);
+      } catch (err) {
+        // 加密备份：先输入文件口令，再重试同一个文件
+        if (err instanceof BackupLockedError) {
+          pendingFilePassRef.current = (pass) => runVerify(file, pass);
+          setFilePassOpen(true);
+          return;
+        }
+        toast.error(err instanceof Error && err.message ? err.message : t('backup.verifyNotZip'));
+      } finally {
+        setVerifyBusy(false);
+      }
+    })();
+  };
+
+  /** 恢复演练：只打开预览，不写库 */
+  const openDrill = (inspection: BackupInspection) => {
+    setVerifyInspection(null);
+    void (async () => {
+      const existingIds = new Set((await getAllRecords()).map((r) => r.id));
+      setPreviewDrill(true);
+      setRestorePreview(buildRestorePreview(inspection.records, existingIds));
     })();
   };
 
@@ -380,14 +445,26 @@ export function DataPage({
     reader.readAsText(file);
   };
 
-  /** 导出完整备份 ZIP（记录 + 音频） */
+  /** 导出完整备份 ZIP（记录 + 音频；本地加密开启时用云备份口令加密为 .svtz） */
   const exportZip = async () => {
     if (zipBusy) return;
+    const encrypt = await isLocalBackupEncryptionEnabled();
+    // 已开启加密但本会话未解锁：先弹口令框，解锁成功后重试本次导出
+    if (encrypt && !isBackupEncryptionUnlocked()) {
+      pendingActionRef.current = () => void exportZip();
+      setPassOpen(true);
+      return;
+    }
     setZipBusy(true);
     try {
       const res = await exportFullBackup();
       if (res.records === 0) toast.info(t('toast.nothingToExport'));
-      else toast.success(t('toast.zipDone', { records: res.records, audio: res.audio }));
+      else {
+        toast.success(t(res.encrypted ? 'toast.zipDoneEncrypted' : 'toast.zipDone', {
+          records: res.records,
+          audio: res.audio,
+        }));
+      }
     } catch (err) {
       console.error(err);
       toast.error(t('toast.zipFail'));
@@ -477,11 +554,45 @@ export function DataPage({
             <input
               ref={zipInputRef}
               type="file"
-              accept=".zip,application/zip"
+              accept=".zip,.svtz,application/zip,application/octet-stream"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) importZip(file);
+                e.target.value = '';
+              }}
+            />
+          </SettingRow>
+          {/* 完整性检查：验证文件能否恢复，并可做不落库的恢复演练 */}
+          <SettingRow
+            label={<InfoTip label={t('backup.verifyRow')} text={t('backup.verifyDesc')} />}
+            desc={lastVerify
+              ? t('backup.verifyLast', {
+                time: new Date(lastVerify.at).toLocaleString(localeTag(), {
+                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                }),
+                summary: `${lastVerify.ok ? t('backup.verifyOk') : t('backup.verifyFail', { n: lastVerify.issues.length })}${
+                  lastVerify.audio > 0 ? ` · ${fmtBytes(lastVerify.audioBytes)}` : ''
+                }`,
+              })
+              : t('backup.verifyNever')}
+          >
+            <button
+              onClick={() => verifyInputRef.current?.click()}
+              disabled={verifyBusy}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
+            >
+              <ShieldCheck size={14} />
+              {verifyBusy ? t('backup.verifyChecking') : t('backup.verifyPick')}
+            </button>
+            <input
+              ref={verifyInputRef}
+              type="file"
+              accept=".zip,.svtz,application/zip,application/octet-stream"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) runVerify(file);
                 e.target.value = '';
               }}
             />
@@ -514,7 +625,13 @@ export function DataPage({
                 <>
                   <SettingRow
                     label={t('settings.autoBackupStatus')}
-                    desc={autoBackup.permission === 'granted' ? t('settings.autoBackupOn') : t('settings.autoBackupNeedAuth')}
+                    desc={autoBackup.permission !== 'granted'
+                      ? t('settings.autoBackupNeedAuth')
+                      : !autoBackup.encrypted
+                        ? t('settings.autoBackupOn')
+                        : autoBackup.locked
+                          ? t('settings.autoBackupEncryptedLocked')
+                          : t('settings.autoBackupEncrypted')}
                   >
                     {autoBackup.permission !== 'granted' ? (
                       <button
@@ -538,6 +655,13 @@ export function DataPage({
                   >
                     <button
                       onClick={() => {
+                        if (autoBackup.encrypted && autoBackup.locked) {
+                          pendingActionRef.current = () => {
+                            void runAutoBackupNow().then(refreshAutoBackup);
+                          };
+                          setPassOpen(true);
+                          return;
+                        }
                         void runAutoBackupNow().then(refreshAutoBackup);
                       }}
                       disabled={autoBackup.permission !== 'granted'}
@@ -556,8 +680,8 @@ export function DataPage({
           )}
         </SettingsSection>
 
-        {/* 云备份加密（GitHub / WebDAV 上传内容 AES-GCM 加密） */}
-        <BackupEncryptionSection />
+        {/* 云备份加密（GitHub / WebDAV 上传内容 AES-GCM 加密，可选复用于本地备份） */}
+        <BackupEncryptionSection onChanged={refreshAutoBackup} />
 
         {/* WebDAV 同步（自托管网盘 / NAS） */}
         <SettingsSection icon={Cloud} title={t('settings.webdav')}>
@@ -758,6 +882,9 @@ export function DataPage({
         {/* GitHub 云备份（原「实验性功能」迁入：备份体系归数据） */}
         <GithubBackupSection settings={settings} update={update} />
 
+        {/* 桌面本地只读 API（仅 Tauri；默认关闭） */}
+        <LocalApiSection />
+
         {/* 云备份加密口令对话框（推/拉撞上锁定态时弹出） */}
         <BackupPassphraseDialog
           mode="unlock"
@@ -769,17 +896,45 @@ export function DataPage({
           onDone={onPassUnlocked}
         />
 
-        {/* 恢复预览（JSON / ZIP 导入合并前）：确认后执行挂起的导入动作 */}
+        {/* 导入加密备份：输入文件自身口令，不依赖云备份会话 */}
+        <FilePassphraseDialog
+          open={filePassOpen}
+          onClose={() => {
+            setFilePassOpen(false);
+            pendingFilePassRef.current = null;
+          }}
+          onSubmit={(passphrase) => {
+            const retry = pendingFilePassRef.current;
+            pendingFilePassRef.current = null;
+            setFilePassOpen(false);
+            retry?.(passphrase);
+          }}
+        />
+
+        {/* 完整性检查结果 + 恢复演练入口 */}
+        <BackupVerifyDialog
+          inspection={verifyInspection}
+          open={verifyInspection != null}
+          onClose={() => setVerifyInspection(null)}
+          onDrill={() => {
+            if (verifyInspection) openDrill(verifyInspection);
+          }}
+        />
+
+        {/* 恢复预览（JSON / ZIP 导入合并前）：确认后执行挂起的导入动作；演练模式只读 */}
         <RestorePreviewDialog
           open={restorePreview != null}
+          drill={previewDrill}
           preview={restorePreview ?? { incoming: [], duplicates: 0, added: 0, range: null }}
           onConfirm={() => {
             setRestorePreview(null);
+            setPreviewDrill(false);
             pendingImportRef.current?.();
             pendingImportRef.current = null;
           }}
           onCancel={() => {
             setRestorePreview(null);
+            setPreviewDrill(false);
             pendingImportRef.current = null;
           }}
         />

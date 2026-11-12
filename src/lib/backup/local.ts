@@ -11,6 +11,11 @@
 import { toast } from 'sonner';
 import { buildFullBackupZip } from '@/lib/export/backup';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import {
+  encryptForBackup,
+  isBackupEncryptionUnlocked,
+  isLocalBackupEncryptionEnabled,
+} from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 
 const HANDLE_KEY = 'autoBackup:handle';
@@ -32,6 +37,10 @@ export interface AutoBackupState {
   /** 'granted' = 可写；'prompt'/'denied' = 需重新授权；null = 无法查询 */
   permission: PermissionState | null;
   lastTs: number | null;
+  /** 本地备份是否使用云备份口令加密 */
+  encrypted: boolean;
+  /** 已开启加密但本会话未解锁（此时自动备份会暂停） */
+  locked: boolean;
 }
 
 /** 是否支持 File System Access API（仅 Chromium 系） */
@@ -61,7 +70,7 @@ export async function pickAutoBackupFolder(): Promise<boolean> {
 /** 读取自动备份当前状态（设置页展示用） */
 export async function getAutoBackupState(): Promise<AutoBackupState> {
   if (!isAutoBackupSupported()) {
-    return { supported: false, hasHandle: false, permission: null, lastTs: null };
+    return { supported: false, hasHandle: false, permission: null, lastTs: null, encrypted: false, locked: false };
   }
   const handle = (await idbGetKV<PermHandle>(HANDLE_KEY)) ?? null;
   let permission: PermissionState | null = null;
@@ -73,7 +82,15 @@ export async function getAutoBackupState(): Promise<AutoBackupState> {
     }
   }
   const lastTs = (await idbGetKV<number>(LAST_KEY)) ?? null;
-  return { supported: true, hasHandle: handle != null, permission, lastTs };
+  const encrypted = await isLocalBackupEncryptionEnabled();
+  return {
+    supported: true,
+    hasHandle: handle != null,
+    permission,
+    lastTs,
+    encrypted,
+    locked: encrypted && !isBackupEncryptionUnlocked(),
+  };
 }
 
 /** 重新授权已保存的目录（需用户手势，由设置页按钮调用） */
@@ -98,14 +115,40 @@ async function writeBackup(silentSkip: boolean): Promise<void> {
     if (!silentSkip) toast.error(t('toast.autoBackupNeedAuth'));
     return;
   }
+  // 先看锁定态：加密开启但未解锁时没必要构建整个 ZIP（大历史会明显卡顿）
+  let encrypted = await isLocalBackupEncryptionEnabled();
+  if (encrypted && !isBackupEncryptionUnlocked()) {
+    // 已选择加密但本会话还没解锁：不写明文，等用户在数据页解锁后手动/下次自动备份
+    if (!silentSkip) toast.error(t('toast.autoBackupNeedUnlock'));
+    return;
+  }
   const built = await buildFullBackupZip();
   if (!built) return;
-  const file = await handle.getFileHandle(built.filename, { create: true });
+  // 构建期间设置可能变化：写入前再确认一次，避免刚开启加密却写出明文
+  encrypted = await isLocalBackupEncryptionEnabled();
+  if (encrypted && !isBackupEncryptionUnlocked()) {
+    if (!silentSkip) toast.error(t('toast.autoBackupNeedUnlock'));
+    return;
+  }
+  const filename = encrypted ? built.filename.replace(/\.zip$/, '.svtz') : built.filename;
+  const blob = encrypted
+    ? new Blob([await encryptForBackup(new Uint8Array(await built.blob.arrayBuffer()))], {
+      type: 'application/octet-stream',
+    })
+    : built.blob;
+  const file = await handle.getFileHandle(filename, { create: true });
   const writable = await file.createWritable();
-  await writable.write(built.blob);
+  // 构建/获取句柄期间设置可能变化：加密开关变了就放弃这次写入，避免把明文落到磁盘
+  const finalEncrypted = await isLocalBackupEncryptionEnabled();
+  if (finalEncrypted !== encrypted) {
+    await writable.abort().catch(() => undefined);
+    if (!silentSkip) toast.error(t('toast.autoBackupNeedUnlock'));
+    return;
+  }
+  await writable.write(blob);
   await writable.close();
   await idbPutKV(LAST_KEY, Date.now());
-  toast.success(t('toast.autoBackupDone'));
+  toast.success(t(encrypted ? 'toast.autoBackupDoneEncrypted' : 'toast.autoBackupDone'));
 }
 
 let lastRun = 0;

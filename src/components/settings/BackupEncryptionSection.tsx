@@ -2,7 +2,7 @@
  * 云备份加密区块（设置 → 数据 → 备份与恢复下方）
  * 状态展示 + 开启 / 更换口令 / 会话解锁 / 关闭。
  * 口令只存内存（会话级）；加密覆盖 GitHub / WebDAV 云端上传，
- * 手动 ZIP 导出与本地自动备份保持明文（见 crypto.ts 头注释）。
+ * 并可选地复用于手动 ZIP 导出与本地自动备份（同一口令）。
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -10,19 +10,20 @@ import { KeyRound, LockOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getBackupCryptoConfig, disableBackupEncryption, isBackupEncryptionUnlocked,
-  type BackupCryptoConfig,
+  setLocalBackupEncryptionEnabled, type BackupCryptoConfig,
 } from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  Switch,
 } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
-export function BackupEncryptionSection() {
+export function BackupEncryptionSection({ onChanged }: { onChanged?: () => void } = {}) {
   useI18n();
   const [cfg, setCfg] = useState<BackupCryptoConfig | null>(null);
   const [dialog, setDialog] = useState<'enable' | 'change' | 'unlock' | null>(null);
@@ -54,6 +55,19 @@ export function BackupEncryptionSection() {
             {enabled ? t('settings.encActionChange') : t('settings.encActionEnable')}
           </button>
         </SettingRow>
+        {enabled && (
+          <SettingRow label={<InfoTip label={t('settings.encLocal')} text={t('settings.encLocalDesc')} />}>
+            <Switch
+              checked={cfg?.localEnabled === true}
+              onCheckedChange={(v) => {
+                void setLocalBackupEncryptionEnabled(v).then(() => {
+                  refresh();
+                  onChanged?.();
+                });
+              }}
+            />
+          </SettingRow>
+        )}
         {enabled && !unlocked && (
           <SettingRow label={t('settings.encUnlockRow')} desc={t('settings.encUnlockRowDesc')}>
             <button
@@ -88,6 +102,7 @@ export function BackupEncryptionSection() {
                     onClick={() => {
                       void disableBackupEncryption().then(() => {
                         refresh();
+                        onChanged?.();
                         toast.success(t('toast.encDisabled'));
                       });
                     }}
@@ -108,7 +123,10 @@ export function BackupEncryptionSection() {
         onOpenChange={(v) => {
           if (!v) setDialog(null);
         }}
-        onDone={refresh}
+        onDone={() => {
+          refresh();
+          onChanged?.();
+        }}
       />
     </>
   );

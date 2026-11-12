@@ -1,3 +1,5 @@
+mod local_api;
+
 #[cfg(windows)]
 fn windows_hello_available_impl() -> bool {
   use windows::Security::Credentials::UI::{UserConsentVerifier, UserConsentVerifierAvailability};
@@ -25,7 +27,7 @@ fn verify_windows_hello_impl(message: &str) -> bool {
 fn windows_hello_available() -> bool {
   #[cfg(windows)]
   {
-    return windows_hello_available_impl();
+    windows_hello_available_impl()
   }
   #[cfg(not(windows))]
   {
@@ -38,7 +40,7 @@ fn windows_hello_available() -> bool {
 fn verify_windows_hello(message: String) -> bool {
   #[cfg(windows)]
   {
-    return verify_windows_hello_impl(&message);
+    verify_windows_hello_impl(&message)
   }
   #[cfg(not(windows))]
   {
@@ -62,7 +64,11 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![
       windows_hello_available,
-      verify_windows_hello
+      verify_windows_hello,
+      local_api::local_api_start,
+      local_api::local_api_update,
+      local_api::local_api_stop,
+      local_api::local_api_status
     ])
     .run(tauri::generate_context!())
     .expect("error while building tauri application");

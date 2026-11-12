@@ -52,6 +52,8 @@ export interface AnalyzeAudioOptions {
   onProgress?: (frac: number) => void;
   /** 是否保留原音频用于回放（默认保留；关闭设置时不入库） */
   saveAudio?: boolean;
+  /** 最长分析时长（秒）；默认 IMPORT_MAX_SEC，崩溃恢复可传录音硬上限 */
+  maxSec?: number;
 }
 
 export interface AnalyzeAudioResult {
@@ -140,8 +142,9 @@ export async function analyzeAudioFile(
   }
   if (!isFinite(decoded.duration) || decoded.duration < 1) throw new AudioImportError('tooShort');
 
-  const truncated = decoded.duration > IMPORT_MAX_SEC + 0.5;
-  const useSec = Math.min(decoded.duration, IMPORT_MAX_SEC);
+  const maxSec = opts.maxSec && opts.maxSec > 0 ? opts.maxSec : IMPORT_MAX_SEC;
+  const truncated = decoded.duration > maxSec + 0.5;
+  const useSec = Math.min(decoded.duration, maxSec);
 
   // 3. 单声道化 + 统一重采样
   let pcm = mixdown(decoded, useSec);

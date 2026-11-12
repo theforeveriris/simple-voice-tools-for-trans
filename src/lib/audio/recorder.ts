@@ -13,6 +13,12 @@ import { runVqMetrics } from './analysisClient';
 import { getAlgoParams } from './algoParams';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
 import { f2f1Gaps, aggregateResonance } from './resonance';
+import {
+  appendRecordingDraftChunk,
+  discardRecordingDraft,
+  markRecordingDraftRecordId,
+  startRecordingDraft,
+} from './recordingDraft';
 import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges, getPitchAlgorithm } from '@/constants';
 import type { AnalysisRecord, RecordEnv, RecordSeries, TestMode, VoiceStats } from '@/types';
 
@@ -27,7 +33,7 @@ const MONITOR_BUFFER_FRAMES = 7200;
 /** 未设置「最长录音时长」时的硬性上限（秒）：
  *  曲线缓冲 / 语谱行 / 音频块都随录音时长线性增长，放开会一直吃内存，
  *  到顶自动按正常录音收尾落库（与设置的最长档行为一致） */
-const UNLIMITED_DURATION_CAP_SEC = 600;
+export const RECORDING_MAX_SEC = 600;
 
 /**
  * 由数据序列聚合统计信息
@@ -274,6 +280,12 @@ class VoiceRecorder {
 
   private mediaRecorder: MediaRecorder | null = null;
   private mediaChunks: Blob[] = [];
+  /** 录音草稿：音频块在录音中持续写 IDB，崩溃后可恢复 */
+  private draftId: string | null = null;
+  private mediaChunkIndex = 0;
+  /** 切后台 / 页面隐藏时主动催一次 MediaRecorder 数据块，减少崩溃丢失的尾巴 */
+  private draftFlushOnPageHide: (() => void) | null = null;
+  private draftFlushOnVisibility: (() => void) | null = null;
   /** MediaRecorder.stop() 后数据落盘完成的信号 */
   private mediaStopped: Promise<void> | null = null;
 
@@ -371,6 +383,14 @@ class VoiceRecorder {
 
   /** 释放采集与分析链路 */
   private releaseGraph(): void {
+    if (this.draftFlushOnPageHide) {
+      document.removeEventListener('pagehide', this.draftFlushOnPageHide);
+      this.draftFlushOnPageHide = null;
+    }
+    if (this.draftFlushOnVisibility) {
+      document.removeEventListener('visibilitychange', this.draftFlushOnVisibility);
+      this.draftFlushOnVisibility = null;
+    }
     this.source?.disconnect();
     this.stream?.getTracks().forEach((tr) => tr.stop());
     this.audioContext?.close();
@@ -420,13 +440,40 @@ class VoiceRecorder {
             audioBitsPerSecond: (trackSettings?.channelCount ?? 1) > 1 ? bitrate * 2 : bitrate,
           });
           mr.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) this.mediaChunks.push(e.data);
+            if (e.data && e.data.size > 0) {
+              this.mediaChunks.push(e.data);
+              const index = this.mediaChunkIndex++;
+              appendRecordingDraftChunk(index, e.data);
+            }
           };
           mr.onerror = () => {
             this.mediaRecorder = null;
           };
+          this.draftId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+          this.mediaChunkIndex = 0;
+          void startRecordingDraft({
+            id: this.draftId,
+            startedAt: Date.now(),
+            mode: opts.mode ?? 'reading',
+            mimeType: mr.mimeType || mimeType || 'audio/webm',
+            targetRange: opts.targetRange ?? null,
+          });
           mr.start(1000);
           this.mediaRecorder = mr;
+          const flushDraft = () => {
+            if (this.mediaRecorder?.state !== 'recording') return;
+            try {
+              this.mediaRecorder.requestData();
+            } catch {
+              // 已停止 / 浏览器不支持：忽略，下一轮 ondataavailable 仍会写入
+            }
+          };
+          this.draftFlushOnPageHide = flushDraft;
+          this.draftFlushOnVisibility = () => {
+            if (document.visibilityState === 'hidden') flushDraft();
+          };
+          document.addEventListener('pagehide', this.draftFlushOnPageHide);
+          document.addEventListener('visibilitychange', this.draftFlushOnVisibility);
         } catch (err) {
           console.warn('MediaRecorder 不可用，本次不保存音频:', err);
         }
@@ -440,7 +487,7 @@ class VoiceRecorder {
       // 0/未设置 = 不限制：仍钳制到硬性上限，防止缓冲与音频块无界增长
       this.maxDurationSec = opts.maxDurationSec && opts.maxDurationSec > 0
         ? opts.maxDurationSec
-        : UNLIMITED_DURATION_CAP_SEC;
+        : RECORDING_MAX_SEC;
       this.onAutoStop = opts.onAutoStop ?? null;
       this.autoStopFired = false;
       this.pendingMode = opts.mode;
@@ -552,6 +599,8 @@ class VoiceRecorder {
       // 不落记录时同步清掉引用，避免残留到下一次 start
       this.mediaRecorder = null;
       this.mediaStopped = null;
+      discardRecordingDraft();
+      this.draftId = null;
       return null;
     }
 
@@ -579,6 +628,10 @@ class VoiceRecorder {
     this.targetRange = null;
     this.pendingEnv = {};
     this.envNoiseSamples = [];
+    if (this.draftId) {
+      markRecordingDraftRecordId(record.id);
+      this.draftId = null;
+    }
     return record;
   }
 

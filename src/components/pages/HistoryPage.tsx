@@ -24,6 +24,7 @@ import { CompareSheet } from './CompareSheet';
 import { RecordCard } from './HistoryListItem';
 import { removeWithUndo } from './historyActions';
 import { HistoryTrendView } from './HistoryTrendView';
+import { TrashSheet } from '@/components/history/TrashSheet';
 import { MAX_HISTORY } from '@/constants';
 import { t, getI18nVersion } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -107,6 +108,7 @@ export function HistoryPage() {
   useI18n();
   const records = useHistoryStore((s) => s.records);
   const totalCount = useHistoryStore((s) => s.totalCount);
+  const trashCount = useHistoryStore((s) => s.trash.length);
   const removeRecord = useHistoryStore((s) => s.removeRecord);
   const addRecord = useHistoryStore((s) => s.addRecord);
   const getAudio = useHistoryStore((s) => s.getAudio);
@@ -115,6 +117,7 @@ export function HistoryPage() {
   const showGarden = useStore((s) => s.settings.showGarden);
 
   const [view, setView] = useState<'list' | 'trend' | 'garden'>('list');
+  const [trashOpen, setTrashOpen] = useState(false);
   /** 花园入口关闭时，即使 state 仍停在 garden，也回退到列表 */
   const effectiveView = view === 'garden' && !showGarden ? 'list' : view;
   const [query, setQuery] = useState('');
@@ -303,15 +306,29 @@ export function HistoryPage() {
           );
         })}
         </div>
-        {effectiveView === 'list' && !selectionMode && records.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => enterSelection()}
-            aria-label={t('history.selectAria')}
-            className="grid size-9 place-items-center rounded-full bg-card text-ink-2 shadow-[0_2px_14px_rgba(28,25,45,0.05)] transition-colors hover:text-ink"
+            onClick={() => setTrashOpen(true)}
+            aria-label={t('trash.openAria')}
+            className="relative grid size-9 place-items-center rounded-full bg-card text-ink-2 shadow-[0_2px_14px_rgba(28,25,45,0.05)] transition-colors hover:text-ink"
           >
-            <ListChecks size={16} />
+            <Trash2 size={16} />
+            {trashCount > 0 && (
+              <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-4 text-on-accent">
+                {trashCount > 99 ? '99+' : trashCount}
+              </span>
+            )}
           </button>
-        )}
+          {effectiveView === 'list' && !selectionMode && records.length > 0 && (
+            <button
+              onClick={() => enterSelection()}
+              aria-label={t('history.selectAria')}
+              className="grid size-9 place-items-center rounded-full bg-card text-ink-2 shadow-[0_2px_14px_rgba(28,25,45,0.05)] transition-colors hover:text-ink"
+            >
+              <ListChecks size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 重内容延迟两帧挂载：页面壳（列表/趋势切换）先随入场动画绘制，
@@ -453,6 +470,8 @@ export function HistoryPage() {
           )}
         </>
       )}
+
+      <TrashSheet open={trashOpen} onClose={() => setTrashOpen(false)} />
 
       {/* 多选操作条 */}
       <AnimatePresence>

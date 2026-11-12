@@ -7,7 +7,9 @@
 
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import { emptyAttempts } from './attempts';
-import type { AttemptState, BiometricConfig, DiscreetPreset, SecurityConfig } from './types';
+import type {
+  AttemptState, BiometricConfig, DiscreetPreset, SecretHash, SecurityConfig,
+} from './types';
 
 const CONFIG_KEY = 'security:config';
 const ATTEMPTS_KEY = 'security:attempts';
@@ -42,6 +44,11 @@ function normalizeConfig(value: unknown): SecurityConfig | null {
   const recovery = isRecord(value.recovery) ? (value.recovery as unknown as SecurityConfig['recovery']) : null;
   const privacy: Record<string, unknown> = isRecord(value.privacy) ? value.privacy : {};
   const discreet: Record<string, unknown> = isRecord(value.discreet) ? value.discreet : {};
+  // 第二 PIN 与真实 PIN 同结构；缺字段时按未设置处理，避免坏配置把锁死
+  const duressRaw = isRecord(value.duress) ? value.duress : null;
+  const duressPin = duressRaw && isRecord(duressRaw.pin)
+    ? (duressRaw.pin as unknown as SecretHash)
+    : null;
   return {
     version: 1,
     enabled: value.enabled === true,
@@ -55,6 +62,7 @@ function normalizeConfig(value: unknown): SecurityConfig | null {
     discreet: {
       preset: isPreset(discreet.preset) ? discreet.preset : 'normal',
     },
+    duress: duressPin ? { pin: duressPin, wipe: duressRaw?.wipe === true } : null,
     updatedAt: typeof value.updatedAt === 'number' ? value.updatedAt : Date.now(),
   };
 }

@@ -35,6 +35,7 @@ import {
   clearHidden,
   clearUnlocked,
   hiddenSince,
+  isDecoySession,
   markHidden,
   markUnlocked,
 } from './session';
@@ -63,6 +64,8 @@ let config: SecurityConfig | null = null;
 let attempts: AttemptState = emptyAttempts();
 let locked = false;
 let masked = false;
+/** 本次解锁是否进入第二 PIN 的诱饵库（只影响当前会话） */
+let decoy = false;
 let ready = false;
 let initPromise: Promise<void> | null = null;
 let channel: BroadcastChannel | null = null;
@@ -89,6 +92,9 @@ function buildSnapshot(): SecuritySnapshot {
     biometricAutoPrompt: hasAnyBiometric(biometric)
       && attempts.biometricFailed < 3
       && config?.enabled === true,
+    hasDuressPin: config?.duress?.pin != null,
+    duressWipe: config?.duress?.wipe === true,
+    decoy: config?.enabled === true && !locked && decoy,
   };
 }
 
@@ -114,13 +120,28 @@ function installChannel(): void {
   if (typeof BroadcastChannel === 'undefined' || channel) return;
   channel = new BroadcastChannel(CHANNEL_NAME);
   channel.onmessage = (event: MessageEvent) => {
+    // 另一标签页执行了紧急清除：本标签页内存里可能还留着旧记录，直接重载
+    if (event.data?.type === 'wipe') {
+      clearUnlocked();
+      location.reload();
+      return;
+    }
     if (event.data?.type !== 'lock') return;
     if (!config?.enabled) return;
     locked = true;
     masked = false;
+    decoy = false;
     clearUnlocked();
     emit();
   };
+}
+
+function broadcastWipe(): void {
+  try {
+    channel?.postMessage({ type: 'wipe' });
+  } catch {
+    /* BroadcastChannel unavailable */
+  }
 }
 
 function broadcastLock(): void {
@@ -155,6 +176,7 @@ export function initSecurity(): Promise<void> {
     attempts = loadedAttempts;
     if (config?.enabled) {
       locked = !canResumeSession();
+      decoy = !locked && isDecoySession();
       if (locked) clearUnlocked();
       installChannel();
       await applySecureFlag(config.privacy.secureScreen);
@@ -187,6 +209,7 @@ export function lockNow(): void {
   if (!config?.enabled) return;
   locked = true;
   masked = false;
+  decoy = false;
   clearUnlocked();
   clearHidden();
   emit();
@@ -224,11 +247,12 @@ export async function installNativeLifecycle(): Promise<() => void> {
 
 /* ------------------------------ 解锁 ------------------------------ */
 
-function unlockSuccess(): void {
+function unlockSuccess(asDecoy = false): void {
   locked = false;
   masked = false;
+  decoy = asDecoy;
   clearHidden();
-  markUnlocked();
+  markUnlocked(Date.now(), asDecoy);
   emit();
 }
 
@@ -236,7 +260,12 @@ export async function unlockWithPin(pin: string): Promise<UnlockResult> {
   if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
   const retry = remainingLockMs(attempts, 'pin');
   if (retry > 0) return { ok: false, failure: 'delay', retryAfterMs: retry };
-  if (!(await verifySecret(pin, config.pin))) {
+  const real = await verifySecret(pin, config.pin);
+  // 真实 PIN 优先；不匹配时再看第二 PIN（duress / decoy）
+  const duress = !real && config.duress?.pin
+    ? await verifySecret(pin, config.duress.pin)
+    : false;
+  if (!real && !duress) {
     attempts = registerFailure(attempts, 'pin');
     await persistAttempts();
     emit();
@@ -248,7 +277,18 @@ export async function unlockWithPin(pin: string): Promise<UnlockResult> {
   }
   attempts = clearAttempts(attempts, 'pin');
   await persistAttempts();
-  unlockSuccess();
+  // 可选的紧急清除：用户已在设置里显式二次确认；执行后整页重载。
+  // 清除失败时绝不能回落成真实资料库，改为进入诱饵库并记录错误。
+  if (duress && config.duress?.wipe) {
+    const wiped = await clearAllSecurityData();
+    if (!wiped) {
+      console.error('紧急清除失败，进入诱饵库');
+      unlockSuccess(true);
+      return { ok: true };
+    }
+    return { ok: true };
+  }
+  unlockSuccess(duress);
   return { ok: true };
 }
 
@@ -265,7 +305,7 @@ export async function unlockWithBiometric(): Promise<UnlockResult> {
   }
   attempts = clearBiometricFailures(attempts);
   await persistAttempts();
-  unlockSuccess();
+  unlockSuccess(false);
   return { ok: true };
 }
 
@@ -345,6 +385,7 @@ export async function disableLock(
     enabled: false,
     pin: null,
     recovery: null,
+    duress: null,
     biometric: defaultBiometric(),
     discreet: { preset: 'normal' },
     updatedAt: Date.now(),
@@ -357,6 +398,7 @@ export async function disableLock(
   await Promise.all([persistConfig(), persistAttempts()]);
   locked = false;
   masked = false;
+  decoy = false;
   clearUnlocked();
   emit();
   return { ok: true };
@@ -370,6 +412,11 @@ function validateNewRecovery(code: string): string {
   return normalized;
 }
 
+/** 新真实 PIN 不能撞上第二 PIN，否则诱饵入口会被真实 PIN 覆盖 */
+async function conflictsWithDuress(pin: string): Promise<boolean> {
+  return config?.duress?.pin ? verifySecret(pin, config.duress.pin) : false;
+}
+
 export async function changePin(
   currentPin: string | null,
   newPin: string,
@@ -377,7 +424,9 @@ export async function changePin(
   viaStrongBiometric: boolean,
 ): Promise<ChangeResult> {
   if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
-  if (!isSixDigitPin(newPin)) return { ok: false, failure: 'error' };
+  if (!isSixDigitPin(newPin) || await conflictsWithDuress(newPin)) {
+    return { ok: false, failure: 'error' };
+  }
   const normalizedRecovery = validateNewRecovery(newRecoveryCode);
 
   if (viaStrongBiometric) {
@@ -416,7 +465,9 @@ export async function resetPinWithRecovery(
   newRecoveryCode: string,
 ): Promise<ChangeResult> {
   if (!config?.enabled || !config.recovery) return { ok: false, failure: 'unavailable' };
-  if (!isSixDigitPin(newPin)) return { ok: false, failure: 'error' };
+  if (!isSixDigitPin(newPin) || await conflictsWithDuress(newPin)) {
+    return { ok: false, failure: 'error' };
+  }
   const normalizedOld = normalizeRecoveryCode(recoveryCode);
   if (!normalizedOld) return { ok: false, failure: 'invalid' };
   const retry = remainingLockMs(attempts, 'recovery');
@@ -472,7 +523,9 @@ export async function resetPinWithStrongBiometric(
   newRecoveryCode: string,
 ): Promise<ChangeResult> {
   if (!config?.enabled) return { ok: false, failure: 'unavailable' };
-  if (!isSixDigitPin(newPin)) return { ok: false, failure: 'error' };
+  if (!isSixDigitPin(newPin) || await conflictsWithDuress(newPin)) {
+    return { ok: false, failure: 'error' };
+  }
   const normalizedNew = validateNewRecovery(newRecoveryCode);
   const ok = await verifyStrongBiometricForReset();
   if (!ok) return { ok: false, failure: 'invalid' };
@@ -518,6 +571,58 @@ export async function verifyCurrentPin(pin: string): Promise<ChangeResult> {
   await persistAttempts();
   emit();
   return { ok: true };
+}
+
+/* ------------------------------ 第二 PIN（duress / decoy） ------------------------------ */
+
+/**
+ * 设置或更换第二 PIN。必须验证当前真实 PIN；第二 PIN 不能与真实 PIN 相同。
+ * 它只打开一个空的演示资料库，属于界面层保护，不是加密。
+ */
+export async function setDuressPin(currentPin: string, pin: string): Promise<ChangeResult> {
+  if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
+  if (!isSixDigitPin(pin)) return { ok: false, failure: 'error' };
+  const check = await verifyCurrentPin(currentPin);
+  if (!check.ok) return check;
+  if (await verifySecret(pin, config.pin)) return { ok: false, failure: 'error' };
+  const next: SecurityConfig = {
+    ...config,
+    duress: {
+      pin: await hashSecret(pin),
+      wipe: config.duress?.wipe === true,
+    },
+    updatedAt: Date.now(),
+  };
+  await saveSecurityConfig(next);
+  config = next;
+  emit();
+  return { ok: true };
+}
+
+/** 移除第二 PIN（需验证真实 PIN） */
+export async function removeDuressPin(currentPin: string): Promise<ChangeResult> {
+  if (!config?.enabled || !config.pin) return { ok: false, failure: 'unavailable' };
+  const check = await verifyCurrentPin(currentPin);
+  if (!check.ok) return check;
+  const next: SecurityConfig = { ...config, duress: null, updatedAt: Date.now() };
+  await saveSecurityConfig(next);
+  config = next;
+  emit();
+  return { ok: true };
+}
+
+/** 第二 PIN 是否同时清除本机数据（默认关；开启前 UI 必须二次确认） */
+export async function setDuressWipe(enabled: boolean): Promise<void> {
+  if (!config?.duress) return;
+  const next: SecurityConfig = {
+    ...config,
+    duress: { ...config.duress, wipe: enabled },
+    updatedAt: Date.now(),
+  };
+  // 先持久化再更新内存：写入失败时不能让界面显示「已开启」而实际下次启动是关闭的
+  await saveSecurityConfig(next);
+  config = next;
+  emit();
 }
 
 /* ------------------------------ 设置项 ------------------------------ */
@@ -582,16 +687,20 @@ export async function setDiscreetPreset(preset: DiscreetPreset): Promise<void> {
 
 /* ------------------------------ 清除所有数据 ------------------------------ */
 
-export async function clearAllSecurityData(): Promise<void> {
-  // 先撤掉原生层的截屏保护与低调 alias，避免清完数据后仍停留在低调启动器
-  await applySecureFlag(false);
-  await applyDiscreetPreset('normal');
-  setDiscreetHint('normal');
+/** @returns 是否已成功清空并开始重载；IndexedDB 失败时返回 false */
+export async function clearAllSecurityData(): Promise<boolean> {
+  // 记录/音频是核心数据：IndexedDB 清不掉就不继续清 localStorage（否则锁配置没了、
+  // 数据还在，反而更难保护），也不重载成假成功
   try {
     await idbClearAll();
   } catch (err) {
     console.warn('清空 IndexedDB 失败:', err);
+    return false;
   }
+  // 撤掉原生层的截屏保护与低调 alias，避免清完数据后仍停留在低调启动器
+  await applySecureFlag(false);
+  await applyDiscreetPreset('normal');
+  setDiscreetHint('normal');
   try {
     localStorage.clear();
     sessionStorage.clear();
@@ -610,7 +719,10 @@ export async function clearAllSecurityData(): Promise<void> {
   } catch {
     /* ignore */
   }
+  // 其他已打开的标签页内存里还握着旧记录：通知它们重载
+  broadcastWipe();
   location.reload();
+  return true;
 }
 
 /* 供 UI 判断某类延迟 */

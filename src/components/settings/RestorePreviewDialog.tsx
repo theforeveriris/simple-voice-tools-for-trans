@@ -24,11 +24,14 @@ export function RestorePreviewDialog({
   open,
   onConfirm,
   onCancel,
+  drill = false,
 }: {
   preview: RestorePreview;
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** 恢复演练：只预览内容，不提供导入按钮 */
+  drill?: boolean;
 }) {
   useI18n();
   const [showAll, setShowAll] = useState(false);
@@ -50,7 +53,7 @@ export function RestorePreviewDialog({
     <Dialog open={open} onOpenChange={(v) => (!v ? onCancel() : undefined)}>
       <DialogContent className="rounded-3xl border-0 bg-card sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-ink">{t('restore.title')}</DialogTitle>
+          <DialogTitle className="text-ink">{t(drill ? 'restore.drillTitle' : 'restore.title')}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3 text-xs leading-relaxed text-ink-2">
           <p>
@@ -77,22 +80,35 @@ export function RestorePreviewDialog({
               </button>
             )}
           </div>
-          <p className="text-[10px] text-ink-2/80">{t('restore.mergeNote')}</p>
+          <p className="text-[10px] text-ink-2/80">
+            {t(drill ? 'restore.drillNote' : 'restore.mergeNote')}
+          </p>
         </div>
         <div className="mt-2 flex gap-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 rounded-full bg-surface-hi py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-80"
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={preview.added === 0}
-            className="flex-1 rounded-full bg-accent py-2.5 text-sm font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {preview.added === 0 ? t('restore.nothingNew') : t('restore.confirm', { n: preview.added })}
-          </button>
+          {drill ? (
+            <button
+              onClick={onCancel}
+              className="flex-1 rounded-full bg-accent py-2.5 text-sm font-medium text-on-accent transition-opacity hover:opacity-90"
+            >
+              {t('common.close')}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onCancel}
+                className="flex-1 rounded-full bg-surface-hi py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-80"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={preview.added === 0}
+                className="flex-1 rounded-full bg-accent py-2.5 text-sm font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {preview.added === 0 ? t('restore.nothingNew') : t('restore.confirm', { n: preview.added })}
+              </button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

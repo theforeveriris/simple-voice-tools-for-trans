@@ -39,6 +39,13 @@ export interface SecurityPrivacy {
   secureScreen: boolean;
 }
 
+/** 第二 PIN（duress / decoy）：打开空的演示资料库，不展示真实数据 */
+export interface DuressConfig {
+  pin: SecretHash;
+  /** 进入第二 PIN 时清空本机数据；必须由用户显式二次确认后开启 */
+  wipe: boolean;
+}
+
 export interface SecurityConfig {
   version: 1;
   enabled: boolean;
@@ -47,6 +54,7 @@ export interface SecurityConfig {
   biometric: BiometricConfig;
   privacy: SecurityPrivacy;
   discreet: { preset: DiscreetPreset };
+  duress?: DuressConfig | null;
   updatedAt: number;
 }
 
@@ -88,4 +96,10 @@ export interface SecuritySnapshot {
   attempts: AttemptState;
   /** 自动弹生物识别：至少一种可用，且未连续失败 3 次 */
   biometricAutoPrompt: boolean;
+  /** 是否已设置第二 PIN */
+  hasDuressPin: boolean;
+  /** 第二 PIN 是否同时清空本机数据 */
+  duressWipe: boolean;
+  /** 当前会话由第二 PIN 解锁：只渲染空的演示资料库 */
+  decoy: boolean;
 }

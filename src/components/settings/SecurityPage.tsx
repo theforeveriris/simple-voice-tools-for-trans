@@ -10,6 +10,7 @@ import {
   KeyRound,
   LockKeyhole,
   Shield,
+  ShieldAlert,
   Smartphone,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -30,6 +31,7 @@ import {
   setBackgroundMask,
   setBiometric,
   setDiscreetPreset,
+  setDuressWipe,
   setSecureScreen,
 } from '@/lib/security/state';
 import type { DiscreetPreset } from '@/lib/security/types';
@@ -52,6 +54,7 @@ import {
 import { cn } from '@/lib/utils';
 import { SELECT_TRIGGER_CLASS, SettingsSection, SettingRow, SettingsSubPage } from './rows';
 import { ChangePinDialog, DisableLockDialog, LockSetupDialog, RecoveryCodeDialog } from '@/components/security/SecurityDialogs';
+import { DuressPinDialog } from '@/components/security/DuressPinDialog';
 
 function bioCopy(): BiometricCopy {
   return {
@@ -81,6 +84,8 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
   const [disableOpen, setDisableOpen] = useState(false);
   const [changePinOpen, setChangePinOpen] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [duressDialog, setDuressDialog] = useState<'set' | 'remove' | null>(null);
+  const [wipeConfirm, setWipeConfirm] = useState(false);
   const [availability, setAvailability] = useState<BiometricAvailability | null>(null);
   const [pendingPreset, setPendingPreset] = useState<DiscreetPreset | null>(null);
   const [busy, setBusy] = useState(false);
@@ -207,6 +212,47 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
       </SettingsSection>
 
       {security.enabled && (
+        <SettingsSection icon={ShieldAlert} title={t('security.duressSection')}>
+          <SettingRow
+            label={t('security.duressPin')}
+            desc={security.hasDuressPin ? t('security.duressStatusOn') : t('security.duressStatusOff')}
+          >
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDuressDialog('set')}
+                className="rounded-full bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent"
+              >
+                {security.hasDuressPin ? t('security.duressChange') : t('security.duressSet')}
+              </button>
+              {security.hasDuressPin && (
+                <button
+                  type="button"
+                  onClick={() => setDuressDialog('remove')}
+                  className="rounded-full bg-surface-hi px-3 py-1.5 text-xs font-medium text-red-500"
+                >
+                  {t('common.delete')}
+                </button>
+              )}
+            </div>
+          </SettingRow>
+          {security.hasDuressPin && (
+            <SettingRow label={t('security.duressWipe')} desc={t('security.duressWipeDesc')}>
+              <Switch
+                aria-label={t('security.duressWipe')}
+                checked={security.duressWipe}
+                onCheckedChange={(value) => {
+                  if (value) setWipeConfirm(true);
+                  else void setDuressWipe(false).catch(() => toast.error(t('security.changeFailed')));
+                }}
+              />
+            </SettingRow>
+          )}
+          <p className="px-1 text-[10px] leading-relaxed text-ink-2">{t('security.duressNotice')}</p>
+        </SettingsSection>
+      )}
+
+      {security.enabled && (
         <SettingsSection icon={Fingerprint} title={t('security.unlockSection')}>
           <SettingRow
             label={t('security.biometric')}
@@ -299,6 +345,32 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
       <DisableLockDialog open={disableOpen} onClose={() => setDisableOpen(false)} />
       <ChangePinDialog open={changePinOpen} onClose={() => setChangePinOpen(false)} />
       <RecoveryCodeDialog open={recoveryOpen} onClose={() => setRecoveryOpen(false)} />
+      <DuressPinDialog
+        open={duressDialog != null}
+        mode={duressDialog ?? 'set'}
+        onClose={() => setDuressDialog(null)}
+      />
+
+      <AlertDialog open={wipeConfirm} onOpenChange={setWipeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('security.duressWipeTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('security.duressWipeConfirm')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 text-white hover:bg-red-500/90"
+              onClick={() => {
+                setWipeConfirm(false);
+                void setDuressWipe(true).catch(() => toast.error(t('security.changeFailed')));
+              }}
+            >
+              {t('security.duressWipeAction')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pendingPreset != null} onOpenChange={(value) => { if (!value) setPendingPreset(null); }}>
         <AlertDialogContent>

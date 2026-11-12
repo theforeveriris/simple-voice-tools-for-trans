@@ -19,8 +19,11 @@ import {
   lockBackupEncryption,
   encryptForBackup,
   decryptBackupEnvelope,
+  decryptWithPassphrase,
   isEncryptedBackup,
   isBackupEncryptionUnlocked,
+  isLocalBackupEncryptionEnabled,
+  setLocalBackupEncryptionEnabled,
   getBackupCryptoConfig,
   BackupLockedError,
   BACKUP_ENCRYPTION_ITERATIONS,
@@ -42,6 +45,23 @@ describe('backup crypto', () => {
     const env = await encryptForBackup(PLAIN);
     expect(isEncryptedBackup(env)).toBe(true);
     expect(await decryptBackupEnvelope(env)).toEqual(PLAIN);
+  });
+
+  it('显式口令可在会话锁定时解密，错误口令失败', async () => {
+    await enableBackupEncryption(PASS_1);
+    const env = await encryptForBackup(PLAIN);
+    lockBackupEncryption();
+    expect(await decryptWithPassphrase(env, PASS_1)).toEqual(PLAIN);
+    await expect(decryptWithPassphrase(env, PASS_2)).rejects.toThrow();
+  });
+
+  it('本地备份加密开关独立保存，更换口令后保留', async () => {
+    await enableBackupEncryption(PASS_1);
+    expect(await isLocalBackupEncryptionEnabled()).toBe(false);
+    await setLocalBackupEncryptionEnabled(true);
+    expect(await isLocalBackupEncryptionEnabled()).toBe(true);
+    await enableBackupEncryption(PASS_2);
+    expect(await isLocalBackupEncryptionEnabled()).toBe(true);
   });
 
   it('同明文密文稳定（确定性 IV，跳过未变化文件的前提）；不同明文密文不同', async () => {

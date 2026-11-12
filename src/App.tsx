@@ -10,6 +10,7 @@ import { Capacitor } from '@capacitor/core';
 import { ArrowLeft } from 'lucide-react';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { RecordingMiniView } from '@/components/layout/RecordingMiniView';
+import { RecordingRecoveryPrompt } from '@/components/layout/RecordingRecoveryPrompt';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
 import { SplashScreen } from '@/components/layout/SplashScreen';
@@ -32,7 +33,8 @@ import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
-import { isNative, ShareTarget, syncNativeSystemBars, type ShareTargetBatch } from '@/lib/platform';
+import { isNative, isTauri, ShareTarget, syncNativeSystemBars, type ShareTargetBatch } from '@/lib/platform';
+import { getLocalApiStatus, pushLocalApiSnapshot } from '@/lib/desktop/localApi';
 import { missingKeys } from '@/i18n/aiLocale';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
@@ -239,7 +241,8 @@ function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (security.locked) return;
+      // 锁屏 / 诱饵库都不响应真实录音与页签快捷键
+      if (security.locked || security.decoy) return;
       const target = e.target as HTMLElement | null;
       if (
         target
@@ -281,7 +284,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shortcutsOpen, security.enabled, security.locked]);
+  }, [shortcutsOpen, security.enabled, security.locked, security.decoy]);
 
   const isDark = theme === 'dark'
     || (theme === 'system'
@@ -432,6 +435,26 @@ function App() {
     };
   }, [importSharedFile]);
 
+  // 桌面本地只读 API：服务运行期间跟随记录变化刷新快照（未启动时 push 直接跳过）
+  useEffect(() => {
+    if (!isTauri) return;
+    void getLocalApiStatus();
+    let timer: number | undefined;
+    const schedule = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void pushLocalApiSnapshot(), 1500);
+    };
+    const unsubscribe = useHistoryStore.subscribe((state, prev) => {
+      if (state.records !== prev.records) schedule();
+    });
+    const interval = window.setInterval(() => void pushLocalApiSnapshot(), 30_000);
+    return () => {
+      unsubscribe();
+      window.clearInterval(interval);
+      if (timer) window.clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <LockGate>
       <div className="app-root min-h-dvh bg-surface text-ink">
@@ -443,6 +466,9 @@ function App() {
 
       {/* 原生壳启动页：浏览器/PWA 的启动画面由系统按 manifest 生成，这里只补壳内 */}
       {isNative && <SplashScreen />}
+
+      {/* 崩溃恢复：录音中 App 被系统杀掉 / 浏览器崩溃后，提示恢复未保存的草稿 */}
+      <RecordingRecoveryPrompt />
 
       {/* 首次打开引导：未完成时（localStorage svt:onboarded 缺失）显示一次，
           训练方向 / 年龄段 / 语言 / 主题 全部完成后标记，可手动从「跳过」关闭。

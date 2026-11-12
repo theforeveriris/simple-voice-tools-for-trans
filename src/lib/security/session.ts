@@ -11,6 +11,8 @@ import { AUTO_LOCK_MS } from './attempts';
 
 const UNLOCK_KEY = 'svt:security:unlockedAt';
 const HIDDEN_KEY = 'svt:security:hiddenAt';
+/** 本次解锁用的是第二 PIN（只影响当前会话，刷新仍保持在诱饵库） */
+const DECOY_KEY = 'svt:security:decoy';
 
 function navigationType(): string {
   try {
@@ -21,12 +23,29 @@ function navigationType(): string {
   }
 }
 
-export function markUnlocked(now = Date.now()): void {
+export function markUnlocked(now = Date.now(), decoy = false): void {
   try {
+    // 先写 decoy 标记再写解锁时间：如果标记写失败，宁可刷新后重新锁定，
+    // 也不能出现「会话恢复成解锁但 decoy 标记丢失」而露出真实资料库
+    sessionStorage.setItem(DECOY_KEY, decoy ? '1' : '0');
     sessionStorage.setItem(UNLOCK_KEY, String(now));
     sessionStorage.removeItem(HIDDEN_KEY);
   } catch {
-    /* private mode / storage disabled */
+    try {
+      sessionStorage.removeItem(UNLOCK_KEY);
+      sessionStorage.removeItem(DECOY_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** 当前会话是否由第二 PIN 解锁 */
+export function isDecoySession(): boolean {
+  try {
+    return sessionStorage.getItem(DECOY_KEY) === '1';
+  } catch {
+    return false;
   }
 }
 
@@ -34,6 +53,7 @@ export function clearUnlocked(): void {
   try {
     sessionStorage.removeItem(UNLOCK_KEY);
     sessionStorage.removeItem(HIDDEN_KEY);
+    sessionStorage.removeItem(DECOY_KEY);
   } catch {
     /* ignore */
   }
