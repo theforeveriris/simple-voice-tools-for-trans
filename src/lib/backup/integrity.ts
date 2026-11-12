@@ -85,6 +85,10 @@ export async function inspectBackupBytes(
     files = unzipSync(plain);
   } catch (err) {
     if (err instanceof BackupLockedError) throw err;
+    // 会话口令与文件口令不一致时也交给 UI 输入文件自身口令，而不是直接判为损坏
+    if (encrypted && !passphrase && err instanceof Error && err.message === t('crypto.errPassphrase')) {
+      throw new BackupLockedError();
+    }
     fail(encrypted ? t('backup.verifyDecryptFail') : t('backup.verifyNotZip'));
     const result: BackupVerifyResult = {
       at, ok: false, encrypted, records: 0, audio: 0, audioBytes: 0,

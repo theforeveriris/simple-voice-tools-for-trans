@@ -371,8 +371,11 @@ export function DataPage({
         };
         setRestorePreview(buildRestorePreview(incoming, existingIds));
       } catch (err) {
-        // 加密备份：先输入文件口令，再重试解析（预览仍不落库）
-        if (err instanceof BackupLockedError) {
+        // 加密备份：先输入文件口令，再重试解析（预览仍不落库）。
+        // 会话已解锁但文件是旧口令加密时，也走这里让用户输入文件自身口令。
+        const needsFilePass = err instanceof BackupLockedError
+          || (!passphrase && err instanceof Error && err.message === t('crypto.errPassphrase'));
+        if (needsFilePass) {
           pendingFilePassRef.current = (pass) => importZip(file, pass);
           setFilePassOpen(true);
           return;
