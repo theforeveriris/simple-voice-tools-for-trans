@@ -483,7 +483,11 @@ fn parse_bound(raw: Option<&str>, end_of_day: bool) -> Option<f64> {
   if parts.len() != 3 {
     return None;
   }
-  let days = days_from_civil(parts[0], parts[1] as u32, parts[2] as u32);
+  let (year, month, day) = (parts[0], parts[1], parts[2]);
+  if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+    return None;
+  }
+  let days = days_from_civil(year, month as u32, day as u32);
   let millis = days * 86_400_000 + if end_of_day { 86_399_999 } else { 0 };
   Some(millis as f64)
 }

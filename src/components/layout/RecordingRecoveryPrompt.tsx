@@ -15,6 +15,7 @@ import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
 import {
   clearRecordingDraft,
   draftRecordExists,
+  hasRecordingDraft,
   loadRecordingDraft,
   type RecordingDraft,
 } from '@/lib/audio/recordingDraft';
@@ -32,7 +33,11 @@ function scanDraft(): Promise<RecordingDraft | null> {
   if (!startupScan) {
     startupScan = (async () => {
       const draft = await loadRecordingDraft();
-      if (!draft) return null;
+      if (!draft) {
+        // 元数据还在但没有音频块：清理孤儿草稿，避免设置页一直显示「未完成」
+        if (await hasRecordingDraft()) await clearRecordingDraft();
+        return null;
+      }
       if (await draftRecordExists(draft.meta)) {
         await clearRecordingDraft();
         return null;
