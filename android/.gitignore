@@ -90,7 +90,14 @@ lint/tmp/
 *.hprof
 
 # Cordova plugins for Capacitor
-capacitor-cordova-android-plugins
+# 只忽略构建产物；4 个源文件（build.gradle / cordova.variables.gradle /
+# AndroidManifest.xml / .gitkeep）必须入库——F-Droid 只从源码构建、不跑
+# `npx cap sync`，缺了它们 Gradle 会因 include ':capacitor-cordova-android-plugins'
+# 找不到模块而直接失败。
+capacitor-cordova-android-plugins/*
+!capacitor-cordova-android-plugins/build.gradle
+!capacitor-cordova-android-plugins/cordova.variables.gradle
+!capacitor-cordova-android-plugins/src/
 
 # Copied web assets
 app/src/main/assets/public

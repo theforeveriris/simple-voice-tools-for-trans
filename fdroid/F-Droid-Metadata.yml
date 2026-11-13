@@ -1,0 +1,170 @@
+Categories:
+  - Music Practice Tool
+  - Science & Education
+  - Recorder
+  - Development
+
+Description:
+  en-US: |
+    A voice measurement, analysis and training tracker built on the Web Audio API.
+
+    Speak into your microphone and get complete curves and statistics for pitch
+    (F0), formants (F1/F2) and energy level — and see where your voice sits
+    within the male and female vocal range bands.
+
+    Features:
+
+    • Pitch, formant and energy tracking with full analysis curves
+    • Recording tests that compare your voice against a baseline
+    • Long-term history and trend charts for your voice over time
+    • Voice-quality metrics (HNR, CPP, shimmer, jitter) and AI-assisted
+      parameter suggestions
+    • Practice reminders via local notifications
+    • Optional app lock (biometric / PIN) and a separate demo library for
+      safe demonstrations
+    • Local backup and restore, including encrypted archives and a 30-day
+      trash for deleted records
+    • Works fully offline — all analysis happens on your device
+    • Available on Android, desktop and as an installable web app
+
+    Built with React, TypeScript, Vite and Capacitor.
+
+  zh-CN: |
+    基于 Web Audio API 的嗓音测量、分析与训练追踪工具。
+
+    对着麦克风说话，即可得到基频（F0）、共振峰（F1/F2）与能量级的完整曲线
+    与统计，并可查看你的嗓音处于男声 / 女声音域中的位置。
+
+    主要功能：
+
+    • 基频、共振峰与能量追踪，输出完整分析曲线
+    • 录音测试，与基线对比
+    • 长期历史记录与趋势图表
+    • 嗓音质量指标（HNR、CPP、shimmer、jitter）与 AI 辅助的参数建议
+    • 本地通知的练习提醒
+    • 可选的应用锁（生物识别 / PIN）与独立演示资料库，便于安全演示
+    • 本地备份与恢复，支持加密压缩包与 30 天记录回收站
+    • 完全离线运行——所有分析都在你的设备上完成
+    • 同时提供 Android、桌面端与可安装的网页版
+
+    使用 React、TypeScript、Vite 与 Capacitor 构建。
+
+  zh-TW: |
+    以 Web Audio API 打造的嗓音測量、分析與訓練追蹤工具。
+
+    對著麥克風說話，即可取得基頻（F0）、共振峰（F1/F2）與能量級的完整曲線
+    與統計，並可查看你的嗓音位於男聲 / 女聲音域中的位置。
+
+    主要功能：
+
+    • 基頻、共振峰與能量追蹤，輸出完整分析曲線
+    • 錄音測試，與基準線比較
+    • 長期歷史紀錄與趨勢圖表
+    • 嗓音品質指標（HNR、CPP、shimmer、jitter）與 AI 輔助的參數建議
+    • 本機通知的練習提醒
+    • 可選的應用程式鎖（生物辨識 / PIN）與獨立示範資料庫，便於安全示範
+    • 本機備份與還原，支援加密壓縮檔與 30 天紀錄回收站
+    • 完全離線執行——所有分析都在你的裝置上完成
+    • 同時提供 Android、桌面版與可安裝的網頁版
+
+    使用 React、TypeScript、Vite 與 Capacitor 建構。
+
+  ja: |
+    Web Audio API をベースにした声の測定・分析・トレーニングアプリです。
+
+    マイクに向かって話すだけで、ピッチ（F0）、フォルマント（F1/F2）、エネルギー
+    レベルの完全な曲線と統計が得られ、自分の声が男性域・女性域のどこに位置するか
+    も確認できます。
+
+    主な機能：
+
+    • ピッチ・フォルマント・エネルギーのトラッキングと完全な分析曲線
+    • 録音テストによるベースラインとの比較
+    • 長期の履歴とトレンドグラフ
+    • 声質指標（HNR、CPP、shimmer、jitter）と AI によるパラメータ提案
+    • ローカル通知による練習リマインダー
+    • 任意のアプリロック（生体認証 / PIN）と、演示用の独立したライブラリ
+    • ローカルバックアップと復元。暗号化アーカイブと 30 日間のゴミ箱に対応
+    • 完全オフラインで動作——解析はすべて端末上で実行
+    • Android・デスクトップ・インストール可能な Web アプリに対応
+
+    React、TypeScript、Vite、Capacitor で構築されています。
+
+License: MIT
+
+AuthorName: theforeveriris
+
+SourceCode: https://github.com/theforeveriris/simple-voice-tools-for-trans
+Repo: https://github.com/theforeveriris/simple-voice-tools-for-trans
+IssueTracker: https://github.com/theforeveriris/simple-voice-tools-for-trans/issues
+
+Website: https://theforeveriris.github.io/simple-voice-tools-for-trans/
+
+Changelogs:
+  1100:
+    en-US: |
+      • Crash recovery for recordings: drafts are saved while recording, so an
+        interrupted take can be restored on the next launch
+      • Local backup encryption: optional passphrase encryption for manual ZIP
+        exports and local auto-backups
+      • Backup integrity checks and a restore rehearsal that previews without
+        writing to the library
+      • Security mode: a second PIN opens a separate demo library
+      • Desktop local read-only API / CLI for R, Python and Jupyter
+      • Trash for records: deleted recordings and audio are kept for 30 days
+      • Settings, guide and privacy notes updated to match
+
+    zh-CN: |
+      • 录音崩溃恢复：录音过程中持续保存草稿，应用意外退出后可在下次启动恢复
+      • 本地备份加密：手动 ZIP 与本地自动备份可选口令加密
+      • 备份完整性检查，并支持只预览不写库的恢复演练
+      • 安全模式：第二个 PIN 打开独立的演示资料库
+      • 桌面本地只读 API / CLI：支持 R、Python 与 Jupyter
+      • 记录回收站：删除的记录与音频保留 30 天
+      • 同步更新设置页、使用指南与隐私说明
+
+    zh-TW: |
+      • 錄音崩潰復原：錄音過程中持續儲存草稿，應用程式意外結束後可在下次啟動時還原
+      • 本機備份加密：手動 ZIP 與本機自動備份可選密碼加密
+      • 備份完整性檢查，並支援只預覽不寫入資料庫的還原演練
+      • 安全模式：第二個 PIN 開啟獨立的示範資料庫
+      • 桌面本機唯讀 API / CLI：支援 R、Python 與 Jupyter
+      • 紀錄回收站：刪除的紀錄與音訊保留 30 天
+      • 同步更新設定頁、使用指南與隱私說明
+
+    ja: |
+      • 録音のクラッシュ復元：録音中に下書きを保存し、中断したテイクを次回起動時に復元できます
+      • ローカルバックアップの暗号化：手動 ZIP とローカル自動バックアップをパスフレーズで暗号化可能
+      • バックアップ整合性チェックと、ライブラリに書き込まない復元リハーサルに対応
+      • セキュリティモード：2 つ目の PIN で独立したデモライブラリを開きます
+      • デスクトップ本地唯読 API / CLI：R、Python、Jupyter に対応
+      • 記録のゴミ箱：削除した録音と音声を 30 日間保持
+      • 設定・ガイド・プライバシー説明を更新
+
+Builds:
+  - versionName: 0.11.0
+    versionCode: 1100
+    commit: 54139b0
+    subdir: android
+    # F-Droid 的构建机没有 Node.js/npm，用 sudo 安装。
+    # nodejs 版本需满足 Vite 7 的要求（Node >= 20.19 或 >= 22.12）。
+    sudo:
+      - apt-get update -y
+      - apt-get install -y --no-install-recommends nodejs npm
+    # 用 F-Droid 自带的 gradle（gradlew-fdroid），不走项目里的
+    # gradle-wrapper.properties —— 那里配的是国内镜像，F-Droid 构建机在海外。
+    gradle:
+      - yes
+    # APK 落在 app 这个 module 的子目录里，F-Droid 默认只找
+    # <root>/build/outputs/apk/release，因此必须显式指定。
+    output: app/build/outputs/apk/release/*-release-unsigned.apk
+    # 前端依赖与构建产物不入库，需在 Gradle 构建前准备。
+    # init 命令的工作目录是 subdir（android/），但 npm 依赖装在仓库根，
+    # 所以要先 cd 到上一级。
+    # Gradle 侧的 preBuild 钩子会自动跑 npm run build + npx cap sync android，
+    # 这里只需保证 node_modules 存在（settings.gradle 也会兜底跑 npm ci）。
+    init:
+      - cd .. && npm ci --no-audit --no-fund
+    gradleProps:
+      - org.gradle.jvmargs=-Xmx3g
+    timeout: 60

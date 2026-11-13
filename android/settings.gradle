@@ -1,3 +1,33 @@
+// ── F-Droid 源码构建支持 ────────────────────────────────────────────────
+// F-Droid 只从源码编译，不执行 `npm ci`（它只跑 gradlew assembleRelease）。
+// 但 capacitor.settings.gradle 里 @capacitor/android 与
+// @capacitor/local-notifications 的 projectDir 都指向 node_modules/——
+// node_modules 缺失时 Gradle 在「配置阶段」就会失败。
+//
+// 因此这里在 settings 求值期间（早于任何 project 配置）确保 node_modules
+// 就位：缺失时按 package-lock.json 跑一次 npm ci。
+// 已就绪时跳过，保证本地/CI 的增量构建速度不受影响。
+// ────────────────────────────────────────────────────────────────────────
+def repoRoot = new File(settingsDir, '..')
+def nodeModulesDir = new File(repoRoot, 'node_modules')
+def capacitorAndroidDir = new File(nodeModulesDir, '@capacitor/android/capacitor')
+
+if (!capacitorAndroidDir.exists()) {
+    def npmExe = System.getProperty('os.name').toLowerCase().contains('windows') ? 'npm.cmd' : 'npm'
+    logger.lifecycle('[fdroid] node_modules 缺失，执行 npm ci 以准备 Capacitor 依赖…')
+    def result = exec {
+        workingDir repoRoot
+        commandLine npmExe, 'ci', '--no-audit', '--no-fund'
+        environment 'PATH', "${System.getenv('PATH')}${File.pathSeparator}${new File(repoRoot, 'node_modules/.bin').absolutePath}"
+        ignoreExitValue = true
+    }
+    if (result.exitValue != 0) {
+        throw new GradleException(
+            "npm ci 失败（exit ${result.exitValue}）。\n" +
+            "F-Droid / 干净环境构建需要先安装前端依赖，请确认 Node.js 与 npm 可用。")
+    }
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')

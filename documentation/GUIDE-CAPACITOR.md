@@ -83,6 +83,59 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
   公告时机选在用户少的阶段。F-Droid 主库渠道由 F-Droid 自己的钥匙签名，
   与本渠道（GitHub Releases / IzzyOnDroid）天然不同签名，互不通用。
 
+## F-Droid 上架（从源码构建）
+
+F-Droid **只从源码编译，不接受任何预编译二进制**。本项目是 Capacitor +
+Vite 架构，Web 资源是构建产物且不入库，因此做了三处改造，让 F-Droid 构建机
+（以及任何干净克隆）能直接 `gradlew assembleRelease`：
+
+1. **`android/settings.gradle`**：在 settings 求值阶段（早于 project 配置）
+   检查 `node_modules/@capacitor/android` 是否存在，缺失时自动 `npm ci`。
+   必需——`capacitor.settings.gradle` 把该目录当 projectDir，缺失会在
+   「配置阶段」直接失败。
+2. **`android/app/build.gradle`**：`preBuild` 挂 `capCopy` 任务，依次跑
+   `npm run build` → `npx cap sync android`，生成 `assets/public/` 与
+   `assets/capacitor.config.json`、`assets/capacitor.plugins.json`。
+   资源已是最新时整条链跳过，不拖慢本地增量构建。
+3. **`android/capacitor-cordova-android-plugins/`**：4 个源文件入库
+   （`build.gradle` / `cordova.variables.gradle` / `AndroidManifest.xml` /
+   `.gitkeep`）。`settings.gradle` 里 `include ':capacitor-cordova-android-plugins'`
+   指向它，缺失会让 Gradle 构建中断。构建产物仍在 .gitignore 内。
+
+**Gradle 发行版**：`gradle-wrapper.properties` 用官方 `services.gradle.org`。
+F-Droid 的 `gradlew-fdroid` 只识别 `services/downloads.gradle.org` 的
+`distributionUrl`（国内镜像不被识别），且它会按 AGP 版本回退选择 Gradle
+（本项目 AGP 8.7.2 → 至少需 Gradle 8.9）。改回官方源同时解决了「国内镜像
+返回损坏 zip」的问题。
+
+**F-Droid 构建机没有 Node.js/npm**（只有 `default-jdk-headless`），且 Node
+版本需满足 Vite 7 的 `^20.19.0 || >=22.12.0`——Debian trixie 自带
+nodejs 20.19.2，达标。
+
+**metadata**：`fdroid/F-Droid-Metadata.yml`（提交到 fdroiddata 时改名
+`<applicationId>.yml`）。关键字段：
+
+```yaml
+Builds:
+  - versionName: 0.11.0
+    versionCode: 1100
+    commit: 54139b0
+    subdir: android
+    sudo:                      # 构建机没有 nodejs
+      - apt-get update -y
+      - apt-get install -y --no-install-recommends nodejs npm
+    gradle: [yes]             # 用 F-Droid 自带的 gradlew-fdroid
+    output: app/build/outputs/apk/release/*-release-unsigned.apk
+    init:
+      - cd .. && npm ci --no-audit --no-fund
+```
+
+`output` 必须显式指定：F-Droid 默认只找 `<root>/build/outputs/apk/release`，
+而本项目 APK 落在 `app` module 子目录下。
+
+**签名差异**：F-Droid 用自己的密钥签名，与 GitHub Releases / IzzyOnDroid
+渠道的签名**互不通用**，用户无法跨渠道覆盖安装。
+
 ## 本机构建发布 APK / AAB
 
 ```bash

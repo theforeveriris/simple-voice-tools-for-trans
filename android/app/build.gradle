@@ -1,5 +1,116 @@
 apply plugin: 'com.android.application'
 
+// ── F-Droid 源码构建支持 ────────────────────────────────────────────────
+// F-Droid 只从源码编译，不接受任何预编译二进制。Web 资源（docs/ → assets/public）
+// 是构建产物且不入库，因此干净克隆后必须自己重新生成，否则 APK 里
+// assets/public 为空 → 应用打开白屏。
+//
+// 这里在 preBuild 阶段自动跑「前端构建 + 资源拷贝」，让任何干净检出
+// （F-Droid 构建机 / CI / 新克隆）都能直接 gradlew assembleRelease。
+//
+// 跳过条件（已存在 assets/public 且不比源码旧）：本地开发跑 cap:sync 后
+// 再构建时不做重复的前端构建，保持增量速度。
+// ────────────────────────────────────────────────────────────────────────
+def repoRoot = rootProject.file('..')
+def webBuildDir = new File(repoRoot, 'docs')
+def publicAssetsDir = file('src/main/assets/public')
+
+// 判断是否需要重新生成 Web 资源：
+// 1) assets/public 不存在 → 需要
+// 2) docs/ 不存在（前端未构建）→ 需要
+// 3) 源码比已生成的 assets 新 → 需要
+//
+// 注意：这些值必须作为「捕获的局部变量」使用。若在 Task 的配置闭包里直接
+// 引用脚本级 def 变量，闭包的 delegate 是 Task，Gradle 会去 Project 上找
+// 同名属性 → MissingPropertyException（"unknown property 'publicAssetsDir'"）。
+// 因此把函数体整体放进一个闭包并显式捕获所需的引用。
+def needsWebAssets = {
+    if (!publicAssetsDir.exists() || !webBuildDir.exists()) return true
+    def assetTime = publicAssetsDir.lastModified()
+    def newestSource = 0L
+    ['src', 'public', 'index.html', 'vite.config.ts', 'package.json'].each { rel ->
+        def f = new File(repoRoot, rel)
+        if (!f.exists()) return
+        if (f.isDirectory()) {
+            f.eachFileRecurse { sf ->
+                if (sf.isFile() && sf.lastModified() > newestSource) newestSource = sf.lastModified()
+            }
+        } else if (f.lastModified() > newestSource) {
+            newestSource = f.lastModified()
+        }
+    }
+    return newestSource > assetTime
+}
+
+// 前端构建：npm run build → docs/
+// 用 Exec（而非 Node plugin），避免给构建引入额外 Gradle 依赖
+//
+// npm / npx 可执行文件解析：Windows 上是 npm.ps1 / npm.cmd（Gradle 的 Exec
+// 只能直接启动可执行文件，不能走 PowerShell 脚本），故用 .cmd；
+// Linux/macOS 上就是 npm / npx。F-Droid 构建机是 Linux，用的是 'npm'。
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+def npmExe = isWindows ? 'npm.cmd' : 'npm'
+def npxExe = isWindows ? 'npx.cmd' : 'npx'
+
+// node_modules 是否已就绪（@capacitor/android 必须在 Gradle 配置阶段就存在，
+// capacitor.settings.gradle 用它做 projectDir；缺了会导致配置失败）
+def nodeModulesDir = new File(repoRoot, 'node_modules')
+def capacitorAndroidDir = new File(nodeModulesDir, '@capacitor/android/capacitor')
+
+def runWebBuild = tasks.register('buildWebAssets', Exec) {
+    workingDir repoRoot
+    // node_modules 缺失时才跑 npm ci——它会整个删除并重装 node_modules，
+    // 而 @capacitor/android 已被 Gradle 在配置阶段引用，此时重装有竞态风险。
+    // 已就绪时只跑构建，快得多。
+    if (!capacitorAndroidDir.exists()) {
+        commandLine npmExe, 'ci', '--no-audit', '--no-fund'
+    }
+    commandLine npmExe, 'run', 'build'
+    // 输出目录作为声明式产出，便于 Gradle 正确判断 up-to-date
+    outputs.dir webBuildDir
+    inputs.file new File(repoRoot, 'package.json')
+    inputs.file new File(repoRoot, 'package-lock.json')
+    inputs.dir new File(repoRoot, 'src')
+    inputs.dir new File(repoRoot, 'public')
+    // F-Droid 构建机不一定有 npm 在 PATH 的标准位置，显式带上 node_modules/.bin
+    environment 'PATH', "${System.getenv('PATH')}${File.pathSeparator}${new File(repoRoot, 'node_modules/.bin').absolutePath}"
+    // 资源已是最新时整个链都不必跑（本地开发反复构建时省掉前端编译）
+    onlyIf { needsWebAssets() }
+    doFirst {
+        logger.lifecycle('[fdroid] 构建 Web 资源（npm run build）…')
+    }
+}
+
+// 把 docs/ 拷进 assets/public，并生成 capacitor.config.json 与
+// capacitor.plugins.json（本地通知插件的注册表，缺了应用会失去通知能力）。
+//
+// 用官方 `npx cap sync android` 而非手写拷贝：`cap sync` = `cap copy` +
+// `cap update`，除了拷贝 Web 资源，还负责生成上述两个配置文件、Cordova
+// manifest 与 capacitor.settings.gradle / capacitor.build.gradle。
+// 手写拷贝容易漏掉其中一两个。
+//
+// 注意：cap sync 也会重写 android/capacitor-cordova-android-plugins/ 与
+// android/app/capacitor.build.gradle —— 这两个都已入库，内容一致，重写无害。
+def capCopy = tasks.register('capCopy', Exec) {
+    dependsOn runWebBuild
+    workingDir repoRoot
+    commandLine npxExe, '--no-install', 'cap', 'sync', 'android'
+    outputs.dir publicAssetsDir
+    inputs.dir webBuildDir
+    inputs.file new File(repoRoot, 'capacitor.config.ts')
+    environment 'PATH', "${System.getenv('PATH')}${File.pathSeparator}${new File(repoRoot, 'node_modules/.bin').absolutePath}"
+    doFirst {
+        logger.lifecycle('[fdroid] 同步 Web 资源到 assets/public（npx cap sync android）…')
+    }
+}
+
+// onlyIf 让任务在图里始终存在，但「资源已是最新」时跳过执行——
+// 不能用 doLast 里手动触发另一个任务的方式，那不会真正执行它。
+capCopy.configure { onlyIf { needsWebAssets() } }
+
+// 绑定到 preBuild：任何 assemble* 之前确保 assets/public 就位
+tasks.named('preBuild').configure { dependsOn capCopy }
+
 // 版本号与 PWA（package.json）同源同值：versionName = semver，
 // versionCode = major*10000 + minor*100 + patch（0.9.0 → 900，随 semver 递增）
 def packageJson = new groovy.json.JsonSlurper().parseText(file('../../package.json').text)
