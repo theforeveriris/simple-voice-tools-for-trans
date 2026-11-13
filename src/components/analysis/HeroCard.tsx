@@ -7,6 +7,7 @@
 
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { Music2, Sparkles } from 'lucide-react';
 import { freqToNote, bandOf, BAND_COLORS, getBandRanges } from '@/constants';
 import { formatClock } from '@/lib/utils';
@@ -99,7 +100,7 @@ export function HeroSummary({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
+      transition={MOTION.emphasis}
       className="card-surface p-5"
     >
       {/* 标签行：平均基频；区间/模式徽标桌面端同行、移动端换行；右侧为操作按钮 */}

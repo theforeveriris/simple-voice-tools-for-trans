@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -204,7 +205,7 @@ export function StepCurve({
           strokeLinecap="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: progress }}
-          transition={reduceMotion ? { duration: 0 } : { duration: 0.32, ease: 'easeOut' }}
+          transition={reduceMotion ? { duration: 0 } : MOTION.emphasis}
         />
         <motion.path
           d={fullPath}
@@ -213,7 +214,7 @@ export function StepCurve({
           strokeLinecap="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: progress }}
-          transition={reduceMotion ? { duration: 0 } : { duration: 0.32, ease: 'easeOut' }}
+          transition={reduceMotion ? { duration: 0 } : MOTION.emphasis}
         />
 
         {/* 头部光斑 + 下引线 */}

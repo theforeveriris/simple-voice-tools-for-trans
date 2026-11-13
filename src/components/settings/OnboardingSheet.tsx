@@ -19,6 +19,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { ArrowRight, ChevronLeft, Languages, Palette, Sparkles, UserCircle2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import {
@@ -168,7 +169,7 @@ export function OnboardingSheet() {
             key={stepKey}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+            transition={MOTION.base}
             className="onboarding-content flex min-h-0 flex-1 flex-col overflow-y-auto"
           >
             <div className="flex flex-col gap-3">

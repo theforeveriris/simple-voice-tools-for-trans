@@ -42,6 +42,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui';
+import { MOTION } from '@/lib/motion';
 
 /** 只读状态行（label + 值） */
 function StatusRow({ label, value, valueCls }: { label: string; value: string; valueCls?: string }) {
@@ -208,7 +209,7 @@ export function AppPage({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="flex flex-col gap-3.5"
       >
         {/* 子页面头：返回 + 标题 */}

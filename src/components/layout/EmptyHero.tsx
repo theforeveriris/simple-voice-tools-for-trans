@@ -5,6 +5,7 @@
  */
 
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +41,7 @@ export function EmptyHero({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.emphasis}
         className="flex flex-col items-center text-center"
       >
         {/* 图标：柔光晕 + 浅色圆底 */}

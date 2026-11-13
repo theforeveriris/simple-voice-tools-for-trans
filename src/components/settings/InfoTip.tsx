@@ -7,6 +7,7 @@
 
 import { useEffect, useId, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { Info } from 'lucide-react';
 import { t } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -49,7 +50,7 @@ export function InfoTip({ label, text, wide = false }: { label: string; text: st
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
+            transition={MOTION.base}
             className={cn(
               'absolute left-0 top-6 z-20 block whitespace-pre-line rounded-2xl bg-card px-3.5 py-2.5 text-left text-[11px] font-normal leading-relaxed text-ink-2 shadow-[0_6px_24px_rgba(28,25,45,0.10),0_2px_6px_rgba(28,25,45,0.06)]',
               wide ? 'w-80 max-w-[80vw]' : 'w-64',

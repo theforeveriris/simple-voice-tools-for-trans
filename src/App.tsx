@@ -43,6 +43,7 @@ import { checkPracticeReminder } from '@/lib/reminder';
 // 与底部导航 / 启动默认页签共用同一份（navItems.ts）
 import { NAV as TABS } from '@/components/settings/navItems';
 import type { ViewType } from '@/types';
+import { MOTION } from '@/lib/motion';
 
 /** 由 location.hash 解析页签（#/history 形式），未知或缺失时回退测试页 */
 function tabFromHash(): ViewType {
@@ -501,7 +502,7 @@ function App() {
             key={displayedTab}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+            transition={MOTION.page}
           >
             <PageErrorBoundary pageKey={displayedTab}>
               {displayedTab === 'test' && <TestPage />}

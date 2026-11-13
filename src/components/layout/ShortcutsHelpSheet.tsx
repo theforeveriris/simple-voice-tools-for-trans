@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { Keyboard } from 'lucide-react';
 import { t, type DictKey } from '@/i18n';
 
@@ -66,7 +67,7 @@ export function ShortcutsHelpSheet({ onClose }: { onClose: () => void }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={MOTION.base}
         onClick={onClose}
         className="absolute inset-0 bg-ink/25 backdrop-blur-md"
       />
@@ -74,7 +75,7 @@ export function ShortcutsHelpSheet({ onClose }: { onClose: () => void }) {
         initial={{ opacity: 0, scale: 0.94, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 8 }}
-        transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         role="dialog"
         aria-modal="true"
         aria-label={t('shortcuts.title')}

@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { X, BarChart3 } from 'lucide-react';
 import { flowerOf, rotationJitter, flowerSideStats, _internal, type Flower } from '@/lib/flower';
 import { applyLuaFlowers, computeLuaFlowers } from '@/lib/lua/flower';
@@ -99,7 +100,7 @@ function FlowerDetail({
         initial={{ scale: 0.92, y: 12 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+        transition={MOTION.springSoft}
         onClick={(e) => e.stopPropagation()}
         className="card-surface relative flex w-full max-w-sm flex-col items-center p-5"
       >

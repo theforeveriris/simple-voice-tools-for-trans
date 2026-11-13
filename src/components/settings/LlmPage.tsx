@@ -27,6 +27,7 @@ import { useActiveLlmConfig, useLlmProfiles } from '@/lib/llmProfiles';
 import { useMemories } from '@/lib/memory';
 import { Switch } from '@/components/ui';
 import { testLlmConnection } from '@/lib/llm';
+import { MOTION } from '@/lib/motion';
 
 export function LlmPage({
   settings,
@@ -79,7 +80,7 @@ export function LlmPage({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="flex flex-col gap-3.5"
       >
         {/* 子页面头：返回 + 标题 */}

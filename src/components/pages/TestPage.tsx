@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { SeriesChart } from '@/components/charts/SeriesChart';
@@ -197,7 +198,7 @@ function RecordingIsland() {
     <motion.div
       initial={{ opacity: 0, scale: 0.85, y: -4 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+      transition={MOTION.springSnappy}
       className="mx-auto flex w-fit items-center gap-2 rounded-full bg-black/85 py-1.5 pl-3 pr-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
       role="status"
       aria-label={t('vowelLive.recordingBadge')}

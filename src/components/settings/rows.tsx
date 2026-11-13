@@ -7,6 +7,7 @@ import type { ElementType, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { t } from '@/i18n';
+import { MOTION } from '@/lib/motion';
 
 /**
  * 设置子页共享外壳：返回按钮 + 标题 + 入场动画 + 卡片流容器
@@ -29,7 +30,7 @@ export function SettingsSubPage({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="flex flex-col gap-3.5"
       >
         <div className="flex items-center gap-3" data-theme-part="topbar">

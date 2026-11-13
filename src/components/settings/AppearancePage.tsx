@@ -40,6 +40,7 @@ import { InfoTip } from './InfoTip';
 import { CatSwatch, FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
 import { CustomThemePage } from './CustomThemePage';
 import { BgImageControls } from './BgImageControls';
+import { MOTION } from '@/lib/motion';
 
 /** 导航栏样式预览：悬浮胶囊 / 全宽经典底栏 */
 function NavStylePreview({ style }: { style: NavStyle }) {
@@ -160,7 +161,7 @@ export function AppearancePage({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="flex flex-col gap-3.5"
       >
         {/* 子页面头：返回 + 标题 */}
@@ -405,6 +406,18 @@ export function AppearancePage({
               );
             })}
           </div>
+        </SettingsSection>
+
+        {/* 动效：删除历史记录时卡片收起淡出（Telegram 消息式），默认开启 */}
+        <SettingsSection icon={Sparkles} title={t('settings.motion')}>
+          <SettingRow
+            label={<InfoTip label={t('settings.deleteAnimation')} text={t('settings.deleteAnimationDesc')} />}
+          >
+            <Switch
+              checked={settings.deleteAnimation}
+              onCheckedChange={(v) => update({ deleteAnimation: v })}
+            />
+          </SettingRow>
         </SettingsSection>
 
         {/* 图表与显示：外观类显示选项 + 图表与回放（原「配置 · 图表与回放」并入此处，

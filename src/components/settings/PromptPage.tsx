@@ -15,6 +15,7 @@ import type { AppSettings } from '@/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Textarea } from '@/components/ui';
 import { SettingsSection } from './rows';
+import { MOTION } from '@/lib/motion';
 
 export function PromptPage({
   settings,
@@ -72,7 +73,7 @@ export function PromptPage({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="flex flex-col gap-3.5"
       >
         {/* 子页面头：返回 + 标题 + 右上角 加号 / 覆写 */}

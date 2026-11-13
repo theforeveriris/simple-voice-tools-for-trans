@@ -105,6 +105,13 @@
     --input: 0 5% 90%;
     --ring: 240 4% 16%;
     --radius: 1rem;
+    /* 动效 token（与 src/lib/motion.ts 对齐） */
+    --motion-fast: 120ms;
+    --motion-base: 180ms;
+    --motion-page: 240ms;
+    --motion-emphasis: 320ms;
+    --motion-ease-enter: cubic-bezier(0.2, 0, 0, 1);
+    --motion-ease-exit: ease-in;
   }
 
   * {
@@ -712,5 +719,27 @@ html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-styled='t
   @keyframes svt-theme-reveal {
     from { clip-path: circle(0px at var(--vt-x, 50%) var(--vt-y, 50%)); }
     to { clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 50%) var(--vt-y, 50%)); }
+  }
+}
+
+/* ---------------- 全局 reduced-motion 兜底 ----------------
+ * framer-motion 由 main.tsx 的 MotionConfig 处理；这里覆盖纯 CSS 过渡/动画。
+ * 旋转加载图标属于必要的进度反馈，单独保留慢速旋转，避免看起来卡死。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
   }
 }

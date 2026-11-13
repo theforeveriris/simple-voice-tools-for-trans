@@ -401,6 +401,8 @@ export interface AppSettings {
   syncChartRange: boolean;
   /** 移动端历史卡片底部的整行迷你基频曲线（桌面端内联曲线不受影响） */
   mobileSpark: boolean;
+  /** 删除历史记录时的收起淡出动画（Telegram 消息式；关闭后立即移除） */
+  deleteAnimation: boolean;
   /* ---------- 配置子页面扩展 ---------- */
   /** 回放倍速（0.5 / 0.75 / 1 / 1.5） */
   playbackRate: number;

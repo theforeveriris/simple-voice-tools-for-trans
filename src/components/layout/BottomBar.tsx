@@ -16,6 +16,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { ElementType, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import {
   SquareTerminal,
   ChartNoAxesColumn,
@@ -35,8 +36,6 @@ import { toast } from 'sonner';
 import { t, getI18nVersion, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { cn } from '@/lib/utils';
-
-const SPRING = { type: 'spring' as const, stiffness: 380, damping: 32, mass: 0.9 };
 
 /** 页签图标（清单与顺序来自 navItems.NAV，唯一来源） */
 const TAB_ICONS: Record<ViewType, ElementType> = {
@@ -119,7 +118,7 @@ function ModeFanSelector({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={MOTION.base}
         onClick={onClose}
         className="absolute inset-0 bg-ink/25 backdrop-blur-md"
       />
@@ -152,8 +151,8 @@ function ModeFanSelector({
             style={{ left: center.x, top: center.y }}
             initial={{ x: 0, y: 0, scale: 0.2, opacity: 0 }}
             animate={{ x: dx, y: dy, scale: 1, opacity: 1 }}
-            exit={{ x: 0, y: 0, scale: 0.2, opacity: 0, transition: { duration: 0.14 } }}
-            transition={{ type: 'spring', stiffness: 430, damping: 24, delay: i * 0.05 }}
+            exit={{ x: 0, y: 0, scale: 0.2, opacity: 0, transition: MOTION.fast }}
+            transition={{ ...MOTION.springSnappy, delay: i * 0.05 }}
           >
             <button
               onClick={() => onChoose(opt.id)}
@@ -285,7 +284,7 @@ function BallCore({ onLongPress }: { onLongPress: () => void }) {
         whileHover={{ scale: 1.07 }}
         whileTap={{ scale: 0.9 }}
         animate={isRecording ? { scale: [1, 1.04, 1] } : { scale: 1 }}
-        transition={isRecording ? { duration: 1.7, ease: 'easeInOut', repeat: Infinity } : SPRING}
+        transition={isRecording ? { duration: 1.7, ease: 'easeInOut', repeat: Infinity } : MOTION.springNav}
         className="relative grid size-full select-none place-items-center rounded-full bg-accent text-on-accent shadow-[0_8px_22px_-6px_rgb(var(--c-accent-rgb)/0.55),0_3px_10px_rgb(var(--c-accent-rgb)/0.25)]"
         aria-label={isRecording ? t('nav.recordStopAria') : t('nav.recordStartAria')}
       >
@@ -295,7 +294,7 @@ function BallCore({ onLongPress }: { onLongPress: () => void }) {
             initial={{ scale: 0.3, opacity: 0, rotate: -70 }}
             animate={{ scale: 1, opacity: 1, rotate: 0 }}
             exit={{ scale: 0.3, opacity: 0, rotate: 70 }}
-            transition={{ duration: 0.16 }}
+            transition={MOTION.base}
             className="grid place-items-center"
           >
             {isRecording ? (
@@ -328,7 +327,7 @@ function RecordBall({
   return (
     <motion.div
       layoutId="record-ball"
-      transition={SPRING}
+      transition={MOTION.springNav}
       initial={!docked && entrance ? { scale: 0, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
       className="pointer-events-auto absolute z-10"
@@ -393,14 +392,14 @@ const Dock = memo(function Dock({
         {active && (
           <motion.span
             layoutId="nav-pill"
-            transition={SPRING}
+            transition={MOTION.springNav}
             className="absolute inset-0 rounded-2xl bg-accent-soft"
           />
         )}
         <motion.span
           className="relative z-10 grid place-items-center"
           animate={active ? { scale: [1, 1.28, 1] } : { scale: 1 }}
-          transition={{ duration: 0.38, ease: 'easeOut' }}
+          transition={MOTION.emphasis}
         >
           <Icon
             size={21}
@@ -419,7 +418,7 @@ const Dock = memo(function Dock({
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.14 }}
+            transition={MOTION.fast}
             className="relative z-10 whitespace-nowrap pl-[7px] text-sm font-medium text-on-accent-soft"
           >
             {label}
@@ -432,14 +431,14 @@ const Dock = memo(function Dock({
   return (
     <motion.div
       animate={{ x: ballDocked ? 0 : isTest ? -(BALL_SIZE + 12) / 2 : 0 }}
-      transition={SPRING}
+      transition={MOTION.springNav}
       className="pointer-events-auto relative flex items-center"
     >
       <motion.nav
         layout
         lang={langKey}
         data-i18n-version={i18nVersion}
-        transition={SPRING}
+        transition={MOTION.springNav}
         className="app-chrome flex items-center gap-0.5 rounded-[24px] bg-card p-1.5 shadow-[0_12px_40px_-8px_rgba(28,25,45,0.18),0_3px_12px_rgba(28,25,45,0.06)]"
         data-theme-part="bottombar"
       >
@@ -451,7 +450,7 @@ const Dock = memo(function Dock({
           ref={slotRef}
           initial={false}
           animate={{ width: split ? BALL_SLOT_W : 0 }}
-          transition={SPRING}
+          transition={MOTION.springNav}
           className="relative shrink-0"
         >
           {isTest && ballDocked && <RecordBall docked onLongPress={onLongPress} />}
@@ -503,7 +502,7 @@ function ClassicNav() {
               {active && (
                 <motion.span
                   layoutId="classic-nav-underline"
-                  transition={SPRING}
+                  transition={MOTION.springNav}
                   className="absolute bottom-[5px] h-[3px] w-5 rounded-full bg-accent"
                 />
               )}

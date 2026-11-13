@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAiLocaleLabel, getLocale, getOverride, LOCALES, setOverride, t } from '@/i18n';
@@ -77,14 +78,14 @@ export function EditStringsSheet({ onClose }: { onClose: () => void }) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.2 }}
+        transition={MOTION.base}
         onClick={onClose}
         className="absolute inset-0 bg-ink/25 backdrop-blur-md"
       />
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.base}
         role="dialog"
         aria-modal="true"
         aria-label={t('settings.aiEditStrings')}

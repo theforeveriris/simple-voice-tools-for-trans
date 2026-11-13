@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Switch, Textarea } from '@/components/ui';
 import { SettingsSection } from './rows';
 import { InfoTip } from './InfoTip';
+import { MOTION } from '@/lib/motion';
 
 const KIND_KEY: Record<MemoryKind, DictKey> = {
   fact: 'settings.memoryKindFact',
@@ -205,7 +206,7 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="flex flex-col gap-3.5"
       >
         {/* 子页面头：返回 + 标题 + 条数 */}

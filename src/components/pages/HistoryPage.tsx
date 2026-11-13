@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Trash2,
   Search, ListFilter, TrendingUp, GitCompareArrows, X, ListChecks, History, Flower2,
@@ -104,6 +104,12 @@ function EmptyHistory() {
   );
 }
 
+/**
+ * 最后一条记录删除时，先让纸屑动画播完，再切到空状态；
+ * 与卡片 exit 的 380ms（100ms 延迟 + 280ms 收拢）对齐并留一点缓冲。
+ */
+const EMPTY_AFTER_DELETE_MS = 400;
+
 export function HistoryPage() {
   useI18n();
   const records = useHistoryStore((s) => s.records);
@@ -115,6 +121,9 @@ export function HistoryPage() {
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
   const showGarden = useStore((s) => s.settings.showGarden);
+  const deleteAnimation = useStore((s) => s.settings.deleteAnimation);
+  const reduceMotion = useReducedMotion() ?? false;
+  const animateDelete = deleteAnimation && !reduceMotion;
 
   const [view, setView] = useState<'list' | 'trend' | 'garden'>('list');
   const [trashOpen, setTrashOpen] = useState(false);
@@ -129,6 +138,28 @@ export function HistoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [comparePair, setComparePair] = useState<[AnalysisRecord, AnalysisRecord] | null>(null);
   const contentReady = useDeferredMount();
+
+  // 最后一条记录删除时不要立刻切到空状态：先保留列表，让卡片的收起动画播完
+  const [holdEmptyState, setHoldEmptyState] = useState(false);
+  const holdEmptyRef = useRef(false);
+  useEffect(() => {
+    if (records.length > 0) {
+      // 撤销删除 / 导入记录：取消空状态等待
+      if (holdEmptyRef.current) {
+        holdEmptyRef.current = false;
+        setHoldEmptyState(false);
+      }
+      return;
+    }
+    // 只有删除动作主动进入等待时才延迟空状态；首装/清空数据直接显示空态
+    if (!holdEmptyRef.current) return;
+    const timer = window.setTimeout(() => {
+      holdEmptyRef.current = false;
+      setHoldEmptyState(false);
+    }, EMPTY_AFTER_DELETE_MS);
+    return () => window.clearTimeout(timer);
+  }, [records.length]);
+  const showEmptyHistory = records.length === 0 && !holdEmptyState;
 
   // 对比浮层的返回手势：系统返回 / 侧滑关闭对比，浮层内返回按钮走 history.back()
   useEffect(() => {
@@ -223,12 +254,21 @@ export function HistoryPage() {
     setSelectedIds(new Set());
   };
 
+  /** 删除最后一条时先压住空状态，等收起动画播完（records 归零后 effect 计时） */
+  const beginEmptyHold = (removing: number) => {
+    if (!animateDelete || removing < records.length) return;
+    holdEmptyRef.current = true;
+    setHoldEmptyState(true);
+  };
+
   const remove = (record: AnalysisRecord) => {
+    beginEmptyHold(1);
     void removeWithUndo([record], { removeRecord, addRecord, getAudio });
   };
 
   const batchRemove = () => {
     const picked = records.filter((r) => selectedIds.has(r.id));
+    beginEmptyHold(picked.length);
     exitSelection();
     void removeWithUndo(picked, { removeRecord, addRecord, getAudio });
   };
@@ -352,7 +392,7 @@ export function HistoryPage() {
         ) : (
           <GardenView records={records} totalCount={totalCount} onOpenAnalysis={open} />
         )
-      ) : records.length === 0 ? (
+      ) : showEmptyHistory ? (
         <EmptyHistory />
       ) : (
         <>
@@ -442,10 +482,10 @@ export function HistoryPage() {
             </p>
           )}
 
-          {filtered.length === 0 ? (
+          {filtered.length === 0 && query.trim() !== '' ? (
             <p className="py-12 text-center text-sm text-ink-2">{t('history.noMatch', { q: query })}</p>
           ) : (
-            <div className="flex flex-col gap-2.5 pb-2">
+            <div className="flex flex-col pb-2">
               <AnimatePresence initial={false}>
                 {filtered.map((record) => (
                   <RecordCard

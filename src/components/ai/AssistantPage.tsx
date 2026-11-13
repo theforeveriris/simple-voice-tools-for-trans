@@ -22,6 +22,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import {
   ArrowUp, Ban, Brain, Check, ChevronDown, Copy, Download, GitBranch, ListTree, Loader2, MoreHorizontal, PanelRight, Paperclip, X,
   Pencil, Plus, RotateCcw, Sparkles, Square, Trash2, AudioLines, ArrowLeft, Settings2, Star, Shield, ShieldOff,
@@ -690,7 +691,7 @@ const Bubble = memo(function Bubble({
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.16 }}
+          transition={MOTION.base}
           className="mt-1.5 flex items-center gap-1.5"
         >
           <ActionBtn icon={Copy} label={t('assistant.copy')} onClick={() => onCopy(idx)} />
@@ -2448,7 +2449,7 @@ export function AssistantPage() {
       <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
-        transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="absolute inset-y-0 right-0 flex w-72 flex-col bg-surface shadow-[-8px_0_30px_rgba(28,25,45,0.12)]"
       >
         <div className="mx-3 mt-3 grid grid-cols-2 gap-1 rounded-2xl bg-surface-hi/50 p-1">

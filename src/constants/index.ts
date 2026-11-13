@@ -203,6 +203,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   testMode: 'reading',
   syncChartRange: true,
   mobileSpark: true,
+  deleteAnimation: true,
   // 新装默认靶标为「未指定」口径的中性区间（120–220 Hz），与 userGoal='other' 对齐；
   // 首次引导 / 切换训练方向会按 GOAL_TARGET_DEFAULTS 重新铺底，已有记录用户保留自身值
   targetEnabled: false,

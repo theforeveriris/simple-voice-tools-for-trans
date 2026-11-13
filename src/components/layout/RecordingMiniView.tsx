@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { MOTION } from '@/lib/motion';
 import { Square, X } from 'lucide-react';
 import { paintChart } from '@/components/charts/chartPainters';
 import { recorder } from '@/lib/audio/recorder';
@@ -77,7 +78,7 @@ export function RecordingMiniView() {
     <motion.div
       initial={false}
       animate={visible ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 8, scale: 0.96 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+      transition={MOTION.springSnappy}
       className={cn(
         'pointer-events-none fixed inset-x-0 z-30 flex justify-center px-4',
         navStyle === 'classic'

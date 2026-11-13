@@ -70,6 +70,7 @@ import { GithubBackupSection } from './GithubBackupSection';
 import { LocalApiSection } from './LocalApiSection';
 import { BackupEncryptionSection } from './BackupEncryptionSection';
 import { BackupPassphraseDialog } from './BackupPassphraseDialog';
+import { MOTION } from '@/lib/motion';
 
 export function DataPage({
   settings,
@@ -482,7 +483,7 @@ export function DataPage({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="flex flex-col gap-3.5"
       >
         {/* 子页面头：返回 + 标题 */}

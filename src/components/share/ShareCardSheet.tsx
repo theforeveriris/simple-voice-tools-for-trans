@@ -14,6 +14,7 @@ import { shareOrDownload, type ShareCardStyle } from '@/lib/export/shareCard';
 import { renderLuaCard } from '@/lib/lua/cardRender';
 import { activeScriptOf, subscribeScripts } from '@/lib/lua/scripts';
 import { cn } from '@/lib/utils';
+import { MOTION } from '@/lib/motion';
 
 const STYLE_OPTIONS: { id: ShareCardStyle; labelKey: 'share.styleThemed' | 'share.styleDark' | 'share.styleLight' | 'share.styleAurora' | 'share.styleFlower' }[] = [
   { id: 'themed', labelKey: 'share.styleThemed' },
@@ -127,7 +128,7 @@ export function ShareCardSheet({
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
-        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        transition={MOTION.page}
         className="absolute inset-x-0 bottom-0 mx-auto max-w-2xl rounded-t-[28px] bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)] shadow-[0_-10px_40px_rgba(28,25,45,0.18)]"
       >
         <div className="mb-3 flex items-center justify-between">

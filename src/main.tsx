@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { MotionConfig } from 'framer-motion'
 import './index.css'
 import App from './App.tsx'
 import { NAV as TABS } from '@/components/settings/navItems'
@@ -139,6 +140,9 @@ void initSecurity()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {/* 全局尊重系统「减少动态效果」：transform/layout 动效自动降级，透明度保留 */}
+    <MotionConfig reducedMotion="user">
+      <App />
+    </MotionConfig>
   </StrictMode>,
 )

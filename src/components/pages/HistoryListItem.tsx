@@ -4,11 +4,14 @@
  * （删除撤销见 historyActions.ts）
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Trash2, ChevronRight, StickyNote } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { useHistoryStore } from '@/store/useHistoryStore';
+import { spawnDeleteParticles } from '@/lib/deleteParticles';
+import { MOTION } from '@/lib/motion';
 import { MiniSpark } from '@/components/charts/MiniSpark';
 import { freqToNote, bandOf, BAND_COLORS } from '@/constants';
 import { t } from '@/i18n';
@@ -98,6 +101,27 @@ export function RecordCard({
   const press = useLongPress(onEnterSelection);
   // 移动端整行迷你曲线开关（设置 → 外观；桌面端内联曲线不受影响）
   const mobileSpark = useStore((s) => s.settings.mobileSpark);
+  // 删除动画（设置 → 外观 → 动效，默认开启）；系统开启「减少动态效果」时自动关闭
+  const deleteAnimation = useStore((s) => s.settings.deleteAnimation);
+  const reduceMotion = useReducedMotion() ?? false;
+  const animateDelete = deleteAnimation && !reduceMotion;
+  // 只有真正进入回收站（删除）才播放纸屑效果；搜索过滤等淡出即可
+  const inTrash = useHistoryStore((s) => s.trash.some((item) => item.id === record.id));
+  const deleteExit = animateDelete && inTrash;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const particlesSpawned = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!inTrash) {
+      particlesSpawned.current = false;
+      return;
+    }
+    if (!animateDelete || particlesSpawned.current) return;
+    const el = cardRef.current;
+    if (!el) return;
+    particlesSpawned.current = true;
+    spawnDeleteParticles(el);
+  }, [inTrash, animateDelete]);
 
   const handleClick = () => {
     if (press.consumeClick()) return;
@@ -107,11 +131,35 @@ export function RecordCard({
 
   return (
     <motion.div
-      layout
+      ref={cardRef}
+      layout={animateDelete}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+      exit={
+        deleteExit
+          ? {
+              opacity: 0,
+              height: 0,
+              marginBottom: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              transition: {
+                opacity: { duration: 0 },
+                height: { delay: 0.1, ...MOTION.reflow },
+                marginBottom: { delay: 0.1, ...MOTION.reflow },
+                paddingTop: { delay: 0.1, ...MOTION.reflow },
+                paddingBottom: { delay: 0.1, ...MOTION.reflow },
+              },
+            }
+          : inTrash
+            ? { transition: { duration: 0 } }
+            : { opacity: 0, scale: 0.97, transition: reduceMotion ? { duration: 0 } : MOTION.base }
+      }
+      transition={{
+        ...MOTION.page,
+        layout: animateDelete ? MOTION.reflow : { duration: 0 },
+      }}
+      style={deleteExit ? { overflow: 'hidden' } : undefined}
       onClick={handleClick}
       onKeyDown={(e) => {
         // 键盘等价操作：Enter/Space 打开（多选模式下切换选中）。
@@ -127,7 +175,7 @@ export function RecordCard({
       role="button"
       tabIndex={0}
       className={cn(
-        'group flex cursor-pointer select-none flex-col gap-1.5 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/70 sm:flex-row sm:items-center sm:gap-4',
+        'group mb-2.5 flex cursor-pointer select-none flex-col gap-1.5 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow last:mb-0 hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/70 sm:flex-row sm:items-center sm:gap-4',
         selectionMode && selected && 'ring-2 ring-accent',
       )}
       {...(selectionMode ? {} : press)}
