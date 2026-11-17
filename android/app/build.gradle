@@ -57,6 +57,25 @@ def npxExe = isWindows ? 'npx.cmd' : 'npx'
 def nodeModulesDir = new File(repoRoot, 'node_modules')
 def capacitorAndroidDir = new File(nodeModulesDir, '@capacitor/android/capacitor')
 
+// 解析 SOURCE_DATE_EPOCH：可复现构建的时间基准。
+// 优先级：环境变量（构建基础设施可能已设）> git 提交时间 > 当前时间。
+// 用 git 提交时间保证同一提交在任何机器上都得到相同时间戳，
+// 不依赖构建机是否设置该变量。
+def resolveSourceDateEpoch = {
+    def fromEnv = System.getenv('SOURCE_DATE_EPOCH')
+    if (fromEnv != null && fromEnv ==~ /\d+/) return fromEnv
+    try {
+        def proc = new ProcessBuilder('git', '-C', repoRoot.absolutePath, 'log', '-1', '--format=%ct')
+                .redirectErrorStream(true).start()
+        def out = proc.inputStream.text.trim()
+        proc.waitFor()
+        if (out ==~ /\d+/) return out
+    } catch (Exception ignored) {
+        // git 不可用（例如从源码压缩包构建）时退回下面
+    }
+    return null
+}
+
 def runWebBuild = tasks.register('buildWebAssets', Exec) {
     workingDir repoRoot
     // node_modules 缺失时才跑 npm ci——它会整个删除并重装 node_modules，
@@ -77,6 +96,14 @@ def runWebBuild = tasks.register('buildWebAssets', Exec) {
     // 资源已是最新时整个链都不必跑（本地开发反复构建时省掉前端编译）
     onlyIf { needsWebAssets() }
     doFirst {
+        // 传入固定的构建时间基准，让前端产物可复现（见 vite.config.ts）
+        def sde = resolveSourceDateEpoch()
+        if (sde != null) {
+            environment 'SOURCE_DATE_EPOCH', sde
+            logger.lifecycle("[fdroid] SOURCE_DATE_EPOCH=${sde}")
+        } else {
+            logger.lifecycle('[fdroid] 警告：无法确定 SOURCE_DATE_EPOCH，本次产物不可复现')
+        }
         logger.lifecycle('[fdroid] 构建 Web 资源（npm run build）…')
     }
 }

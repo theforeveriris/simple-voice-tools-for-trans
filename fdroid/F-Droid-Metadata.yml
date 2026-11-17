@@ -6,9 +6,13 @@ Categories:
 License: MIT
 AuthorName: theforeveriris
 SourceCode: https://github.com/theforeveriris/simple-voice-tools-for-trans
+RepoType: git
 Repo: https://github.com/theforeveriris/simple-voice-tools-for-trans
 IssueTracker: https://github.com/theforeveriris/simple-voice-tools-for-trans/issues
-Website: https://theforeveriris.github.io/simple-voice-tools-for-trans/
+WebSite: https://theforeveriris.github.io/simple-voice-tools-for-trans/
+
+CurrentVersion: 0.11.0
+CurrentVersionCode: 1100
 
 # Summary, description, screenshots and changelogs live in the upstream
 # Fastlane layout (fastlane/metadata/android/{en-US,zh-CN,zh-TW,ja-JP}/),
@@ -34,7 +38,7 @@ Builds:
     # Uses F-Droid's gradlew-fdroid, which picks the Gradle version from the
     # AGP version (AGP 8.7.2 here -> Gradle 8.11.1).
     gradle:
-      - yes
+      - "yes"
     # The APK lands in the app module; F-Droid otherwise only looks in
     # <root>/build/outputs/apk/release.
     output: app/build/outputs/apk/release/*-release-unsigned.apk

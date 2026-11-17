@@ -32,8 +32,18 @@ const releaseNotes: Record<string, string> = (() => {
 })();
 
 // 本次构建的时间戳（毫秒）：define 注入页面 + version.json 双写必须同源同值，
-// 检查更新以两者相等判定「页面运行的构建 = 线上构建」
-const buildAt = Date.now()
+// 检查更新以两者相等判定「页面运行的构建 = 线上构建」。
+//
+// 可复现构建：SOURCE_DATE_EPOCH（秒）是跨工具链的通用约定，F-Droid 等构建
+// 基础设施会设置它。设置后时间戳固定，同一提交可产出逐字节相同的产物；
+// 未设置时退回当前时间（日常开发行为不变）。
+const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH
+const buildAt =
+  sourceDateEpoch && /^\d+$/.test(sourceDateEpoch)
+    ? Number(sourceDateEpoch) * 1000
+    : Date.now()
+// 构建日期与 buildAt 同源，避免两者在跨日边界上不一致
+const buildDate = new Date(buildAt).toISOString().slice(0, 10)
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
@@ -57,7 +67,7 @@ export default defineConfig(({ command }) => ({
   // 版本号 / 构建日期注入（设置 → 应用 → 版本与更新 展示）
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
-    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    __BUILD_DATE__: JSON.stringify(buildDate),
     __BUILD_AT__: JSON.stringify(buildAt),
     __APP_VERSION_NOTES__: JSON.stringify(releaseNotes),
   },
