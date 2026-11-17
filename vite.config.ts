@@ -7,6 +7,13 @@ import { inspectAttr } from 'kimi-plugin-inspect-react'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as { version: string }
 
+// 版本号 → Android versionCode，公式必须与 android/app/build.gradle 保持一致：
+// major*10000 + minor*100 + patch。
+// 写入 version.json 是给 F-Droid 的 UpdateCheckMode: HTTP 用的——Gradle 里的
+// versionCode 是运行时计算的，无法被它的 tag/文件解析器静态读出。
+const pkgParts = pkg.version.split('.').map((n) => Number(n) || 0)
+const versionCode = pkgParts[0] * 10000 + (pkgParts[1] ?? 0) * 100 + (pkgParts[2] ?? 0)
+
 /** 当前版本的更新内容：release-notes/<version>.json，构建时注入设置页 */
 const releaseNotes: Record<string, string> = (() => {
   try {
@@ -95,7 +102,7 @@ export default defineConfig(({ command }) => ({
         this.emitFile({
           type: 'asset',
           fileName: 'version.json',
-          source: JSON.stringify({ version: pkg.version, builtAt: buildAt }),
+          source: JSON.stringify({ version: pkg.version, versionCode, builtAt: buildAt }),
         })
       },
     },
