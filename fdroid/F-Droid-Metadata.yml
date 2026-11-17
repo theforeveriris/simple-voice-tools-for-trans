@@ -13,11 +13,13 @@ AutoName: Simple Voice Tool for Trans
 
 RepoType: git
 Repo: https://github.com/theforeveriris/simple-voice-tools-for-trans
+Binaries: 
+  https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/download/v%v/SimpleVoiceToolForTrans-v%v-release.apk
 
 Builds:
-  - versionName: 0.11.0
-    versionCode: 1100
-    commit: 33c47afb9e5c08f6b08c523317363964ab999f62
+  - versionName: 0.11.1
+    versionCode: 1101
+    commit: 5cbe7afc1c0a57b07ba0ab59b2de89af4109fa99
     subdir: android/app
     sudo:
       - apt-get update -y
@@ -25,9 +27,11 @@ Builds:
     gradle:
       - yes
 
+AllowedAPKSigningKeys: 487917c62e7868a48490438589edcd39b2afab775ed50c4ae179c7f4d4fa3c9a
+
 AutoUpdateMode: Version v%v
 UpdateCheckMode: HTTP
 UpdateCheckData: 
   https://theforeveriris.github.io/simple-voice-tools-for-trans/version.json|"versionCode":\s*(\d+)|.|"version":\s*"([^"]+)"
-CurrentVersion: 0.11.0
-CurrentVersionCode: 1100
+CurrentVersion: 0.11.1
+CurrentVersionCode: 1101
