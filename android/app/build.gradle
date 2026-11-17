@@ -135,8 +135,24 @@ def capCopy = tasks.register('capCopy', Exec) {
 // 不能用 doLast 里手动触发另一个任务的方式，那不会真正执行它。
 capCopy.configure { onlyIf { needsWebAssets() } }
 
-// 绑定到 preBuild：任何 assemble* 之前确保 assets/public 就位
-tasks.named('preBuild').configure { dependsOn capCopy }
+// 裁剪 web-only 资源（Service Worker、PWA 清单、OG 卡片、PWA 图标）。
+// 原生壳用不到它们，约省 500KB。
+//
+// 必须放进构建流程而不是只放在 CI 里：F-Droid 的可复现构建会拿
+// Binaries 的 APK 逐字节比对，如果只有 CI 裁剪、F-Droid 不裁剪，
+// 两边的 assets/public 文件集就不同，比对必然失败。
+def pruneAssets = tasks.register('pruneWebAssets', Exec) {
+    dependsOn capCopy
+    workingDir repoRoot
+    commandLine 'node', 'scripts/prune-android-assets.mjs'
+    environment 'PATH', "${System.getenv('PATH')}${File.pathSeparator}${new File(repoRoot, 'node_modules/.bin').absolutePath}"
+    doFirst {
+        logger.lifecycle('[fdroid] 裁剪 web-only 资源…')
+    }
+}
+
+// 绑定到 preBuild：任何 assemble* 之前确保 assets/public 就位并裁剪完毕
+tasks.named('preBuild').configure { dependsOn pruneAssets }
 
 // 版本号与 PWA（package.json）同源同值：versionName = semver，
 // versionCode = major*10000 + minor*100 + patch（0.9.0 → 900，随 semver 递增）

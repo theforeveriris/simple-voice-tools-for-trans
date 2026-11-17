@@ -1,0 +1,9 @@
+{
+  "version": "0.11.2",
+  "notes": {
+    "en": "• Build fix only: the web bundle is now always produced inside the Gradle build, so the APK is byte-for-byte reproducible from the same commit. No user-visible changes since 0.11.1.",
+    "zh-CN": "• 仅构建修复：Web 产物改为统一在 Gradle 构建内生成，因此同一提交可以逐字节复现。相对 0.11.1 无用户可见变化。",
+    "zh-TW": "• 僅構建修復：Web 產物改為統一在 Gradle 構建內生成，因此同一提交可以逐位元組重現。相對 0.11.1 無使用者可見變化。",
+    "ja": "• ビルド修正のみ：Web バンドルを Gradle ビルド内で生成するようにし、同一コミットからビット単位で再現可能にしました。0.11.1 からのユーザー向け変更はありません。"
+  }
+}
