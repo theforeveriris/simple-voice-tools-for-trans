@@ -186,6 +186,15 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // F-Droid 要求关闭：AGP 会在 APK 签名块里写入 DependencyInfoBlock
+    // （0x504B4453），内容用 Google 公钥加密、任何人都无法审计，
+    // 详见 fdroidserver#1056 与 fdroid/admin#367。
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
     signingConfigs {
         release {
             if (keyPropsFile.exists()) {

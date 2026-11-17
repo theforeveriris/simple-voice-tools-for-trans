@@ -1,0 +1,9 @@
+{
+  "version": "0.11.3",
+  "notes": {
+    "en": "• Build fix only: removed the encrypted Google Play \"dependency metadata\" block from the APK signing block, as required for F-Droid inclusion. No user-visible changes since 0.11.1.",
+    "zh-CN": "• 仅构建修复：移除 APK 签名块中的 Google Play \"dependency metadata\" 加密块（F-Droid 收录要求）。相对 0.11.1 无用户可见变化。",
+    "zh-TW": "• 僅構建修復：移除 APK 簽名塊中的 Google Play \"dependency metadata\" 加密塊（F-Droid 收錄要求）。相對 0.11.1 無使用者可見變化。",
+    "ja": "• ビルド修正のみ：APK 署名ブロック内の Google Play \"dependency metadata\" 暗号化ブロックを削除しました（F-Droid 収録の要件）。0.11.1 からのユーザー向け変更はありません。"
+  }
+}
