@@ -17,9 +17,9 @@ Binaries:
   https://github.com/theforeveriris/simple-voice-tools-for-trans/releases/download/v%v/SimpleVoiceToolForTrans-v%v-release.apk
 
 Builds:
-  - versionName: 0.11.2
-    versionCode: 1102
-    commit: 0af3db1a702d573fe1ceba9553de016c552659be
+  - versionName: 0.11.3
+    versionCode: 1103
+    commit: 5c2a99a9acb2e14c082a8b45318bf9c7b951c0f0
     subdir: android/app
     sudo:
       - apt-get update -y
@@ -33,5 +33,5 @@ AutoUpdateMode: Version v%v
 UpdateCheckMode: HTTP
 UpdateCheckData: 
   https://theforeveriris.github.io/simple-voice-tools-for-trans/version.json|"versionCode":\s*(\d+)|.|"version":\s*"([^"]+)"
-CurrentVersion: 0.11.2
-CurrentVersionCode: 1102
+CurrentVersion: 0.11.3
+CurrentVersionCode: 1103
