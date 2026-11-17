@@ -9,6 +9,7 @@ import { applyCustomTheme, normalizeCustomTheme } from '@/lib/theme/customTheme'
 import { loadBgImage } from '@/lib/theme/bgImage'
 import { initPwaInstall } from '@/lib/pwa'
 import { AppShortcuts, isNative, isTauri, syncNativeSystemBars } from '@/lib/platform'
+import { initAndroidBack } from '@/lib/androidBack'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { runStartupSideEffects } from '@/store/startup'
@@ -122,6 +123,8 @@ if (isNative) {
     .catch(() => {});
   void AppShortcuts.addListener('shortcutRoute', ({ route }) => applyShortcutRoute(route))
     .catch(() => {});
+  // 系统返回手势：等价于 history.back()，根页面时最小化而非结束 Activity
+  void initAndroidBack().catch(() => {});
 }
 
 // 背景图片异步预加载：读取 IndexedDB 后经 opacity 过渡淡入，不阻塞首帧

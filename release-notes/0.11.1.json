@@ -1,0 +1,9 @@
+{
+  "version": "0.11.1",
+  "notes": {
+    "en": "• Android back gesture: the system back gesture / button now navigates back in-app (closes open sheets and pages) instead of exiting the app; the home screen minimizes instead of quitting\n• Android build: enabled R8 code shrinking, reducing the APK size by roughly 35%\n• Reproducible builds: the build is now byte-for-byte reproducible from the same commit, paving the way for F-Droid to re-sign with the app's own key",
+    "zh-CN": "• Android 返回手势：系统返回手势/返回键现在先在应用内回退（关闭打开的浮层与页面），不再直接退出应用；在首页时改为最小化到后台\n• Android 构建：启用 R8 代码压缩，APK 体积缩小约 35%\n• 可复现构建：同一提交现在能产出逐字节一致的构建产物，为 F-Droid 换用应用自身签名做准备",
+    "zh-TW": "• Android 返回手勢：系統返回手勢/返回鍵現在先在應用內回退（關閉開啟的浮層與頁面），不再直接退出應用；在首頁時改為最小化到背景\n• Android 構建：啟用 R8 代碼壓縮，APK 體積縮小約 35%\n• 可復現構建：同一提交現在能產出逐位元組一致的構建產物，為 F-Droid 換用應用自身簽名做準備",
+    "ja": "• Android バックジェスチャー：システムのバックジェスチャー/ボタンはアプリ内で戻るようになり、終了しなくなります。ホーム画面では最小化します\n• Android ビルド：R8 コード縮小を有効化し、APK サイズを約 35% 削減\n• 再現可能ビルド：同一コミットからビット単位で同一のビルドを産出できるようになり、F-Droid がアプリ自身の鍵で再署名する準備が整いました"
+  }
+}
