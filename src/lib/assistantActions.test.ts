@@ -19,6 +19,15 @@ const record = {
 
 const ctx = { settings, records: [record] };
 
+// export 的动作只取「最近 7 天」的记录。用相对当前时间的固定偏移，
+// 避免像写死 2026-11-08 那样，日期一过窗口测试就必然失败（时间炸弹）。
+const recentRecord = {
+  ...record,
+  id: 'r2',
+  createdAt: Date.now() - 24 * 60 * 60 * 1000,
+} as unknown as AnalysisRecord;
+const recentCtx = { settings, records: [recentRecord] };
+
 describe('createAssistantAction', () => {
   it('creates a target change with before snapshot', () => {
     const res = createAssistantAction('setTarget', { min: 165, max: 255 }, ctx);
@@ -42,7 +51,7 @@ describe('createAssistantAction', () => {
   });
 
   it('creates an export action and rejects empty ranges', () => {
-    const res = createAssistantAction('export', { scope: 'last7' }, ctx);
+    const res = createAssistantAction('export', { scope: 'last7' }, recentCtx);
     expect(res.action?.kind).toBe('export');
     expect(res.action?.summary).toContain('1 条');
     expect(createAssistantAction('export', { scope: 'last7' }, { settings, records: [] }).error).toContain('没有记录');
