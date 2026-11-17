@@ -144,7 +144,7 @@ Changelogs:
 Builds:
   - versionName: 0.11.0
     versionCode: 1100
-    commit: 54139b0
+    commit: 76f166b
     subdir: android
     # F-Droid 的构建机没有 Node.js/npm，用 sudo 安装。
     # nodejs 版本需满足 Vite 7 的要求（Node >= 20.19 或 >= 22.12）。
