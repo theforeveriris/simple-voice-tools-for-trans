@@ -85,6 +85,9 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 
 ## F-Droid 上架（从源码构建）
 
+> 完整的收录流程、metadata 字段规范、可复现构建与自动更新机制，
+> 见 [GUIDE-FDROID.md](./GUIDE-FDROID.md)。本节只列仓库内的构建改造。
+
 F-Droid **只从源码编译，不接受任何预编译二进制**。本项目是 Capacitor +
 Vite 架构，Web 资源是构建产物且不入库，因此做了三处改造，让 F-Droid 构建机
 （以及任何干净克隆）能直接 `gradlew assembleRelease`：

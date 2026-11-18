@@ -441,6 +441,7 @@ npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-
 | [PARAMETERS-AI-ASSISTANT.md](./PARAMETERS-AI-ASSISTANT.md) | AI 助手参数：模型档案、上下文预算、工具与记忆阈值 |
 | [GUIDE-PWA.md](./GUIDE-PWA.md) | PWA：更新流、版本注入、Share Target、修复工具 |
 | [GUIDE-CAPACITOR.md](./GUIDE-CAPACITOR.md) | Capacitor 安卓壳：构建、签名、原生分享/快捷方式、已知限制 |
+| [GUIDE-FDROID.md](./GUIDE-FDROID.md) | F-Droid 收录与维护：metadata 规范、rewritemeta、可复现构建、自动更新 |
 | [GUIDE-DESKTOP.md](./GUIDE-DESKTOP.md) | Tauri Windows 桌面版：构建、CI、平台差异 |
 | [PARAMETERS-GUIDE.md](./PARAMETERS-GUIDE.md) | 参数说明书（面向使用者） |
 | [RECORDS-FORMAT.md](./RECORDS-FORMAT.md) | 记录导出开放格式（records v2）与 JSON Schema |
